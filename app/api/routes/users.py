@@ -1,7 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from supabase import Client
 
-router = APIRouter(prefix="/users", tags=["users"])  # change for each file
+from app.db.session import get_supabase
+
+router = APIRouter(prefix="/users", tags=["users"]) 
 
 @router.get("/")
-async def get_all():
-    return {"message": "This endpoint is not implemented yet"}
+async def get_all(supabase: Client = Depends(get_supabase)):
+    response = supabase.table("users").select("*").execute()
+    return response.data
