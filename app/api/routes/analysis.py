@@ -3,9 +3,9 @@ from supabase import Client
 
 from app.db.session import get_supabase
 
-router = APIRouter(prefix="/users", tags=["users"]) 
+router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 @router.get("/")
 async def get_all(supabase: Client = Depends(get_supabase)):
-    response = supabase.table("users").select("*").execute()
-    return response.data
+    response = supabase.table("analysis").select("*").execute()
+    return {"analysis": response.data}

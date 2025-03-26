@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from typing import Optional
 from pydantic import BaseModel
 
-from app.db.session import get_db
+from supabase import Client
+from app.db.session import get_supabase
+
 from app.services.call_analysis.main import run as analyze_call
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -18,7 +19,7 @@ class AudioAnalysisRequest(BaseModel):
 @router.post("/call-analysis")
 async def analyze_audio(
     request: AudioAnalysisRequest,
-    db: Session = Depends(get_db)
+    supabase: Client = Depends(get_supabase)
 ):
     try:
         analysis_result = analyze_call({

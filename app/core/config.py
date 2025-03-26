@@ -6,7 +6,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database connection
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/callcenter")
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
     
     # CORS settings
     BACKEND_CORS_ORIGINS: list = ["*"]
