@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     # CORS settings
     BACKEND_CORS_ORIGINS: list = ["*"]
     
-    class Config:
-        env_file = ".env"
+    # TODO: Figure out why this causes an error
+    # https://docs.pydantic.dev/2.10/errors/validation_errors/#extra_forbidden
+    
+    # class Config:
+    #     env_file = ".env"
 
 settings = Settings()
