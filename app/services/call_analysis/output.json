@@ -1,0 +1,1520 @@
+{
+  "transcription": {
+    "source": "https://callsightstorage.blob.core.windows.net/audio-files/Call6_mono_16k_az_apply_loan.wav",
+    "timestamp": "2025-03-25T19:33:36Z",
+    "durationInTicks": 1824400000,
+    "durationMilliseconds": 182440,
+    "duration": "PT3M2.44S",
+    "combinedRecognizedPhrases": [
+      {
+        "channel": 0,
+        "lexical": "good afternoon this is sam thank you for calling contoso how can i help hi there my name is mary i'm currently living in los angeles but i'm planning to move to las vegas and i would like to apply for a loan OK i see you're currently living in california let me make sure i understand you correctly you'd like to apply for a loan even though you'll be moving soon is that right yes exactly so i'm planning to relocate soon but i would like to apply for the loan first so that i can purchase a new home once i move there and are you planning to sell your current home yes i will be listing on the market soon and hopefully it'll sell quickly that's why i'm applying for a loan now so that i can purchase a new house in nevada and close on it quickly as well once my current home sells i see would you mind holding for a moment while i take your information down yeah no problem thank you for your help one moment all right thank you for your patience ma'am may i have your first and last name please yes my name is mary smith thank you miss smith may i have your current address please yes so my address is one two three main street in los angeles california and the zip code is nine zero nine two three sorry that was a nine zero what nine zero nine two three nine zero nine two three on main street got it thank you may i have your phone number as well please yes my phone number is five zero four five two nine two three five one and then yeah two three five one got it and do you have an email address we i can associate with this application yes so my email address is mary dot A dot SM seventy eight at gmail dot com mary dot a was that ASN as in november or M as in mike M as in mike mike seventy eight got it thank you miss smith do you currently have any other loans yes so i currently have two other loans through contoso so my first one is my car loan and then my other is my student loan they total about fourteen hundred per month combined and my interest rate is eight percent i see and you're currently paying those loans off monthly is that right yes of course i do OK thank you here's what i suggest we do let me place you on a brief hold again so that i can talk with one of our loan officers and get this started for you immediately and in the meantime would be great if you could take a few minutes and complete the remainder of the secure application online at the WWW dot contoso loans dot com yeah that sounds good i can go ahead and get started thank you for your help thank you",
+        "itn": "good afternoon this is sam thank you for calling contoso how can i help hi there my name is mary i'm currently living in los angeles but i'm planning to move to las vegas and i would like to apply for a loan OK i see you're currently living in california let me make sure i understand you correctly you'd like to apply for a loan even though you'll be moving soon is that right yes exactly so i'm planning to relocate soon but i would like to apply for the loan first so that i can purchase a new home once i move there and are you planning to sell your current home yes i will be listing on the market soon and hopefully it'll sell quickly that's why i'm applying for a loan now so that i can purchase a new house in nevada and close on it quickly as well once my current home sells i see would you mind holding for a moment while i take your information down yeah no problem thank you for your help one moment all right thank you for your patience ma'am may i have your first and last name please yes my name is mary smith thank you miss smith may i have your current address please yes so my address is 123 main st in los angeles CA and the zip code is 90923 sorry that was a 90 what 90923 90923 on main street got it thank you may i have your phone number as well please yes my phone number is 504-529-2351 and then yeah 2351 got it and do you have an email address we i can associate with this application yes so my email address is mary.a.sm78@gmail.com mary dot a was that ASN as in november or M as in mike M as in mike M78 got it thank you miss smith do you currently have any other loans yes so i currently have two other loans through contoso so my first one is my car loan and then my other is my student loan they total about 1400 per month combined and my interest rate is 8% i see and you're currently paying those loans off monthly is that right yes of course i do OK thank you here's what i suggest we do let me place you on a brief hold again so that i can talk with one of our loan officers and get this started for you immediately and in the meantime would be great if you could take a few minutes and complete the remainder of the secure application online at the www.contosoloans.com yeah that sounds good i can go ahead and get started thank you for your help thank you",
+        "maskedITN": "Good afternoon This is Sam Thank you for calling Contoso How can I help Hi there my name is Mary I'm currently living in Los Angeles but I'm planning to move to Las Vegas and I would like to apply for a loan OK I see you're currently living in California Let me make sure I understand you correctly You'd like to apply for a loan even though you'll be moving soon is that right Yes exactly So I'm planning to relocate soon but I would like to apply for the loan first so that I can purchase a new home once I move there And are you planning to sell your current home? Yes I will be listing on the market soon and hopefully it'll sell quickly That's why I'm applying for a loan now so that I can purchase a new house in Nevada and close on it quickly as well once my current home sells I see, would you mind holding for a moment while I take your information down? Yeah no problem Thank you for your help One moment. All right Thank you for your patience ma'am May I have your first and last name please Yes, my name is Mary Smith. Thank you Miss Smith may I have your current address please Yes, so my address is 123 Main St. in Los Angeles, CA and the zip code is 90923. Sorry that was a 90 What 90923. 90923 on Main Street Got it thank you May I have your phone number as well please Yes, my phone number is 504-529-2351 and then yeah. 2351 got it And do you have an e-mail address we I can associate with this application Yes So my e-mail address is mary.a.sm78@gmail.com Mary dot A was that ASN as in November or M as in Mike? M as in Mike. M78 Got it Thank you Miss Smith do you currently have any other loans Yes So I currently have two other loans through Contoso So my first one is my car loan and then my other is my student loan They total about 1400 per month combined and my interest rate is 8% I see And you're currently paying those loans off monthly is that right Yes, of course I do. OK Thank you Here's what I suggest we do Let me place you on a brief hold again so that I can talk with one of our loan officers and get this started for you immediately And in the meantime would be great if you could take a few minutes and complete the remainder of the secure application online at the www.contosoloans.com Yeah That sounds good I can go ahead and get started Thank you for your help Thank you.",
+        "display": "Good afternoon. This is Sam. Thank you for calling Contoso. How can I help? Hi there, my name is Mary. I'm currently living in Los Angeles but I'm planning to move to Las Vegas and I would like to apply for a loan. OK, I see you're currently living in California. Let me make sure I understand you correctly. You'd like to apply for a loan even though you'll be moving soon, is that right? Yes exactly. So I'm planning to relocate soon, but I would like to apply for the loan first so that I can purchase a new home once I move there. And are you planning to sell your current home? Yes, I will be listing on the market soon and hopefully it'll sell quickly. That's why I'm applying for a loan now, so that I can purchase a new house in Nevada and close on it quickly as well once my current home sells. I see, would you mind holding for a moment while I take your information down? Yeah, no problem. Thank you for your help. One moment. All right. Thank you for your patience, ma'am. May I have your first and last name please? Yes, my name is Mary Smith. Thank you. Miss Smith, may I have your current address, please? Yes, so my address is 123 Main St. in Los Angeles, CA and the zip code is 90923. Sorry, that was a 90. What? 90923. 90923 on Main Street. Got it, thank you. May I have your phone number as well please? Yes, my phone number is 504-529-2351 and then yeah. 2351 got it. And do you have an e-mail address we I can associate with this application? Yes. So my e-mail address is mary.a.sm78@gmail.com. Mary dot A was that ASN as in November or M as in Mike? M as in Mike. M78. Got it. Thank you. Miss Smith, do you currently have any other loans? Yes. So I currently have two other loans through Contoso. So my first one is my car loan and then my other is my student loan. They total about 1400 per month combined and my interest rate is 8%. I see. And you're currently paying those loans off monthly, is that right? Yes, of course I do. OK. Thank you. Here's what I suggest we do. Let me place you on a brief hold again so that I can talk with one of our loan officers and get this started for you immediately. And in the meantime, would be great if you could take a few minutes and complete the remainder of the secure application online at the www.contosoloans.com. Yeah. That sounds good. I can go ahead and get started. Thank you for your help. Thank you."
+      }
+    ],
+    "recognizedPhrases": [
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT0.96S",
+        "duration": "PT0.64S",
+        "offsetInTicks": 9600000,
+        "durationInTicks": 6400000,
+        "durationMilliseconds": 640,
+        "offsetMilliseconds": 960,
+        "nBest": [
+          {
+            "confidence": 0.9037123,
+            "lexical": "good afternoon",
+            "itn": "good afternoon",
+            "maskedITN": "Good afternoon",
+            "display": "Good afternoon.",
+            "sentiment": {
+              "positive": 0.15,
+              "neutral": 0.85,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1.64S",
+        "duration": "PT0.6S",
+        "offsetInTicks": 16400000,
+        "durationInTicks": 6000000,
+        "durationMilliseconds": 600,
+        "offsetMilliseconds": 1640,
+        "nBest": [
+          {
+            "confidence": 0.9178266,
+            "lexical": "this is sam",
+            "itn": "this is sam",
+            "maskedITN": "This is Sam",
+            "display": "This is Sam.",
+            "sentiment": {
+              "positive": 0.19,
+              "neutral": 0.8,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2.24S",
+        "duration": "PT1S",
+        "offsetInTicks": 22400000,
+        "durationInTicks": 10000000,
+        "durationMilliseconds": 1000,
+        "offsetMilliseconds": 2240,
+        "nBest": [
+          {
+            "confidence": 0.8301509,
+            "lexical": "thank you for calling contoso",
+            "itn": "thank you for calling contoso",
+            "maskedITN": "Thank you for calling Contoso",
+            "display": "Thank you for calling Contoso.",
+            "sentiment": {
+              "positive": 0.96,
+              "neutral": 0.04,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT3.24S",
+        "duration": "PT0.64S",
+        "offsetInTicks": 32400000,
+        "durationInTicks": 6400000,
+        "durationMilliseconds": 640,
+        "offsetMilliseconds": 3240,
+        "nBest": [
+          {
+            "confidence": 0.7510116,
+            "lexical": "how can i help",
+            "itn": "how can i help",
+            "maskedITN": "How can I help",
+            "display": "How can I help?",
+            "sentiment": {
+              "positive": 0.28,
+              "neutral": 0.71,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT5.04S",
+        "duration": "PT1.16S",
+        "offsetInTicks": 50400000,
+        "durationInTicks": 11600000,
+        "durationMilliseconds": 1160,
+        "offsetMilliseconds": 5040,
+        "nBest": [
+          {
+            "confidence": 0.8920991,
+            "lexical": "hi there my name is mary",
+            "itn": "hi there my name is mary",
+            "maskedITN": "Hi there my name is Mary",
+            "display": "Hi there, my name is Mary.",
+            "sentiment": {
+              "positive": 0.09,
+              "neutral": 0.91,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT6.2S",
+        "duration": "PT4.36S",
+        "offsetInTicks": 62000000,
+        "durationInTicks": 43600000,
+        "durationMilliseconds": 4360,
+        "offsetMilliseconds": 6200,
+        "nBest": [
+          {
+            "confidence": 0.9289558,
+            "lexical": "i'm currently living in los angeles but i'm planning to move to las vegas and i would like to apply for a loan",
+            "itn": "i'm currently living in los angeles but i'm planning to move to las vegas and i would like to apply for a loan",
+            "maskedITN": "I'm currently living in Los Angeles but I'm planning to move to Las Vegas and I would like to apply for a loan",
+            "display": "I'm currently living in Los Angeles but I'm planning to move to Las Vegas and I would like to apply for a loan.",
+            "sentiment": {
+              "positive": 0.14,
+              "neutral": 0.86,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT12.6S",
+        "duration": "PT2.24S",
+        "offsetInTicks": 126000000,
+        "durationInTicks": 22400000,
+        "durationMilliseconds": 2240,
+        "offsetMilliseconds": 12600,
+        "nBest": [
+          {
+            "confidence": 0.77810097,
+            "lexical": "OK i see you're currently living in california",
+            "itn": "OK i see you're currently living in california",
+            "maskedITN": "OK I see you're currently living in California",
+            "display": "OK, I see you're currently living in California.",
+            "sentiment": {
+              "positive": 0.1,
+              "neutral": 0.89,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT14.84S",
+        "duration": "PT1.72S",
+        "offsetInTicks": 148400000,
+        "durationInTicks": 17200000,
+        "durationMilliseconds": 1720,
+        "offsetMilliseconds": 14840,
+        "nBest": [
+          {
+            "confidence": 0.9181231,
+            "lexical": "let me make sure i understand you correctly",
+            "itn": "let me make sure i understand you correctly",
+            "maskedITN": "Let me make sure I understand you correctly",
+            "display": "Let me make sure I understand you correctly.",
+            "sentiment": {
+              "positive": 0.46,
+              "neutral": 0.49,
+              "negative": 0.05
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT17.16S",
+        "duration": "PT3S",
+        "offsetInTicks": 171600000,
+        "durationInTicks": 30000000,
+        "durationMilliseconds": 3000,
+        "offsetMilliseconds": 17160,
+        "nBest": [
+          {
+            "confidence": 0.89089984,
+            "lexical": "you'd like to apply for a loan even though you'll be moving soon is that right",
+            "itn": "you'd like to apply for a loan even though you'll be moving soon is that right",
+            "maskedITN": "You'd like to apply for a loan even though you'll be moving soon is that right",
+            "display": "You'd like to apply for a loan even though you'll be moving soon, is that right?",
+            "sentiment": {
+              "positive": 0.15,
+              "neutral": 0.84,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT21.4S",
+        "duration": "PT0.92S",
+        "offsetInTicks": 214000000,
+        "durationInTicks": 9200000,
+        "durationMilliseconds": 920,
+        "offsetMilliseconds": 21400,
+        "nBest": [
+          {
+            "confidence": 0.9619142,
+            "lexical": "yes exactly",
+            "itn": "yes exactly",
+            "maskedITN": "Yes exactly",
+            "display": "Yes exactly.",
+            "sentiment": {
+              "positive": 0.52,
+              "neutral": 0.47,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT22.56S",
+        "duration": "PT4.68S",
+        "offsetInTicks": 225600000,
+        "durationInTicks": 46800000,
+        "durationMilliseconds": 4680,
+        "offsetMilliseconds": 22560,
+        "nBest": [
+          {
+            "confidence": 0.86400676,
+            "lexical": "so i'm planning to relocate soon but i would like to apply for the loan first so that i can purchase a new home once i move there",
+            "itn": "so i'm planning to relocate soon but i would like to apply for the loan first so that i can purchase a new home once i move there",
+            "maskedITN": "So I'm planning to relocate soon but I would like to apply for the loan first so that I can purchase a new home once I move there",
+            "display": "So I'm planning to relocate soon, but I would like to apply for the loan first so that I can purchase a new home once I move there.",
+            "sentiment": {
+              "positive": 0.15,
+              "neutral": 0.84,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT28.88S",
+        "duration": "PT1.92S",
+        "offsetInTicks": 288800000,
+        "durationInTicks": 19200000,
+        "durationMilliseconds": 1920,
+        "offsetMilliseconds": 28880,
+        "nBest": [
+          {
+            "confidence": 0.9384181,
+            "lexical": "and are you planning to sell your current home",
+            "itn": "and are you planning to sell your current home",
+            "maskedITN": "And are you planning to sell your current home?",
+            "display": "And are you planning to sell your current home?",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 1.0,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT32.04S",
+        "duration": "PT3.36S",
+        "offsetInTicks": 320400000,
+        "durationInTicks": 33600000,
+        "durationMilliseconds": 3360,
+        "offsetMilliseconds": 32040,
+        "nBest": [
+          {
+            "confidence": 0.8355414,
+            "lexical": "yes i will be listing on the market soon and hopefully it'll sell quickly",
+            "itn": "yes i will be listing on the market soon and hopefully it'll sell quickly",
+            "maskedITN": "Yes I will be listing on the market soon and hopefully it'll sell quickly",
+            "display": "Yes, I will be listing on the market soon and hopefully it'll sell quickly.",
+            "sentiment": {
+              "positive": 0.96,
+              "neutral": 0.03,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT35.68S",
+        "duration": "PT5.44S",
+        "offsetInTicks": 356800000,
+        "durationInTicks": 54400000,
+        "durationMilliseconds": 5440,
+        "offsetMilliseconds": 35680,
+        "nBest": [
+          {
+            "confidence": 0.8719204,
+            "lexical": "that's why i'm applying for a loan now so that i can purchase a new house in nevada and close on it quickly as well once my current home sells",
+            "itn": "that's why i'm applying for a loan now so that i can purchase a new house in nevada and close on it quickly as well once my current home sells",
+            "maskedITN": "That's why I'm applying for a loan now so that I can purchase a new house in Nevada and close on it quickly as well once my current home sells",
+            "display": "That's why I'm applying for a loan now, so that I can purchase a new house in Nevada and close on it quickly as well once my current home sells.",
+            "sentiment": {
+              "positive": 0.08,
+              "neutral": 0.92,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT42.56S",
+        "duration": "PT3.68S",
+        "offsetInTicks": 425600000,
+        "durationInTicks": 36800000,
+        "durationMilliseconds": 3680,
+        "offsetMilliseconds": 42560,
+        "nBest": [
+          {
+            "confidence": 0.88283986,
+            "lexical": "i see would you mind holding for a moment while i take your information down",
+            "itn": "i see would you mind holding for a moment while i take your information down",
+            "maskedITN": "I see, would you mind holding for a moment while I take your information down?",
+            "display": "I see, would you mind holding for a moment while I take your information down?",
+            "sentiment": {
+              "positive": 0.03,
+              "neutral": 0.96,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT47.24S",
+        "duration": "PT0.68S",
+        "offsetInTicks": 472400000,
+        "durationInTicks": 6800000,
+        "durationMilliseconds": 680,
+        "offsetMilliseconds": 47240,
+        "nBest": [
+          {
+            "confidence": 0.88862604,
+            "lexical": "yeah no problem",
+            "itn": "yeah no problem",
+            "maskedITN": "Yeah no problem",
+            "display": "Yeah, no problem.",
+            "sentiment": {
+              "positive": 0.86,
+              "neutral": 0.13,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT47.92S",
+        "duration": "PT0.72S",
+        "offsetInTicks": 479200000,
+        "durationInTicks": 7200000,
+        "durationMilliseconds": 720,
+        "offsetMilliseconds": 47920,
+        "nBest": [
+          {
+            "confidence": 0.9708807,
+            "lexical": "thank you for your help",
+            "itn": "thank you for your help",
+            "maskedITN": "Thank you for your help",
+            "display": "Thank you for your help.",
+            "sentiment": {
+              "positive": 0.99,
+              "neutral": 0.01,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT50.88S",
+        "duration": "PT0.64S",
+        "offsetInTicks": 508800000,
+        "durationInTicks": 6400000,
+        "durationMilliseconds": 640,
+        "offsetMilliseconds": 50880,
+        "nBest": [
+          {
+            "confidence": 0.5344268,
+            "lexical": "one moment",
+            "itn": "one moment",
+            "maskedITN": "One moment.",
+            "display": "One moment.",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.99,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT58.72S",
+        "duration": "PT0.28S",
+        "offsetInTicks": 587200000,
+        "durationInTicks": 2800000,
+        "durationMilliseconds": 280,
+        "offsetMilliseconds": 58720,
+        "nBest": [
+          {
+            "confidence": 0.3069697,
+            "lexical": "all right",
+            "itn": "all right",
+            "maskedITN": "All right",
+            "display": "All right.",
+            "sentiment": {
+              "positive": 0.02,
+              "neutral": 0.97,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT59.08S",
+        "duration": "PT1.04S",
+        "offsetInTicks": 590800000,
+        "durationInTicks": 10400000,
+        "durationMilliseconds": 1040,
+        "offsetMilliseconds": 59080,
+        "nBest": [
+          {
+            "confidence": 0.86877024,
+            "lexical": "thank you for your patience ma'am",
+            "itn": "thank you for your patience ma'am",
+            "maskedITN": "Thank you for your patience ma'am",
+            "display": "Thank you for your patience, ma'am.",
+            "sentiment": {
+              "positive": 0.98,
+              "neutral": 0.02,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M0.4S",
+        "duration": "PT2.2S",
+        "offsetInTicks": 604000000,
+        "durationInTicks": 22000000,
+        "durationMilliseconds": 2200,
+        "offsetMilliseconds": 60400,
+        "nBest": [
+          {
+            "confidence": 0.9310807,
+            "lexical": "may i have your first and last name please",
+            "itn": "may i have your first and last name please",
+            "maskedITN": "May I have your first and last name please",
+            "display": "May I have your first and last name please?",
+            "sentiment": {
+              "positive": 0.03,
+              "neutral": 0.96,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT1M3.52S",
+        "duration": "PT1.92S",
+        "offsetInTicks": 635200000,
+        "durationInTicks": 19200000,
+        "durationMilliseconds": 1920,
+        "offsetMilliseconds": 63520,
+        "nBest": [
+          {
+            "confidence": 0.915802,
+            "lexical": "yes my name is mary smith",
+            "itn": "yes my name is mary smith",
+            "maskedITN": "Yes, my name is Mary Smith.",
+            "display": "Yes, my name is Mary Smith.",
+            "sentiment": {
+              "positive": 0.37,
+              "neutral": 0.62,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M7.56S",
+        "duration": "PT0.4S",
+        "offsetInTicks": 675600000,
+        "durationInTicks": 4000000,
+        "durationMilliseconds": 400,
+        "offsetMilliseconds": 67560,
+        "nBest": [
+          {
+            "confidence": 0.7179733,
+            "lexical": "thank you",
+            "itn": "thank you",
+            "maskedITN": "Thank you",
+            "display": "Thank you.",
+            "sentiment": {
+              "positive": 0.73,
+              "neutral": 0.26,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M7.96S",
+        "duration": "PT2.56S",
+        "offsetInTicks": 679600000,
+        "durationInTicks": 25600000,
+        "durationMilliseconds": 2560,
+        "offsetMilliseconds": 67960,
+        "nBest": [
+          {
+            "confidence": 0.8373398,
+            "lexical": "miss smith may i have your current address please",
+            "itn": "miss smith may i have your current address please",
+            "maskedITN": "Miss Smith may I have your current address please",
+            "display": "Miss Smith, may I have your current address, please?",
+            "sentiment": {
+              "positive": 0.02,
+              "neutral": 0.98,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT1M11.44S",
+        "duration": "PT3.08S",
+        "offsetInTicks": 714400000,
+        "durationInTicks": 30800000,
+        "durationMilliseconds": 3080,
+        "offsetMilliseconds": 71440,
+        "nBest": [
+          {
+            "confidence": 0.90871024,
+            "lexical": "yes so my address is one two three main street",
+            "itn": "yes so my address is 123 main st",
+            "maskedITN": "Yes, so my address is 123 Main St.",
+            "display": "Yes, so my address is 123 Main St.",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.99,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT1M14.52S",
+        "duration": "PT4.08S",
+        "offsetInTicks": 745200000,
+        "durationInTicks": 40800000,
+        "durationMilliseconds": 4080,
+        "offsetMilliseconds": 74520,
+        "nBest": [
+          {
+            "confidence": 0.93482244,
+            "lexical": "in los angeles california and the zip code is nine zero nine two three",
+            "itn": "in los angeles CA and the zip code is 90923",
+            "maskedITN": "in Los Angeles, CA and the zip code is 90923.",
+            "display": "in Los Angeles, CA and the zip code is 90923.",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 1.0,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M20.48S",
+        "duration": "PT1.8S",
+        "offsetInTicks": 804800000,
+        "durationInTicks": 18000000,
+        "durationMilliseconds": 1800,
+        "offsetMilliseconds": 80480,
+        "nBest": [
+          {
+            "confidence": 0.7203922,
+            "lexical": "sorry that was a nine zero",
+            "itn": "sorry that was a 90",
+            "maskedITN": "Sorry that was a 90",
+            "display": "Sorry, that was a 90.",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.08,
+              "negative": 0.91
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M22.28S",
+        "duration": "PT0.4S",
+        "offsetInTicks": 822800000,
+        "durationInTicks": 4000000,
+        "durationMilliseconds": 400,
+        "offsetMilliseconds": 82280,
+        "nBest": [
+          {
+            "confidence": 0.8810705,
+            "lexical": "what",
+            "itn": "what",
+            "maskedITN": "What",
+            "display": "What?",
+            "sentiment": {
+              "positive": 0.16,
+              "neutral": 0.18,
+              "negative": 0.66
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT1M24.12S",
+        "duration": "PT1.96S",
+        "offsetInTicks": 841200000,
+        "durationInTicks": 19600000,
+        "durationMilliseconds": 1960,
+        "offsetMilliseconds": 84120,
+        "nBest": [
+          {
+            "confidence": 0.91411144,
+            "lexical": "nine zero nine two three",
+            "itn": "90923",
+            "maskedITN": "90923.",
+            "display": "90923.",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 1.0,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M27.56S",
+        "duration": "PT3.24S",
+        "offsetInTicks": 875600000,
+        "durationInTicks": 32400000,
+        "durationMilliseconds": 3240,
+        "offsetMilliseconds": 87560,
+        "nBest": [
+          {
+            "confidence": 0.8937282,
+            "lexical": "nine zero nine two three on main street",
+            "itn": "90923 on main street",
+            "maskedITN": "90923 on Main Street",
+            "display": "90923 on Main Street.",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 1.0,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M30.8S",
+        "duration": "PT1.12S",
+        "offsetInTicks": 908000000,
+        "durationInTicks": 11200000,
+        "durationMilliseconds": 1120,
+        "offsetMilliseconds": 90800,
+        "nBest": [
+          {
+            "confidence": 0.85121727,
+            "lexical": "got it thank you",
+            "itn": "got it thank you",
+            "maskedITN": "Got it thank you",
+            "display": "Got it, thank you.",
+            "sentiment": {
+              "positive": 0.97,
+              "neutral": 0.03,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M32.24S",
+        "duration": "PT1.44S",
+        "offsetInTicks": 922400000,
+        "durationInTicks": 14400000,
+        "durationMilliseconds": 1440,
+        "offsetMilliseconds": 92240,
+        "nBest": [
+          {
+            "confidence": 0.8194779,
+            "lexical": "may i have your phone number as well please",
+            "itn": "may i have your phone number as well please",
+            "maskedITN": "May I have your phone number as well please",
+            "display": "May I have your phone number as well please?",
+            "sentiment": {
+              "positive": 0.06,
+              "neutral": 0.93,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT1M34.96S",
+        "duration": "PT7.44S",
+        "offsetInTicks": 949600000,
+        "durationInTicks": 74400000,
+        "durationMilliseconds": 7440,
+        "offsetMilliseconds": 94960,
+        "nBest": [
+          {
+            "confidence": 0.92082435,
+            "lexical": "yes my phone number is five zero four five two nine two three five one and then yeah",
+            "itn": "yes my phone number is 504-529-2351 and then yeah",
+            "maskedITN": "Yes, my phone number is 504-529-2351 and then yeah.",
+            "display": "Yes, my phone number is 504-529-2351 and then yeah.",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.99,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M43.56S",
+        "duration": "PT3.32S",
+        "offsetInTicks": 1035600000,
+        "durationInTicks": 33200000,
+        "durationMilliseconds": 3320,
+        "offsetMilliseconds": 103560,
+        "nBest": [
+          {
+            "confidence": 0.93649197,
+            "lexical": "two three five one got it",
+            "itn": "2351 got it",
+            "maskedITN": "2351 got it",
+            "display": "2351 got it.",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 1.0,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT1M47.52S",
+        "duration": "PT4.96S",
+        "offsetInTicks": 1075200000,
+        "durationInTicks": 49600000,
+        "durationMilliseconds": 4960,
+        "offsetMilliseconds": 107520,
+        "nBest": [
+          {
+            "confidence": 0.8537704,
+            "lexical": "and do you have an email address we i can associate with this application",
+            "itn": "and do you have an email address we i can associate with this application",
+            "maskedITN": "And do you have an e-mail address we I can associate with this application",
+            "display": "And do you have an e-mail address we I can associate with this application?",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.99,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT1M53.6S",
+        "duration": "PT0.28S",
+        "offsetInTicks": 1136000000,
+        "durationInTicks": 2800000,
+        "durationMilliseconds": 280,
+        "offsetMilliseconds": 113600,
+        "nBest": [
+          {
+            "confidence": 0.6658586,
+            "lexical": "yes",
+            "itn": "yes",
+            "maskedITN": "Yes",
+            "display": "Yes.",
+            "sentiment": {
+              "positive": 0.2,
+              "neutral": 0.79,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT1M53.88S",
+        "duration": "PT6.92S",
+        "offsetInTicks": 1138800000,
+        "durationInTicks": 69200000,
+        "durationMilliseconds": 6920,
+        "offsetMilliseconds": 113880,
+        "nBest": [
+          {
+            "confidence": 0.8713523,
+            "lexical": "so my email address is mary dot A dot SM seventy eight at gmail dot com",
+            "itn": "so my email address is mary.a.sm78@gmail.com",
+            "maskedITN": "So my e-mail address is mary.a.sm78@gmail.com",
+            "display": "So my e-mail address is mary.a.sm78@gmail.com.",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.99,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M2.56S",
+        "duration": "PT5.68S",
+        "offsetInTicks": 1225600000,
+        "durationInTicks": 56800000,
+        "durationMilliseconds": 5680,
+        "offsetMilliseconds": 122560,
+        "nBest": [
+          {
+            "confidence": 0.784516,
+            "lexical": "mary dot a was that ASN as in november or M as in mike",
+            "itn": "mary dot a was that ASN as in november or M as in mike",
+            "maskedITN": "Mary dot A was that ASN as in November or M as in Mike?",
+            "display": "Mary dot A was that ASN as in November or M as in Mike?",
+            "sentiment": {
+              "positive": 0.02,
+              "neutral": 0.97,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M9.48S",
+        "duration": "PT0.76S",
+        "offsetInTicks": 1294800000,
+        "durationInTicks": 7600000,
+        "durationMilliseconds": 760,
+        "offsetMilliseconds": 129480,
+        "nBest": [
+          {
+            "confidence": 0.9001087,
+            "lexical": "M as in mike",
+            "itn": "M as in mike",
+            "maskedITN": "M as in Mike.",
+            "display": "M as in Mike.",
+            "sentiment": {
+              "positive": 0.15,
+              "neutral": 0.83,
+              "negative": 0.02
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M11.36S",
+        "duration": "PT1.48S",
+        "offsetInTicks": 1313600000,
+        "durationInTicks": 14800000,
+        "durationMilliseconds": 1480,
+        "offsetMilliseconds": 131360,
+        "nBest": [
+          {
+            "confidence": 0.8487499,
+            "lexical": "mike seventy eight",
+            "itn": "M78",
+            "maskedITN": "M78",
+            "display": "M78.",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 1.0,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M13.24S",
+        "duration": "PT0.44S",
+        "offsetInTicks": 1332400000,
+        "durationInTicks": 4400000,
+        "durationMilliseconds": 440,
+        "offsetMilliseconds": 133240,
+        "nBest": [
+          {
+            "confidence": 0.8225729,
+            "lexical": "got it",
+            "itn": "got it",
+            "maskedITN": "Got it",
+            "display": "Got it.",
+            "sentiment": {
+              "positive": 0.23,
+              "neutral": 0.76,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M14.36S",
+        "duration": "PT0.68S",
+        "offsetInTicks": 1343600000,
+        "durationInTicks": 6800000,
+        "durationMilliseconds": 680,
+        "offsetMilliseconds": 134360,
+        "nBest": [
+          {
+            "confidence": 0.6812148,
+            "lexical": "thank you",
+            "itn": "thank you",
+            "maskedITN": "Thank you",
+            "display": "Thank you.",
+            "sentiment": {
+              "positive": 0.73,
+              "neutral": 0.26,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M15.08S",
+        "duration": "PT2.84S",
+        "offsetInTicks": 1350800000,
+        "durationInTicks": 28400000,
+        "durationMilliseconds": 2840,
+        "offsetMilliseconds": 135080,
+        "nBest": [
+          {
+            "confidence": 0.7880674,
+            "lexical": "miss smith do you currently have any other loans",
+            "itn": "miss smith do you currently have any other loans",
+            "maskedITN": "Miss Smith do you currently have any other loans",
+            "display": "Miss Smith, do you currently have any other loans?",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 0.99,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M19.4S",
+        "duration": "PT0.32S",
+        "offsetInTicks": 1394000000,
+        "durationInTicks": 3200000,
+        "durationMilliseconds": 320,
+        "offsetMilliseconds": 139400,
+        "nBest": [
+          {
+            "confidence": 0.6471038,
+            "lexical": "yes",
+            "itn": "yes",
+            "maskedITN": "Yes",
+            "display": "Yes.",
+            "sentiment": {
+              "positive": 0.2,
+              "neutral": 0.79,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M19.72S",
+        "duration": "PT2.52S",
+        "offsetInTicks": 1397200000,
+        "durationInTicks": 25200000,
+        "durationMilliseconds": 2520,
+        "offsetMilliseconds": 139720,
+        "nBest": [
+          {
+            "confidence": 0.92553186,
+            "lexical": "so i currently have two other loans through contoso",
+            "itn": "so i currently have two other loans through contoso",
+            "maskedITN": "So I currently have two other loans through Contoso",
+            "display": "So I currently have two other loans through Contoso.",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 1.0,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M22.72S",
+        "duration": "PT3.12S",
+        "offsetInTicks": 1427200000,
+        "durationInTicks": 31200000,
+        "durationMilliseconds": 3120,
+        "offsetMilliseconds": 142720,
+        "nBest": [
+          {
+            "confidence": 0.80621934,
+            "lexical": "so my first one is my car loan and then my other is my student loan",
+            "itn": "so my first one is my car loan and then my other is my student loan",
+            "maskedITN": "So my first one is my car loan and then my other is my student loan",
+            "display": "So my first one is my car loan and then my other is my student loan.",
+            "sentiment": {
+              "positive": 0.0,
+              "neutral": 0.99,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M26.12S",
+        "duration": "PT4.96S",
+        "offsetInTicks": 1461200000,
+        "durationInTicks": 49600000,
+        "durationMilliseconds": 4960,
+        "offsetMilliseconds": 146120,
+        "nBest": [
+          {
+            "confidence": 0.92449105,
+            "lexical": "they total about fourteen hundred per month combined and my interest rate is eight percent",
+            "itn": "they total about 1400 per month combined and my interest rate is 8%",
+            "maskedITN": "They total about 1400 per month combined and my interest rate is 8%",
+            "display": "They total about 1400 per month combined and my interest rate is 8%.",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.98,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M32.48S",
+        "duration": "PT0.24S",
+        "offsetInTicks": 1524800000,
+        "durationInTicks": 2400000,
+        "durationMilliseconds": 240,
+        "offsetMilliseconds": 152480,
+        "nBest": [
+          {
+            "confidence": 0.72757804,
+            "lexical": "i see",
+            "itn": "i see",
+            "maskedITN": "I see",
+            "display": "I see.",
+            "sentiment": {
+              "positive": 0.09,
+              "neutral": 0.9,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M32.84S",
+        "duration": "PT2.52S",
+        "offsetInTicks": 1528400000,
+        "durationInTicks": 25200000,
+        "durationMilliseconds": 2520,
+        "offsetMilliseconds": 152840,
+        "nBest": [
+          {
+            "confidence": 0.7747647,
+            "lexical": "and you're currently paying those loans off monthly is that right",
+            "itn": "and you're currently paying those loans off monthly is that right",
+            "maskedITN": "And you're currently paying those loans off monthly is that right",
+            "display": "And you're currently paying those loans off monthly, is that right?",
+            "sentiment": {
+              "positive": 0.01,
+              "neutral": 0.98,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M36.4S",
+        "duration": "PT0.72S",
+        "offsetInTicks": 1564000000,
+        "durationInTicks": 7200000,
+        "durationMilliseconds": 720,
+        "offsetMilliseconds": 156400,
+        "nBest": [
+          {
+            "confidence": 0.9142847,
+            "lexical": "yes of course i do",
+            "itn": "yes of course i do",
+            "maskedITN": "Yes, of course I do.",
+            "display": "Yes, of course I do.",
+            "sentiment": {
+              "positive": 0.77,
+              "neutral": 0.22,
+              "negative": 0.02
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M39.24S",
+        "duration": "PT0.28S",
+        "offsetInTicks": 1592400000,
+        "durationInTicks": 2800000,
+        "durationMilliseconds": 280,
+        "offsetMilliseconds": 159240,
+        "nBest": [
+          {
+            "confidence": 0.8918017,
+            "lexical": "OK",
+            "itn": "OK",
+            "maskedITN": "OK",
+            "display": "OK.",
+            "sentiment": {
+              "positive": 0.04,
+              "neutral": 0.95,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M39.56S",
+        "duration": "PT0.32S",
+        "offsetInTicks": 1595600000,
+        "durationInTicks": 3200000,
+        "durationMilliseconds": 320,
+        "offsetMilliseconds": 159560,
+        "nBest": [
+          {
+            "confidence": 0.97290313,
+            "lexical": "thank you",
+            "itn": "thank you",
+            "maskedITN": "Thank you",
+            "display": "Thank you.",
+            "sentiment": {
+              "positive": 0.73,
+              "neutral": 0.26,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M39.88S",
+        "duration": "PT1.84S",
+        "offsetInTicks": 1598800000,
+        "durationInTicks": 18400000,
+        "durationMilliseconds": 1840,
+        "offsetMilliseconds": 159880,
+        "nBest": [
+          {
+            "confidence": 0.8560301,
+            "lexical": "here's what i suggest we do",
+            "itn": "here's what i suggest we do",
+            "maskedITN": "Here's what I suggest we do",
+            "display": "Here's what I suggest we do.",
+            "sentiment": {
+              "positive": 0.19,
+              "neutral": 0.81,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M41.92S",
+        "duration": "PT5.72S",
+        "offsetInTicks": 1619200000,
+        "durationInTicks": 57200000,
+        "durationMilliseconds": 5720,
+        "offsetMilliseconds": 161920,
+        "nBest": [
+          {
+            "confidence": 0.7780105,
+            "lexical": "let me place you on a brief hold again so that i can talk with one of our loan officers and get this started for you immediately",
+            "itn": "let me place you on a brief hold again so that i can talk with one of our loan officers and get this started for you immediately",
+            "maskedITN": "Let me place you on a brief hold again so that I can talk with one of our loan officers and get this started for you immediately",
+            "display": "Let me place you on a brief hold again so that I can talk with one of our loan officers and get this started for you immediately.",
+            "sentiment": {
+              "positive": 0.07,
+              "neutral": 0.93,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M47.68S",
+        "duration": "PT9.64S",
+        "offsetInTicks": 1676800000,
+        "durationInTicks": 96400000,
+        "durationMilliseconds": 9640,
+        "offsetMilliseconds": 167680,
+        "nBest": [
+          {
+            "confidence": 0.8377798,
+            "lexical": "and in the meantime would be great if you could take a few minutes and complete the remainder of the secure application online at the WWW dot contoso loans dot com",
+            "itn": "and in the meantime would be great if you could take a few minutes and complete the remainder of the secure application online at the www.contosoloans.com",
+            "maskedITN": "And in the meantime would be great if you could take a few minutes and complete the remainder of the secure application online at the www.contosoloans.com",
+            "display": "And in the meantime, would be great if you could take a few minutes and complete the remainder of the secure application online at the www.contosoloans.com.",
+            "sentiment": {
+              "positive": 0.61,
+              "neutral": 0.38,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT2M57.32S",
+        "duration": "PT0.12S",
+        "offsetInTicks": 1773200000,
+        "durationInTicks": 1200000,
+        "durationMilliseconds": 120,
+        "offsetMilliseconds": 177320,
+        "nBest": [
+          {
+            "confidence": 0.4371283,
+            "lexical": "yeah",
+            "itn": "yeah",
+            "maskedITN": "Yeah",
+            "display": "Yeah.",
+            "sentiment": {
+              "positive": 0.03,
+              "neutral": 0.96,
+              "negative": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M58.68S",
+        "duration": "PT0.56S",
+        "offsetInTicks": 1786800000,
+        "durationInTicks": 5600000,
+        "durationMilliseconds": 560,
+        "offsetMilliseconds": 178680,
+        "nBest": [
+          {
+            "confidence": 0.9190276,
+            "lexical": "that sounds good",
+            "itn": "that sounds good",
+            "maskedITN": "That sounds good",
+            "display": "That sounds good.",
+            "sentiment": {
+              "positive": 0.97,
+              "neutral": 0.03,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT2M59.24S",
+        "duration": "PT1S",
+        "offsetInTicks": 1792400000,
+        "durationInTicks": 10000000,
+        "durationMilliseconds": 1000,
+        "offsetMilliseconds": 179240,
+        "nBest": [
+          {
+            "confidence": 0.9553406,
+            "lexical": "i can go ahead and get started",
+            "itn": "i can go ahead and get started",
+            "maskedITN": "I can go ahead and get started",
+            "display": "I can go ahead and get started.",
+            "sentiment": {
+              "positive": 0.32,
+              "neutral": 0.68,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 2,
+        "offset": "PT3M0.32S",
+        "duration": "PT0.68S",
+        "offsetInTicks": 1803200000,
+        "durationInTicks": 6800000,
+        "durationMilliseconds": 680,
+        "offsetMilliseconds": 180320,
+        "nBest": [
+          {
+            "confidence": 0.97523457,
+            "lexical": "thank you for your help",
+            "itn": "thank you for your help",
+            "maskedITN": "Thank you for your help",
+            "display": "Thank you for your help.",
+            "sentiment": {
+              "positive": 0.99,
+              "neutral": 0.01,
+              "negative": 0.0
+            }
+          }
+        ]
+      },
+      {
+        "recognitionStatus": "Success",
+        "channel": 0,
+        "speaker": 1,
+        "offset": "PT3M1.96S",
+        "duration": "PT0.32S",
+        "offsetInTicks": 1819600000,
+        "durationInTicks": 3200000,
+        "durationMilliseconds": 320,
+        "offsetMilliseconds": 181960,
+        "nBest": [
+          {
+            "confidence": 0.7316996,
+            "lexical": "thank you",
+            "itn": "thank you",
+            "maskedITN": "Thank you.",
+            "display": "Thank you.",
+            "sentiment": {
+              "positive": 0.73,
+              "neutral": 0.26,
+              "negative": 0.01
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
