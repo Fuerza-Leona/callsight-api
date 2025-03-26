@@ -32,22 +32,3 @@ async def analyze_audio(
         return analysis_result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/audio")
-async def analyze_audio_file(
-    request: AudioAnalysisRequest,
-    db: Session = Depends(get_db)
-):
-    """Another endpoint specifically for audio file analysis"""
-    try:
-        analysis_result = analyze_call({
-            "input_audio_url": request.audio_url,
-            "language": request.language,
-            "locale": request.locale,
-            "use_stereo_audio": request.use_stereo_audio,
-            "output_file": request.output_file
-        })
-        
-        return analysis_result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
