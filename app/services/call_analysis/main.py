@@ -8,15 +8,16 @@ from functools import reduce
 from http import HTTPStatus
 from itertools import chain
 from json import dumps, loads
-from os import linesep, environ
 from pathlib import Path
 from time import sleep
 from typing import Dict, List, Tuple
 import uuid
+from os import linesep, path
+
+from app.core.config import settings
+
 from . import helper
 from . import rest_helper
-from dotenv import load_dotenv
-import os
 
 # This should not change unless you switch to a new version of the Speech REST API.
 SPEECH_TRANSCRIPTION_PATH = "/speechtotext/v3.2/transcriptions"
@@ -197,31 +198,18 @@ def print_full_output(output_file_path : str, transcription : Dict, sentiment_co
         f.write(dumps(result, indent=2))
     return result
 
-def run(params={}) -> Dict:
-    # Try to load from .env file first for backward compatibility
-    load_dotenv(override=True)
-    
-    # Default values
-    defaults = {
-        "input_audio_url": None,
-        "language": "en",
-        "locale": "en-US",
-        "use_stereo_audio": False,
-        "output_file": False,
-        "testing": False
-    }
-    
-    ai_key = environ.get("AZURE_AI_KEY")
+def run(params={}) -> Dict:        
+    ai_key = settings.AZURE_AI_KEY
     if not ai_key:
         raise Exception("Missing Azure AI key. Please provide your Azure AI key in the AZURE_AI_KEY environment variable.")
     
-    speech_endpoint = environ.get("AZURE_AI_SPEECH_ENDPOINT")
+    speech_endpoint = settings.AZURE_AI_SPEECH_ENDPOINT
     if not speech_endpoint:
         raise Exception("Missing Azure Speech endpoint. Please provide your Azure Speech endpoint in the AZURE_AI_SPEECH_ENDPOINT environment variable.")
     else:
         speech_endpoint = speech_endpoint.replace("https://", "")
     
-    language_endpoint = environ.get("AZURE_AI_LANGUAGE_ENDPOINT")
+    language_endpoint = settings.AZURE_AI_LANGUAGE_ENDPOINT
     if not language_endpoint:
         raise Exception("Missing Azure Language endpoint. Please provide your Azure Language endpoint in the AZURE_AI_LANGUAGE_ENDPOINT environment variable.")
     else:
@@ -231,15 +219,17 @@ def run(params={}) -> Dict:
         "subscription_key": ai_key,
         "speech_endpoint": speech_endpoint,
         "language_endpoint": language_endpoint,
-        "language": environ.get("LANGUAGE", defaults["language"]),
-        "locale": environ.get("LOCALE", defaults["locale"]),
-        "use_stereo_audio": environ.get("USE_STEREO_AUDIO", defaults["use_stereo_audio"]),
-        "output_file": environ.get("OUTPUT_FILE", defaults["output_file"]),
-        "testing": defaults["testing"]
+        "language": settings.LANGUAGE,
+        "locale": settings.LOCALE,
+        "use_stereo_audio": settings.USE_STEREO_AUDIO,
+        "output_file": settings.OUTPUT_FILE,
+        "testing": settings.TESTING
     }
     
-    # Update with params (params take highest precedence)
-    config = {**env_vars, **params}
+    # Start with environment variables
+    config = env_vars.copy()
+    # Override with any params provided (params take precedence)
+    config.update(params)
     
     # Convert to Read_Only_Dict for compatibility with existing code
     user_config = helper.Read_Only_Dict(config)
@@ -247,7 +237,7 @@ def run(params={}) -> Dict:
     transcription : Dict
     transcription_id : str
 
-    if user_config["testing"] and os.path.exists("transcription.json"):
+    if user_config["testing"] and path.exists("transcription.json"):
         print("Loading transcription from existing file...")
         with open("transcription.json", "r") as file:
             transcription = loads(file.read())
