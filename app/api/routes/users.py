@@ -7,5 +7,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/")
 async def get_all(supabase: Client = Depends(get_supabase)):
-    response = supabase.table("users").select("*").execute()
-    return response.data
+    try:
+        response = supabase.table("users").select("*").execute()
+        return response.data
+    except:
+        print("Error getting client")
