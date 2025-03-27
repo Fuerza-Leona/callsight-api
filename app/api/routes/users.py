@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 
 from app.db.session import get_supabase
@@ -12,3 +12,4 @@ async def get_all(supabase: Client = Depends(get_supabase)):
         return response.data
     except:
         print("Error getting client")
+
