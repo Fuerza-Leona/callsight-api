@@ -219,4 +219,6 @@ cython_debug/
 .ruff_cache/
 
 # PyPI configuration file
-.pypircrepomix-output.txt
+.pypirc
+
+repomix-output.txt
