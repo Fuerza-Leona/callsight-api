@@ -34,6 +34,12 @@ async def sign_up(
     supabase: Client = Depends(get_supabase)
 ):
     try:
+        # Check if email already exists in your users table
+        check_response = supabase.table("users").select("email").eq("email", user_data.email).execute()
+        
+        if check_response.data and len(check_response.data) > 0:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
         # Create user in Supabase Auth
         auth_response = supabase.auth.sign_up({
             "email": user_data.email,
@@ -77,11 +83,6 @@ async def login(
         })
         
         user_id = auth_response.user.id
-        
-        # Update last_login in your users table
-        supabase.table("users").update({
-            "last_login": datetime.now().isoformat()
-        }).eq("user_id", user_id).execute()
         
         # Get the user data from your table
         user_response = supabase.table("users").select("*").eq("user_id", user_id).execute()
@@ -132,7 +133,6 @@ async def get_current_user_profile(
             "role": user_data["role"],
             "department": user_data["department"],
             "created_at": user_data["created_at"],
-            "last_login": user_data["last_login"]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
