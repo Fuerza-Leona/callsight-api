@@ -27,6 +27,8 @@ class UserLogin(BaseModel):
     email: str
     password: str
     
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 @router.post("/signup")
 async def sign_up(
@@ -112,6 +114,28 @@ async def logout(
         return {"message": "Logged out successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/refresh")
+async def refresh_access_token(
+    request: RefreshTokenRequest,
+    supabase: Client = Depends(get_supabase)
+):
+    """
+    Use a refresh token to get a new access token without re-authenticating
+    """
+    try:
+        # Use Supabase's built-in refresh token functionality
+        response = supabase.auth.refresh_session(request.refresh_token)
+        
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token  # Supabase may also refresh the refresh token
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid refresh token: {str(e)}"
+        )
     
 @router.get("/me")
 async def get_current_user_profile(
