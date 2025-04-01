@@ -222,3 +222,25 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
         
     return {"message": "User updated successfully", "user": response.data[0]}
+
+@router.get("/employees", dependencies=[Depends(check_admin_role)])
+async def list_employees(
+    supabase: Client = Depends(get_supabase)
+):
+    """List all employees - admin only endpoint"""
+    try:
+        response = supabase.table("users").select("user_id, username").neq("role", UserRole.CLIENT.value).execute()
+        return {"employees": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/employees", dependencies=[Depends(check_admin_role)])
+async def list_clients(
+    supabase: Client = Depends(get_supabase)
+):
+    """List all clients - admin only endpoint"""
+    try:
+        response = supabase.table("users").select("user_id, username").eq("role", UserRole.CLIENT.value).execute()
+        return {"clients": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
