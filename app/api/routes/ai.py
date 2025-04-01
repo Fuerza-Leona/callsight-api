@@ -73,7 +73,7 @@ async def analyze_audio(
             output["phrases"].append({
                 "text": utterance.text,
                 "speaker": speaker_number,
-                "role": speaker_roles.get(f"Speaker {utterance.speaker}", "unknown"),
+                "role": speaker_roles.get(f"Speaker {utterance.speaker}", None),
                 "confidence": utterance.confidence,
                 "offsetMilliseconds": utterance.start,
                 "positive": score["positive"],
@@ -95,8 +95,8 @@ async def analyze_audio(
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are an expert in analyzing call center conversations. Identify which speaker is the agent and which is the customer."},
-                {"role": "user", "content": f"Below is the beginning of a call center conversation in Spanish. Identify which speaker is the agent and which is the customer. Return your answer as a simple JSON with speaker letters as keys and 'agent' or 'customer' as values.\n\n{conversation_text}"}
+                {"role": "system", "content": "You are an expert in analyzing call center conversations. Identify which speaker is the agent and which is the client."},
+                {"role": "user", "content": f"Below is the beginning of a call center conversation in Spanish. Identify which speaker is the agent and which is the client. Return your answer as a simple JSON with speaker letters as keys and 'agent' or 'client' as values.\n\n{conversation_text}"}
             ],
             response_format={"type": "json_object"}
         )
