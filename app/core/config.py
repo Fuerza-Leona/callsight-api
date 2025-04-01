@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     
     # CORS settings
     BACKEND_CORS_ORIGINS: list = ["*"]
+
+    ASSEMBLYAI_API_KEY : str = os.getenv("ASSEMBLYAI_API_KEY", "")
+    OPENAI_API_KEY : str = os.getenv("OPENAI_API_KEY", "")
     
     class Config:
         env_file = ".env"
