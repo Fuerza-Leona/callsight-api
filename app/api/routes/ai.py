@@ -40,11 +40,11 @@ async def analyze_audio(
 
 @router.post("/alternative-analysis")
 async def analyze_audio(
-    request: str = "https://qkbitpdsagffscsttvxt.supabase.co/storage/v1/object/public/audios//recording4.mp3",
+    video_url: str,
     supabase: Client = Depends(get_supabase)
 ):
 
-    def getTranscription(file_url = "https://qkbitpdsagffscsttvxt.supabase.co/storage/v1/object/public/audios//recording4.mp3"):
+    def getTranscription(file_url: str):
         # Replace with your API key
         aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
 
@@ -132,7 +132,7 @@ async def analyze_audio(
         return {"positive": 0, "negative": 0, "neutral": 1}
     
     try:
-        result = getTranscription(request)
+        result = getTranscription(video_url)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
