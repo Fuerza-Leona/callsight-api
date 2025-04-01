@@ -60,7 +60,7 @@ async def analyze_audio(
         )
         
         # Use LLM to classify speakers
-        # speaker_roles = classify_speakers_with_gpt(transcript.utterances)
+        speaker_roles = classify_speakers_with_gpt(transcript.utterances)
         
         output = {
             "confidence": transcript.confidence,
@@ -73,7 +73,7 @@ async def analyze_audio(
             output["phrases"].append({
                 "text": utterance.text,
                 "speaker": speaker_number,
-                # "role": speaker_roles.get(f"Speaker {utterance.speaker}", "unknown"),
+                "role": speaker_roles.get(f"Speaker {utterance.speaker}", "unknown"),
                 "confidence": utterance.confidence,
                 "offsetMilliseconds": utterance.start,
                 "positive": score["positive"],
