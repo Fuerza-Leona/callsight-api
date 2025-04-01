@@ -20,9 +20,10 @@ class UserSignUp(BaseModel):
     email: EmailStr
     password: str
     username: str
+    company_name: str
     role: UserRole = UserRole.CLIENT
     department: Optional[str] = None
-
+    
 class UserLogin(BaseModel):
     email: str
     password: str
@@ -42,6 +43,21 @@ async def sign_up(
         if check_response.data and len(check_response.data) > 0:
             raise HTTPException(status_code=400, detail="Email already registered")
         
+        company_id = None
+        
+        # Check if company already exists
+        check_company = supabase.table("company_client").select("*").eq("name", user_data.company_name).execute()
+        
+        # If it does just set the company id
+        if check_company.data:
+            company_id = check_company.data[0]["company_id"]
+        else: # if not insert it and get whatever company id was created for it
+            create_company = supabase.table("company_client").insert({"name": user_data.company_name}).execute()
+            if not create_company.data:
+                raise HTTPException(status_code=500, detail="Failed to create company")
+            company_id = create_company.data[0]["company_id"]
+            
+        
         # Create user in Supabase Auth
         auth_response = supabase.auth.sign_up({
             "email": user_data.email,
@@ -58,6 +74,7 @@ async def sign_up(
             "email": user_data.email,
             "role": user_data.role,
             "department": user_data.department,
+            "company_id": company_id
             # created_at will be handled by Supabase's default value
         }
         
@@ -222,25 +239,3 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
         
     return {"message": "User updated successfully", "user": response.data[0]}
-
-@router.get("/employees", dependencies=[Depends(check_admin_role)])
-async def list_employees(
-    supabase: Client = Depends(get_supabase)
-):
-    """List all employees - admin only endpoint"""
-    try:
-        response = supabase.table("users").select("user_id, username").neq("role", UserRole.CLIENT.value).execute()
-        return {"employees": response.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@router.get("/employees", dependencies=[Depends(check_admin_role)])
-async def list_clients(
-    supabase: Client = Depends(get_supabase)
-):
-    """List all clients - admin only endpoint"""
-    try:
-        response = supabase.table("users").select("user_id, username").eq("role", UserRole.CLIENT.value).execute()
-        return {"clients": response.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from supabase import Client
 import uuid
-import time
 from typing import Optional
 
 from app.db.session import get_supabase
@@ -52,8 +51,6 @@ async def upload_audio(
             "status": "uploaded",
             "uploaded_at": None,  # Supabase will set this with default now()
             "uploaded_by": user_id,
-            # Note: duration_seconds is not set initially,
-            # it would be updated after processing
         }
         
         db_response = supabase.table("audio_files").insert(file_data).execute()
