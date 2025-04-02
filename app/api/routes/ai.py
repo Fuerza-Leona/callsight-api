@@ -41,7 +41,7 @@ async def analyze_audio(
 
 @router.post("/alternative-analysis")
 async def alt_analyze_audio(
-    request: str = "https://qkbitpdsagffscsttvxt.supabase.co/storage/v1/object/public/audios//recording4.mp3",
+    video_url: str,
     supabase: Client = Depends(get_supabase)
 ):
 

@@ -102,8 +102,6 @@ async def get_call(
         return {"messages": messages_response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-
      
 @router.post("/add", dependencies=[Depends(check_admin_role)])
 async def add_conversation(
