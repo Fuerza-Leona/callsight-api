@@ -49,8 +49,10 @@ async def get_emotions(
     supabase: Client = Depends(get_supabase),
 ):
     user_id = current_user.id
-    participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
+    #TODO: enable after multiple calls: participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
+    participant_response = supabase.table("participants").select("conversation_id").execute()
     
+    print(participant_response)
     if not participant_response.data:
         return {"conversations": []}
     
