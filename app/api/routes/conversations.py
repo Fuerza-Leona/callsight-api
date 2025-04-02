@@ -205,9 +205,14 @@ async def get_call(
     call_id: str = None,
     supabase: Client = Depends(get_supabase)
 ):
-    """Get summary for a given conversation"""
+    """Get participants a given conversation"""
     try:
-        participants = supabase.table("participants").select("*").eq("conversation_id", call_id).execute()
+        participants = (
+            supabase.table("participants")
+            .select("users(username, role)")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
         return {"participants": participants.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
