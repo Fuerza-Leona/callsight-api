@@ -30,6 +30,7 @@ async def get_mine(
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
+
     user_id = current_user.id
     participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
     
@@ -58,6 +59,26 @@ async def get_emotions(
     response = supabase.table("messages").select("positive, negative, neutral").in_("conversation_id", conversation_ids).execute()
     
     return {"emotions": response}
+
+    
+@router.get("/call/{call_id}")
+async def get_call(
+    call_id: str = "",
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        conversation_response = (
+            supabase.table("conversations")
+            .select("conversation_id, audio_id, start_time, end_time, sentiment_score, confidence_score")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
+
+        return {"conversations": conversation_response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
      
 @router.post("/add", dependencies=[Depends(check_admin_role)])
 async def add_conversation(

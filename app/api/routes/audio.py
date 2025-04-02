@@ -4,39 +4,66 @@ import uuid
 from typing import Optional
 
 from app.db.session import get_supabase
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/audio", tags=["audio"])
 
 @router.post("/upload")
 async def upload_audio(
     file: UploadFile = File(...),
-    user_id: Optional[str] = None,
-    source: str = "local",
-    supabase: Client = Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
+    current_user = Depends(get_current_user),
 ):
     try:
+        source = "local"
         audio_id = str(uuid.uuid4())
+        user_id = current_user.id
         
         # Extract file extension and create path
         file_ext = file.filename.split(".")[-1] if "." in file.filename else ""
+
+        allowed_extensions = ["mp3", "mp4", "wav"]
+        if file_ext.lower() not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file format. Only {', '.join(allowed_extensions)} files are allowed."
+            )
+
         storage_path = f"{audio_id}.{file_ext}" if file_ext else audio_id
         
-        # Upload to Supabase storage
+        # Get file content from UploadFile
         file_content = await file.read()
-        storage_response = supabase.storage.from_("audio_files").upload(
-            storage_path, file_content
-        )
         
+        # Upload to Supabase - don't check for .data attribute
+        try:
+            # Just try to upload without checking response.data
+            supabase.storage.from_("audios").upload(
+                storage_path,
+                file_content,
+                file_options={"content_type": file.content_type}
+            )
+        except Exception as upload_error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to upload file to storage: {str(upload_error)}"
+            )
+        
+        # Get the public URL of the uploaded file
+        file_url = supabase.storage.from_("audios").get_public_url(storage_path)
+        print(f"File URL: {file_url}")
+
+        # For duration calculation, we need to use the original file
         import io
         import librosa
         
         # Calculate duration
         duration = None
         try:
-            # Reset the file pointer
-            file_content_copy = io.BytesIO(file_content)
-            # Load audio and get duration
-            y, sr = librosa.load(file_content_copy, sr=None)
+            # We need to seek back to start since we've already read the file
+            await file.seek(0)
+            audio_content = await file.read()
+            audio_bytes = io.BytesIO(audio_content)
+            y, sr = librosa.load(audio_bytes, sr=None)
             duration = int(librosa.get_duration(y=y, sr=sr))
         except Exception as e:
             print(f"Could not calculate duration: {str(e)}")
@@ -45,32 +72,27 @@ async def upload_audio(
         file_data = {
             "audio_id": audio_id,
             "file_name": file.filename,
-            "file_path": storage_path,
-            "duration_seconds": duration,
+            "file_path": file_url,
             "source": source,
-            "status": "uploaded",
+            "duration_seconds": duration,
             "uploaded_at": None,  # Supabase will set this with default now()
             "uploaded_by": user_id,
         }
         
         db_response = supabase.table("audio_files").insert(file_data).execute()
+
+        if not db_response.data:
+            raise HTTPException(status_code=500, detail="Failed to insert record into database")
         
+
         return {
             "audio_id": audio_id,
             "file_name": file.filename,
+            "file_url": file_url,  # Add URL to response
             "status": "uploaded"
         }
-        
+          
     except Exception as e:
-        # Update status and error message if there's an exception
-        if 'audio_id' in locals():
-            try:
-                supabase.table("audio_files").update({
-                    "status": "error",
-                    "error_message": str(e)
-                }).eq("audio_id", audio_id).execute()
-            except:
-                pass
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
