@@ -316,13 +316,20 @@ async def alternative_analysis(
             }).execute()
 
 
-            """
-            for participant in participants:
-                supabase.table("participants").insert({
-                    "conversation_id": conversation_id,
-                    "user_id": participant
-                }).execute()
-            """
+
+            if participants:
+                # Validate that participants are valid UUIDs
+                valid_participants = []
+                for participant in participants:
+                    try:
+                        # Attempt to validate UUID format
+                        uuid_obj = uuid.UUID(participant)
+                        valid_participants.append({"conversation_id": conversation_id, "user_id": str(uuid_obj)})
+                    except ValueError:
+                        print(f"Warning: Invalid UUID format for participant: {participant}")
+                
+                if valid_participants:
+                    supabase.table("participants").insert(valid_participants).execute()
 
             # Insert transcripts
             for i, phrases in enumerate(result["phrases"]):
