@@ -14,7 +14,7 @@ async def get_all(supabase: Client = Depends(get_supabase)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/employees")
-async def get_all(supabase: Client = Depends(get_supabase)):
+async def get_employees(supabase: Client = Depends(get_supabase)):
     try:
         response = supabase.table("users").select("user_id, username").neq("role", "client").execute()
         users = [i["username"] for i in response.data]
@@ -23,7 +23,7 @@ async def get_all(supabase: Client = Depends(get_supabase)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/client")
-async def get_all(supabase: Client = Depends(get_supabase)):
+async def get_clients(supabase: Client = Depends(get_supabase)):
     try:
         response = supabase.table("users").select("user_id, username").eq("role", "client").execute()
         users = [i["username"] for i in response.data]
