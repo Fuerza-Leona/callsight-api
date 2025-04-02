@@ -222,3 +222,4 @@ cython_debug/
 .pypirc
 
 repomix-output.txt
+.qodo

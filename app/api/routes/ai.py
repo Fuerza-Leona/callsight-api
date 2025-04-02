@@ -10,6 +10,7 @@ from azure.ai.textanalytics import TextAnalyticsClient
 from azure.core.credentials import AzureKeyCredential
 from app.core.config import settings
 from app.services.call_analysis.main import run as analyze_call
+from azure.ai.language.conversations import ConversationAnalysisClient
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -96,7 +97,7 @@ async def analyze_audio(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are an expert in analyzing call center conversations. Identify which speaker is the agent and which is the client."},
-                {"role": "user", "content": f"Below is the beginning of a call center conversation in Spanish. Identify which speaker is the agent and which is the client. Return your answer as a simple JSON with speaker letters as keys and 'agent' or 'client' as values.\n\n{conversation_text}"}
+                {"role": "user", "content": f"Below is the beginning of a call center conversation in Spanish. Identify which speaker is the agent and which is the client. Return your answer as a simple JSON with speaker letters as keys and 'Agent' or 'Client' as values.\n\n{conversation_text}"}
             ],
             response_format={"type": "json_object"}
         )
@@ -131,8 +132,104 @@ async def analyze_audio(
                 }
         return {"positive": 0, "negative": 0, "neutral": 1}
     
+    def build_conversation_data(utterances):
+        conversation_items = []
+
+        for idx, utt in enumerate(utterances):
+            participant = utt.speaker
+            conversation_items.append({
+                "text": utt.text.strip(),
+                "modality": "text",
+                "id": str(idx + 1),
+                "participantId": f"Speaker {participant}"
+            })
+
+        return {
+            "conversations": [
+                {
+                    "conversationItems": conversation_items,
+                    "modality": "text",
+                    "id": "conversation1",
+                    "language": "es"
+                }
+            ]
+        }
+
+    def summarize_conversation(transcript):
+        azure_key = settings.AZURE_AI_KEY
+        azure_endpoint = settings.AZURE_AI_LANGUAGE_ENDPOINT
+
+        conversation_data = {
+            "conversations": [
+                {
+                    "conversationItems": [
+                        {
+                            "text": phrase["text"],
+                            "modality": "text",
+                            "id": str(i + 1),
+                            "participantId": (
+                                "Agent" if phrase.get("role", "").lower() == "agent"
+                                else "Customer" if phrase.get("role", "").lower() in ["client", "customer"]
+                                else f"Speaker {phrase['speaker']}"
+                            )
+                        }
+                        for i, phrase in enumerate(transcript)
+                    ],
+                    "modality": "text",
+                    "id": "conversation1",
+                    "language": "es"
+                }
+            ]
+        }
+
+        credential = AzureKeyCredential(azure_key)
+        client = ConversationAnalysisClient(endpoint=azure_endpoint, credential=credential)
+
+        with client:
+            poller = client.begin_conversation_analysis(
+                task={
+                    "displayName": "Analyze conversations from transcript",
+                    "analysisInput": conversation_data,
+                    "tasks": [
+                        {
+                            "taskName": "Issue task",
+                            "kind": "ConversationalSummarizationTask",
+                            "parameters": {"summaryAspects": ["issue"]}
+                        },
+                        {
+                            "taskName": "Resolution task",
+                            "kind": "ConversationalSummarizationTask",
+                            "parameters": {"summaryAspects": ["resolution"]}
+                        }
+                    ]
+                }
+            )
+
+            result = poller.result()
+            task_results = result["tasks"]["items"]
+            structured_summary = {}
+
+            for task in task_results:
+                task_name = task["taskName"]
+                task_result = task["results"]
+
+                if task_result["errors"]:
+                    structured_summary[task_name] = "Error occurred"
+                else:
+                    conversation_result = task_result["conversations"][0]
+                    structured_summary[task_name] = {
+                        summary["aspect"]: summary["text"] for summary in conversation_result["summaries"]
+                    }
+
+            return structured_summary
+    
     try:
-        result = getTranscription(video_url)
-        return result
+        transcript = getTranscription(video_url)
+        summary = summarize_conversation(transcript["phrases"])
+        return {
+            "summary": summary,
+            "phrases": transcript["phrases"],
+            "confidence": transcript["confidence"]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
