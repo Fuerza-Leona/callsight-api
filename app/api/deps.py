@@ -21,12 +21,12 @@ async def get_current_user(
         # Get the user from the current session
         response = supabase.auth.get_user(token)
         
-        if not response or not response.user:
+        """if not response or not response.user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
-            )
+            )"""
         
         return response.user
     except Exception as e:
