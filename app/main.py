@@ -6,7 +6,8 @@ from app.api.routes import ai, audio, conversations, users, auth
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    debug=True
 )
 
 # Set up CORS middleware

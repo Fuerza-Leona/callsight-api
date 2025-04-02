@@ -45,7 +45,7 @@ async def get_mine(
 @router.get("/myClientEmotions")
 async def get_emotions(
     current_user = Depends(get_current_user),
-    supabase: Client = Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
 ):
     user_id = current_user.id
     participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
@@ -55,9 +55,9 @@ async def get_emotions(
     
     conversation_ids = [item["conversation_id"] for item in participant_response.data]
     
-    #response = supabase.table("messages").select("positive, negative, neutral").in_("conversation_id", conversation_ids).execute()
+    response = supabase.table("messages").select("positive, negative, neutral").in_("conversation_id", conversation_ids).execute()
     
-    return {"emotions": conversation_ids}
+    return {"emotions": response}
      
 @router.post("/add", dependencies=[Depends(check_admin_role)])
 async def add_conversation(

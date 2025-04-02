@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     AZURE_SEARCH_SEMANTIC_CONFIG: str = os.getenv("AZURE_SEARCH_SEMANTIC_CONFIG", "") 
     
     # CORS settings
-    BACKEND_CORS_ORIGINS: list = ["*"]
+    BACKEND_CORS_ORIGINS: list = ["http://localhost", "http://localhost:3000", "http://localhost:3000/analisis"]
 
     ASSEMBLYAI_API_KEY : str = os.getenv("ASSEMBLYAI_API_KEY", "")
     OPENAI_API_KEY : str = os.getenv("OPENAI_API_KEY", "")

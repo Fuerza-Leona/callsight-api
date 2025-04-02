@@ -16,6 +16,7 @@ async def get_current_user(
     Used as a dependency for protected routes.
     """
     try:
+        print(credentials.credentials)
         token = credentials.credentials
         
         # Get the user from the current session
