@@ -18,34 +18,48 @@ class AddConversationRequest(BaseModel):
     confidence_score: float
     participants: list[(str, int)]
 
-@router.get("/", dependencies=[Depends(check_admin_role)])
-async def get_all(supabase: Client = Depends(get_supabase)):
-    try:
-        response = supabase.table("conversations").select("*").execute()
-        return {"conversations": response.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#TODO: agregar admin access despues de sprint 1
+@router.get("/")
+async def get_conversations(supabase: Client = Depends(get_supabase)):
+    response = supabase.table("conversations").select("*").execute()
+    return {"conversations": response.data}
 
 
 @router.get("/mine")
-async def get_all(
+async def get_mine(
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
-    try:
-        user_id = current_user.id
-        participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute();
-        
-        if not participant_response.data:
-            return {"conversations": []}
-        
-        conversation_ids = [item["conversation_id"] for item in participant_response.data]
-        
-        conversations_response = supabase.table("conversations").select("*").in_("conversation_id", conversation_ids).execute()
-        
-        return {"conversations": conversations_response.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+    user_id = current_user.id
+    participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
+    
+    if not participant_response.data:
+        return {"conversations": []}
+    
+    conversation_ids = [item["conversation_id"] for item in participant_response.data]
+    
+    conversations_response = supabase.table("conversations").select("*").in_("conversation_id", conversation_ids).execute()
+    
+    return {"conversations": conversations_response.data}
+    
+@router.get("/myClientEmotions")
+async def get_emotions(
+    current_user = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase),
+):
+    user_id = current_user.id
+    participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
+    
+    if not participant_response.data:
+        return {"conversations": []}
+    
+    conversation_ids = [item["conversation_id"] for item in participant_response.data]
+    
+    response = supabase.table("messages").select("positive, negative, neutral").in_("conversation_id", conversation_ids).execute()
+    
+    return {"emotions": response}
+
     
 @router.get("/call/{call_id}")
 async def get_call(
@@ -64,6 +78,7 @@ async def get_call(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+
      
 @router.post("/add", dependencies=[Depends(check_admin_role)])
 async def add_conversation(

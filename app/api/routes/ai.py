@@ -40,8 +40,8 @@ async def analyze_audio(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/alternative-analysis")
-async def analyze_audio(
-    video_url: str,
+async def alt_analyze_audio(
+    request: str = "https://qkbitpdsagffscsttvxt.supabase.co/storage/v1/object/public/audios//recording4.mp3",
     supabase: Client = Depends(get_supabase)
 ):
 
