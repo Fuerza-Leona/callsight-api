@@ -44,14 +44,14 @@ async def get_categories(
         raise HTTPException(status_code=500, detail=str(e))
 
 async def get_categories(
-    call_id: str = "",
+    conversation_id: str,
     supabase: Client = Depends(get_supabase)
 ):
     try:
         conversation_response = (
             supabase.table("conversations")
             .select("participants(users(company_client(category(name))))")
-            .eq("conversation_id", call_id)
+            .eq("conversation_id", conversation_id)
             .execute()
         )
 
