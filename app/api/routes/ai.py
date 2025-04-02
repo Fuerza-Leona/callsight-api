@@ -131,31 +131,9 @@ async def analyze_audio(
                     "neutral": result.confidence_scores.neutral
                 }
         return {"positive": 0, "negative": 0, "neutral": 1}
-    
-    def build_conversation_data(utterances):
-        conversation_items = []
-
-        for idx, utt in enumerate(utterances):
-            participant = utt.speaker
-            conversation_items.append({
-                "text": utt.text.strip(),
-                "modality": "text",
-                "id": str(idx + 1),
-                "participantId": f"Speaker {participant}"
-            })
-
-        return {
-            "conversations": [
-                {
-                    "conversationItems": conversation_items,
-                    "modality": "text",
-                    "id": "conversation1",
-                    "language": "es"
-                }
-            ]
-        }
 
     def summarize_conversation(transcript):
+        #Summarize the conversation using the previously generated transcript.
         azure_key = settings.AZURE_AI_KEY
         azure_endpoint = settings.AZURE_AI_LANGUAGE_ENDPOINT
 
