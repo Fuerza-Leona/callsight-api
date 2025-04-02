@@ -58,7 +58,6 @@ async def upload_audio_file(file: UploadFile, supabase: Client, current_user):
         
         # Get the public URL of the uploaded file
         file_url = supabase.storage.from_("audios").get_public_url(storage_path)
-        print(f"File URL: {file_url}")
 
         # Calculate duration
         duration = None
@@ -247,6 +246,38 @@ def summarize_conversation(transcript):
 
         return structured_summary
     
+def extract_important_topics(transcript):
+    """Extracts the 3 most important topics from a conversation transcript using OpenAI."""
+    # Prepare the conversation text
+    conversation_text = "\n".join([
+        f"Speaker {phrase['speaker']}: {phrase['text']}"
+        for phrase in transcript
+    ])
+    
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Eres un experto en análisis de conversaciones de call center. Identifica los 3 temas más importantes discutidos en la conversación."},
+            {"role": "user", "content": f"A continuación hay una transcripción de una conversación de call center en español. Identifica los 3 temas más importantes que se discutieron. Devuelve tu respuesta como un JSON con una lista de 3 temas importantes, cada tema debe de tener una longitud no mayor a 3 palabras.\n\n{conversation_text}"}
+        ],
+        response_format={"type": "json_object"}
+    )
+
+    # Print just the content, not the whole response object
+    response_content = response.choices[0].message.content
+    
+    try:
+        # Use json module instead of eval for safer parsing
+        import json
+        topics_data = json.loads(response_content)
+        topics = topics_data.get("temas_importantes", [])
+        print(f"Extracted topics: {topics}")
+        return topics
+    except Exception as e:
+        print(f"Error extracting topics: {str(e)}")
+        return []
 
 @router.post("/alternative-analysis")
 async def alternative_analysis(
@@ -276,6 +307,12 @@ async def alternative_analysis(
         result["summary"] = summary
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
+
+    try:
+        topics = extract_important_topics(result["phrases"])
+        result["topics"] = topics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Topic extraction failed: {str(e)}")
 
     problem = summary.get("Issue task", {}).get("issue", "")
     solution = summary.get("Resolution task", {}).get("resolution", "")
@@ -307,7 +344,29 @@ async def alternative_analysis(
             "solution": solution
         }).execute()
 
-
+        for topic in result["topics"]:
+            try:
+                topic_text = topic.lower()
+                # Check if topic already exists
+                existing_topic = supabase.table("topics").select("*").eq("topic", topic_text).execute()
+                
+                if existing_topic.data:
+                    topic_id = existing_topic.data[0]["topic_id"]
+                else:
+                    # Create new topic if it doesn't exist
+                    topic_query = supabase.table("topics").insert({"topic": topic_text}).execute()
+                    topic_id = topic_query.data[0]["topic_id"]
+                
+                # Create relationship in junction table
+                supabase.table("topics_conversations").insert({
+                    "topic_id": topic_id,
+                    "conversation_id": conversation_id
+                }).execute()
+                
+            except Exception as e:
+                # Log error but continue processing other topics
+                print(f"Error processing topic '{topic}': {str(e)}")
+                continue
 
         if participants:
             # Validate that participants are valid UUIDs
