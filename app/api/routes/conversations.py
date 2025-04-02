@@ -19,14 +19,39 @@ class AddConversationRequest(BaseModel):
     participants: list[(str, int)]
 
 async def get_categories(
-    call_id: str = "",
+    conversation_id: str = "",
+    supabase: Client = Depends(get_supabase)
+):
+    """Get categories for a given conversation"""
+    try:
+        conversation_response = (
+            supabase.table("conversations")
+            .select("participants(users(company_client(category(name))))")
+            .eq("conversation_id", conversation_id)
+            .execute()
+        )
+
+        categories = []
+
+        for item in conversation_response.data:
+            for participant in item["participants"]:
+                if participant["users"]["company_client"]["category"]:
+                    categories.append(participant["users"]["company_client"]["category"]["name"])
+
+        return list(set(categories))
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def get_categories(
+    conversation_id: str,
     supabase: Client = Depends(get_supabase)
 ):
     try:
         conversation_response = (
             supabase.table("conversations")
             .select("participants(users(company_client(category(name))))")
-            .eq("conversation_id", call_id)
+            .eq("conversation_id", conversation_id)
             .execute()
         )
 
@@ -45,10 +70,11 @@ async def get_categories(
 #TODO: agregar admin access despues de sprint 1
 @router.get("/")
 async def get_conversations(supabase: Client = Depends(get_supabase)):
+    """Get conversations for the currently authorized user"""
     response = supabase.table("conversations").select("*").execute()
     for i in response.data:
         i["categories"] = await get_categories(i["conversation_id"], supabase)
-    print(response.data)
+    print(response.data) # Hay que quitar este print
     return {"conversations": response.data}
 
 
@@ -57,7 +83,7 @@ async def get_mine(
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
-
+    """Get conversations for the currently authorized user"""
     user_id = current_user.id
     participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
     
@@ -75,6 +101,7 @@ async def get_emotions(
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
+    """Return emotions across all messages in conversations for the currently authorized user"""
     user_id = current_user.id
     #TODO: enable after multiple calls: participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
     participant_response = supabase.table("participants").select("conversation_id").execute()
@@ -90,27 +117,27 @@ async def get_emotions(
     return {"emotions": response}
 
     
-@router.get("/call/{call_id}")
+@router.get("/{conversation_id}")
 async def get_call(
-    call_id: str = "",
+    conversation_id: str,
     supabase: Client = Depends(get_supabase)
 ):
+    """Get a given conversation by id"""
     try:
         conversation_response = (
             supabase.table("conversations")
             .select("conversation_id, audio_id, start_time, end_time, sentiment_score, confidence_score")
-            .eq("conversation_id", call_id)
+            .eq("conversation_id", conversation_id)
             .execute()
         )
 
-        return {"conversations": conversation_response.data}
+        return conversation_response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-    
-@router.get("/call/{call_id}/messages")
+@router.get("/{conversation_id}/messages")
 async def get_call(
-    call_id: str = "",
+    conversation_id: str,
     supabase: Client = Depends(get_supabase)
 ):
     """Get messages for a given conversation"""
@@ -118,7 +145,7 @@ async def get_call(
         conversation_response = (
             supabase.table("conversations")
             .select("conversation_id")
-            .eq("conversation_id", call_id)
+            .eq("conversation_id", conversation_id)
             .execute()
         )
         
@@ -192,6 +219,7 @@ async def add_conversation(
     conversation_data: AddConversationRequest,
     supabase: Client = Depends(get_supabase)
 ):
+    """Add a conversation (call) - Admin only endpoint"""
     try:
          # Generate a UUID for the new conversation
         conversation_id = str(uuid.uuid4())

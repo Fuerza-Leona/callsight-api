@@ -12,7 +12,6 @@ htmlcov/
 .pytest_cache/
 
 # FastAPI .gitignore
-
 .idea
 .ipynb_checkpoints
 .mypy_cache
@@ -223,3 +222,8 @@ cython_debug/
 
 repomix-output.txt
 .qodo
+
+# Doppler
+.doppler
+.doppler-ci
+.doppler-secrets
