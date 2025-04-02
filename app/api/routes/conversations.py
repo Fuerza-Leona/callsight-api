@@ -105,6 +105,19 @@ async def get_call(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
      
+
+@router.get("/call/{call_id}/summary")
+async def get_call(
+    call_id: str = None,
+    supabase: Client = Depends(get_supabase)
+):
+    """Get summary for a given conversation"""
+    try:
+        summary_response = supabase.table("summaries").select("*").eq("conversation_id", call_id).execute()
+        return {"summary": summary_response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+ 
 @router.post("/add", dependencies=[Depends(check_admin_role)])
 async def add_conversation(
     conversation_data: AddConversationRequest,
