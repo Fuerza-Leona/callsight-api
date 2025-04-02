@@ -223,3 +223,8 @@ cython_debug/
 
 repomix-output.txt
 .qodo
+
+# Doppler
+.doppler
+.doppler-ci
+.doppler-secrets

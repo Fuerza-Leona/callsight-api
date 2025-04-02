@@ -1,8 +1,33 @@
 import os
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+import subprocess
+import json
 
-load_dotenv()
+# Try to load from Doppler first, fall back to .env file if doppler isn't available
+try:
+    # Run the doppler secrets command to get all secrets as JSON
+    result = subprocess.run(
+        ["doppler", "secrets", "download", "--no-file", "--format", "json"], 
+        capture_output=True, 
+        text=True
+    )
+    
+    if result.returncode == 0:
+        # Successfully got secrets from Doppler
+        secrets = json.loads(result.stdout)
+        # Add secrets to environment
+        for key, value in secrets.items():
+            os.environ[key] = str(value)
+        print("Loaded environment variables from Doppler")
+    else:
+        # Fall back to .env file
+        print("Failed to load from Doppler, falling back to .env file")
+        load_dotenv()
+except Exception as e:
+    # If doppler command fails for any reason, fall back to .env
+    print(f"Error using Doppler: {str(e)}")
+    load_dotenv()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CallSight API"
