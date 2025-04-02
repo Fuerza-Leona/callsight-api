@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from typing import Optional, List
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 import uuid
 import io
@@ -19,12 +19,7 @@ from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-class AudioAnalysisRequest(BaseModel):
-    audio_url: str
-    language: Optional[str] = "en"
-    locale: Optional[str] = "en-US"
-    use_stereo_audio: Optional[bool] = False
-    output_file: Optional[bool] = False
+
 
 async def upload_audio_file(file: UploadFile, supabase: Client, current_user):
     """Uploads an audio file to Supabase storage and returns the file URL"""
@@ -256,108 +251,100 @@ def summarize_conversation(transcript):
 @router.post("/alternative-analysis")
 async def alternative_analysis(
     file: UploadFile = File(...),
-    date: date = None,
+    date_string: str = None,
     participants: List[str] = [],
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
+    
+    date_time = datetime.strptime(date_string, "%Y-%m-%d %H:%M") if date_string else datetime.now()
+    
     try:
-        # Check if date is provided
-        if date is None:
-            raise ValueError("Date parameter is required")
-            
-        # File upload step
-        try:
-            file_url, audio_id, duration = await upload_audio_file(file, supabase, current_user)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+        file_url, audio_id, duration = await upload_audio_file(file, supabase, current_user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
         
-        # Transcription step
-        try:
-            result = getTranscription(file_url)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+    # Transcription step
+    try:
+        result = getTranscription(file_url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
         
-        # Summarization step
-        try:
-            summary = summarize_conversation(result["phrases"])
-            result["summary"] = summary
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
+    # Summarization step
+    try:
+        summary = summarize_conversation(result["phrases"])
+        result["summary"] = summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
-        problem = summary.get("Issue task", {}).get("issue", "")
-        solution = summary.get("Resolution task", {}).get("resolution", "")
+    problem = summary.get("Issue task", {}).get("issue", "")
+    solution = summary.get("Resolution task", {}).get("resolution", "")
 
-        start_time = date
-        end_time = start_time + timedelta(seconds=duration)
+    start_time = date_time
+    end_time = start_time + timedelta(seconds=duration)
 
-        # Database operations step
-        try:
-            query = supabase.table("conversations").insert({
-                "audio_id": audio_id,
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat()
-            }).execute()
+    # Database operations step
+    try:
+        query = supabase.table("conversations").insert({
+            "audio_id": audio_id,
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat()
+        }).execute()
 
-            if not query.data or len(query.data) == 0:
-                raise ValueError("Failed to insert conversation record")
+        if not query.data or len(query.data) == 0:
+            raise ValueError("Failed to insert conversation record")
                 
-            conversation_id = query.data[0].get("conversation_id")
-            if not conversation_id:
-                raise ValueError("No conversation_id returned from database")
+        conversation_id = query.data[0].get("conversation_id")
+        if not conversation_id:
+            raise ValueError("No conversation_id returned from database")
                 
-            result["conversation_id"] = conversation_id
+        result["conversation_id"] = conversation_id
             
-            # Insert summary
-            supabase.table("summaries").insert({
-                "conversation_id": conversation_id,
-                "problem": problem,
-                "solution": solution
-            }).execute()
+        # Insert summary
+        supabase.table("summaries").insert({
+            "conversation_id": conversation_id,
+            "problem": problem,
+            "solution": solution
+        }).execute()
 
 
 
-            if participants:
-                # Validate that participants are valid UUIDs
-                valid_participants = []
-                for participant in participants:
-                    try:
-                        # Attempt to validate UUID format
-                        uuid_obj = uuid.UUID(participant)
-                        valid_participants.append({"conversation_id": conversation_id, "user_id": str(uuid_obj)})
-                    except ValueError:
-                        print(f"Warning: Invalid UUID format for participant: {participant}")
+        if participants:
+            # Validate that participants are valid UUIDs
+            valid_participants = []
+            p = participants[0].split(",")
+            for participant in p:
+                try:
+                    # Attempt to validate UUID format
+                    uuid_obj = uuid.UUID(participant)
+                    valid_participants.append({"conversation_id": conversation_id, "user_id": str(uuid_obj)})
+                except ValueError:
+                    print(f"Warning: Invalid UUID format for participant: {participant}")
                 
-                if valid_participants:
-                    supabase.table("participants").insert(valid_participants).execute()
+            if valid_participants:
+                supabase.table("participants").insert(valid_participants).execute()
 
             # Insert transcripts
-            for i, phrases in enumerate(result["phrases"]):
-                try:
-                    transcript_query = supabase.table("messages").insert({
-                        "conversation_id": conversation_id,
-                        "text": phrases["text"],
-                        "speaker": phrases["speaker"],
-                        "offsetmilliseconds": phrases["offsetMilliseconds"],
-                        "role": phrases.get("role", None),
-                        "confidence": phrases["confidence"],
-                        "positive": phrases["positive"],
-                        "negative": phrases["negative"],
-                        "neutral": phrases["neutral"]
-                    }).execute()
-                    if not transcript_query.data:
-                        print(f"Warning: Failed to insert transcript {i}")
-                except Exception as e:
-                    print(f"Error inserting transcript {i}: {str(e)}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
-        
-        return result
-    except HTTPException as he:
-        # Re-raise HTTP exceptions
-        raise he
+        for i, phrases in enumerate(result["phrases"]):
+            try:
+                transcript_query = supabase.table("messages").insert({
+                    "conversation_id": conversation_id,
+                    "text": phrases["text"],
+                    "speaker": phrases["speaker"],
+                    "offsetmilliseconds": phrases["offsetMilliseconds"],
+                    "role": phrases.get("role", None),
+                    "confidence": phrases["confidence"],
+                    "positive": phrases["positive"],
+                    "negative": phrases["negative"],
+                    "neutral": phrases["neutral"]
+                }).execute()
+
+                if not transcript_query.data:
+                    print(f"Warning: Failed to insert transcript {i}")
+            except Exception as e:
+                print(f"Error inserting transcript {i}: {str(e)}")
+
     except Exception as e:
-        import traceback
-        error_detail = f"Unexpected error: {str(e)}\n{traceback.format_exc()}"
-        print(error_detail)  # This will show in your logs
-        raise HTTPException(status_code=500, detail=error_detail)
+        raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
+        
+    return result
