@@ -113,7 +113,33 @@ async def get_call(
 ):
     """Get summary for a given conversation"""
     try:
+        conversation = supabase.table("conversations").select("*").eq("conversation_id", call_id).execute()
+
         summary_response = supabase.table("summaries").select("*").eq("conversation_id", call_id).execute()
+
+        messages = supabase.table("messages").select("*").eq("conversation_id", call_id).execute()
+        positive = neutral = negative = 0
+        counter = 0
+        for message in messages.data:
+            if message["role"] == "agent":
+                counter += 1
+                positive += message["positive"]
+                neutral += message["neutral"]
+                negative += message["negative"]
+
+        from dateutil import parser
+
+        # ...existing code...
+
+        # Replace the datetime parsing lines with this:
+        start_time = parser.parse(conversation.data[0]["start_time"])
+        end_time = parser.parse(conversation.data[0]["end_time"])
+        summary_response.data[0]["duration"] = int((end_time - start_time).total_seconds() / 60)
+
+        summary_response.data[0]["positive"] = positive / counter if messages.data else 0
+        summary_response.data[0]["neutral"] = neutral / counter if messages.data else 0
+        summary_response.data[0]["negative"] = negative  / counter if messages.data else 0
+
         return {"summary": summary_response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
