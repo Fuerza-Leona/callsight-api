@@ -16,15 +16,88 @@ class AnalysisResponse(BaseModel):
     success: bool
     conversation_id: str
 
-@router.post("/alternative-analysis")
+@router.post(
+    "/alternative-analysis", 
+    response_model=AnalysisResponse,
+    status_code=201,
+    responses={
+        201: {
+            "description": "Successfully analyzed audio and created conversation", 
+            "model": AnalysisResponse
+        },
+        400: {
+            "description": "Bad request - invalid inputs",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Invalid date format. Expected YYYY-MM-DD HH:MM"}
+                }
+            }
+        },
+        401: {
+            "description": "Unauthorized - authentication required",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Not authenticated"}
+                }
+            }
+        },
+        500: {
+            "description": "Internal server error during processing",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "File upload failed: Could not connect to storage"}
+                }
+            }
+        }
+    },
+    summary="Analyze an audio call recording",
+    description="""
+    Process an audio recording of a call center conversation.
+    
+    This endpoint performs several operations:
+    1. Uploads and processes the audio file
+    2. Transcribes the conversation using speaker recognition
+    3. Analyzes the content (sentiment, topic extraction, summarization)
+    4. Stores the results in the database
+    
+    The audio file should be in MP3, MP4, or WAV format.
+    """
+)
 async def alternative_analysis(
-    file: UploadFile = File(...),
-    date_string: str = Form(..., description="Date string: Y-m-d H:M"),
-    participants: str = Form("", description="Comma-separated participant UUIDs"),
-    company_id: str = Form(..., description="Company id"),
+    file: UploadFile = File(
+        ..., 
+        description="Audio file of the call recording (MP3, MP4, or WAV format)"
+    ),
+    date_string: str = Form(
+        ..., 
+        description="Date and time of the call in format 'YYYY-MM-DD HH:MM'"
+    ),
+    participants: str = Form(
+        "", 
+        description="Comma-separated list of participant UUIDs"
+    ),
+    company_id: str = Form(
+        ..., 
+        description="UUID of the company associated with this call"
+    ),
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
+    """
+    Process and analyze a call center audio recording.
+    
+    This comprehensive endpoint handles the full processing pipeline for call center audio:
+    - Audio file validation and upload to storage
+    - Transcription with speaker identification
+    - Sentiment analysis of the conversation
+    - Topic extraction and categorization
+    - Conversation summarization
+    - Problem and solution identification
+    - Complete data storage in the database
+    
+    The analysis is performed using a combination of Azure AI services and OpenAI.
+    """
+    
     # Parse inputs
     date_time, participant_list = parse_inputs(date_string, participants)
     
