@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import uuid
@@ -13,7 +13,6 @@ from openai import OpenAI
 from azure.ai.textanalytics import TextAnalyticsClient
 from azure.core.credentials import AzureKeyCredential
 from app.core.config import settings
-from app.services.call_analysis.main import run as analyze_call
 from azure.ai.language.conversations import ConversationAnalysisClient
 from app.api.deps import get_current_user
 
