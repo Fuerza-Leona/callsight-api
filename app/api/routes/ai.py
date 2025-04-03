@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from typing import Optional, List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -282,8 +282,9 @@ def extract_important_topics(transcript):
 @router.post("/alternative-analysis")
 async def alternative_analysis(
     file: UploadFile = File(...),
-    date_string: str = None,
+    date_string: str = Form(..., description="Date string: Y-m-d H:M"),
     participants: List[str] = [],
+    company_id: str = Form(..., description="Company id"),
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
@@ -325,7 +326,8 @@ async def alternative_analysis(
         query = supabase.table("conversations").insert({
             "audio_id": audio_id,
             "start_time": start_time.isoformat(),
-            "end_time": end_time.isoformat()
+            "end_time": end_time.isoformat(),
+            "company_id": company_id,
         }).execute()
 
         if not query.data or len(query.data) == 0:
