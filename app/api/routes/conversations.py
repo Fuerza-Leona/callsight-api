@@ -126,7 +126,7 @@ async def get_call(
     try:
         conversation_response = (
             supabase.table("conversations")
-            .select("conversation_id, audio_id, start_time, end_time, sentiment_score, confidence_score")
+            .select("conversation_id, audio_id, start_time, end_time")
             .eq("conversation_id", conversation_id)
             .execute()
         )
