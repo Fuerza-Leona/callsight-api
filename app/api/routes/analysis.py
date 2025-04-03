@@ -1,10 +1,7 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
-import uuid
-from typing import Optional
 
 from app.db.session import get_supabase
-from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
