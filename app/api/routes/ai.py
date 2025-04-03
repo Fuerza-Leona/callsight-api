@@ -18,7 +18,6 @@ from azure.ai.language.conversations import ConversationAnalysisClient
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/ai", tags=["ai"])    
-    
 class AnalysisResponse(BaseModel):
     success: bool
     conversation_id: str
