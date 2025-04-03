@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from datetime import datetime
 from pydantic import BaseModel
 
 from supabase import Client

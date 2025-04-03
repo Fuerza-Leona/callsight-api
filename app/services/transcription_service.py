@@ -3,7 +3,7 @@ from app.services.analysis_service import analyze_sentiment
 import assemblyai as aai
 from openai import OpenAI
 
-def getTranscription(file_url: str):
+def get_transcription(file_url: str):
     # Replace with your API key
     aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
 
