@@ -278,17 +278,23 @@ def extract_important_topics(transcript):
     except Exception as e:
         print(f"Error extracting topics: {str(e)}")
         return []
+    
+class AddConversationRequest(BaseModel):
+    file: UploadFile = File(...)
+    date_string: str = Form(..., description="Date string: Y-m-d H:M")
+    participants: List[str] = []
+    company_id: str = Form(..., description="Company id")
 
 @router.post("/alternative-analysis")
 async def alternative_analysis(
-    file: UploadFile = File(...),
-    date_string: str = Form(..., description="Date string: Y-m-d H:M"),
-    participants: List[str] = [],
-    company_id: str = Form(..., description="Company id"),
+    conversation_data: AddConversationRequest,
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
-    
+    file = conversation_data.file
+    date_string = conversation_data.date_string
+    participants = conversation_data.participants
+    company_id = conversation_data.company_id
     date_time = datetime.strptime(date_string, "%Y-%m-%d %H:%M") if date_string else datetime.now()
     
     try:
