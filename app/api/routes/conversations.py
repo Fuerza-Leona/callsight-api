@@ -126,7 +126,7 @@ async def get_call(
     try:
         conversation_response = (
             supabase.table("conversations")
-            .select("conversation_id, audio_id, start_time, end_time, sentiment_score, confidence_score")
+            .select("conversation_id, audio_id, start_time, end_time")
             .eq("conversation_id", conversation_id)
             .execute()
         )
@@ -205,9 +205,14 @@ async def get_call(
     call_id: str = None,
     supabase: Client = Depends(get_supabase)
 ):
-    """Get summary for a given conversation"""
+    """Get participants a given conversation"""
     try:
-        participants = supabase.table("participants").select("*").eq("conversation_id", call_id).execute()
+        participants = (
+            supabase.table("participants")
+            .select("users(username, role)")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
         return {"participants": participants.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -252,5 +257,59 @@ async def add_conversation(
             "conversation_id": conversation_id,
             "participants": participants
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    
+
+@router.get("/call/{call_id}")
+async def get_info_pertaining_call(
+    call_id: str,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        conversation_response = supabase.table("conversations").select("*").eq("conversation_id", call_id).execute()
+        summary_response = supabase.table("summaries").select("*").eq("conversation_id", call_id).execute()
+        summary = summary_response.data[0] if summary_response.data else {}
+        messages_response = supabase.table("messages").select("*").eq("conversation_id", call_id).execute()
+        positive = neutral = negative = 0
+        counter = 0
+        messages = messages_response.data or []
+        conversation = conversation_response.data or []
+        for message in messages:
+            if message["role"] == "agent":
+                counter += 1
+                positive += message["positive"]
+                neutral += message["neutral"]
+                negative += message["negative"]
+
+        participants_response = (
+            supabase.table("participants")
+            .select("users(username, role)")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
+
+        participants = participants_response.data or []
+        
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        from dateutil import parser
+
+        start_time = parser.parse(conversation[0]["start_time"])
+        end_time = parser.parse(conversation[0]["end_time"])
+        summary["duration"] = int((end_time - start_time).total_seconds() / 60)
+
+        summary["positive"] = positive / counter if messages else 0
+        summary["neutral"] = neutral / counter if messages else 0
+        summary["negative"] = negative  / counter if messages else 0
+
+        return {
+            "conversation": conversation,
+            "summary": summary, 
+            "messages": messages,
+            "participants": participants
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
