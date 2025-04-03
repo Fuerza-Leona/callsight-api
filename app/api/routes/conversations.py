@@ -268,13 +268,14 @@ async def get_info_pertaining_call(
     supabase: Client = Depends(get_supabase)
 ):
     try:
-        conversation = supabase.table("conversations").select("*").eq("conversation_id", call_id).execute()
+        conversation_response = supabase.table("conversations").select("*").eq("conversation_id", call_id).execute()
         summary_response = supabase.table("summaries").select("*").eq("conversation_id", call_id).execute()
         summary = summary_response.data[0] if summary_response.data else {}
-        messages = supabase.table("messages").select("*").eq("conversation_id", call_id).execute()
+        messages_response = supabase.table("messages").select("*").eq("conversation_id", call_id).execute()
         positive = neutral = negative = 0
         counter = 0
-        messages = messages.data or []
+        messages = messages_response.data or []
+        conversation = conversation_response.data or []
         for message in messages:
             if message["role"] == "agent":
                 counter += 1
@@ -282,20 +283,22 @@ async def get_info_pertaining_call(
                 neutral += message["neutral"]
                 negative += message["negative"]
 
-        participants = (
+        participants_response = (
             supabase.table("participants")
             .select("users(username, role)")
             .eq("conversation_id", call_id)
             .execute()
         )
+
+        participants = participants_response.data or []
         
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
 
         from dateutil import parser
 
-        start_time = parser.parse(conversation.data[0]["start_time"])
-        end_time = parser.parse(conversation.data[0]["end_time"])
+        start_time = parser.parse(conversation[0]["start_time"])
+        end_time = parser.parse(conversation[0]["end_time"])
         summary["duration"] = int((end_time - start_time).total_seconds() / 60)
 
         summary["positive"] = positive / counter if messages else 0
@@ -303,9 +306,10 @@ async def get_info_pertaining_call(
         summary["negative"] = negative  / counter if messages else 0
 
         return {
+            "conversation": conversation,
             "summary": summary, 
             "messages": messages,
-            "participants": participants.data
+            "participants": participants
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
