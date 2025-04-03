@@ -105,18 +105,21 @@ async def get_emotions(
 ):
     """Return emotions across all messages in conversations for the currently authorized user"""
     user_id = current_user.id
-    #TODO: enable after multiple calls: participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
-    participant_response = supabase.table("participants").select("conversation_id").execute()
+    #TODO: enable after multiple calls: participant_response = supabase.table("participants").select("conversation_id").execute()
+    participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
     
     print(participant_response)
     if not participant_response.data:
         return {"conversations": []}
     
     conversation_ids = [item["conversation_id"] for item in participant_response.data]
-    
     response = supabase.table("messages").select("positive, negative, neutral").in_("conversation_id", conversation_ids).execute()
     
-    return {"emotions": response}
+    positive_sum = round(sum(item["positive"] for item in response.data) / len(response.data) * 100) if response.data else 0
+    negative_sum = round(sum(item["negative"] for item in response.data) / len(response.data) * 100) if response.data else 0
+    neutral_sum = round(sum(item["neutral"] for item in response.data) / len(response.data) * 100) if response.data else 0
+
+    return {"emotions": {"positive": positive_sum, "negative": negative_sum, "neutral": neutral_sum}}
 
     
 @router.get("/{conversation_id}")
