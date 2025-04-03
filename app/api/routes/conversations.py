@@ -259,3 +259,53 @@ async def add_conversation(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    
+
+@router.get("/call/{call_id}")
+async def get_info_pertaining_call(
+    call_id: str,
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        conversation = supabase.table("conversations").select("*").eq("conversation_id", call_id).execute()
+        summary_response = supabase.table("summaries").select("*").eq("conversation_id", call_id).execute()
+        summary = summary_response.data[0] if summary_response.data else {}
+        messages = supabase.table("messages").select("*").eq("conversation_id", call_id).execute()
+        positive = neutral = negative = 0
+        counter = 0
+        messages = messages.data or []
+        for message in messages:
+            if message["role"] == "agent":
+                counter += 1
+                positive += message["positive"]
+                neutral += message["neutral"]
+                negative += message["negative"]
+
+        participants = (
+            supabase.table("participants")
+            .select("users(username, role)")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
+        
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        from dateutil import parser
+
+        start_time = parser.parse(conversation.data[0]["start_time"])
+        end_time = parser.parse(conversation.data[0]["end_time"])
+        summary["duration"] = int((end_time - start_time).total_seconds() / 60)
+
+        summary["positive"] = positive / counter if messages else 0
+        summary["neutral"] = neutral / counter if messages else 0
+        summary["negative"] = negative  / counter if messages else 0
+
+        return {
+            "summary": summary, 
+            "messages": messages,
+            "participants": participants.data
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
