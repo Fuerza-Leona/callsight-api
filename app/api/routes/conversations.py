@@ -43,30 +43,6 @@ async def get_categories(
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-async def get_categories(
-    conversation_id: str,
-    supabase: Client = Depends(get_supabase)
-):
-    try:
-        conversation_response = (
-            supabase.table("conversations")
-            .select("participants(users(company_client(category(name))))")
-            .eq("conversation_id", conversation_id)
-            .execute()
-        )
-
-        categorys = []
-
-        for item in conversation_response.data:
-            for participant in item["participants"]:
-                if participant["users"]["company_client"]["category"]:
-                    categorys.append(participant["users"]["company_client"]["category"]["name"])
-
-        return list(set(categorys))
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
-
 #TODO: agregar admin access despues de sprint 1
 @router.get("/")
 async def get_conversations(supabase: Client = Depends(get_supabase)):
