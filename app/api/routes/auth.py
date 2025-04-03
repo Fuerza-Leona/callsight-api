@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
-from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
@@ -18,18 +18,26 @@ class UserRole(str, Enum):
 
 class UserSignUp(BaseModel):
     email: EmailStr
-    password: str
-    username: str
-    company_name: str
-    role: UserRole = UserRole.CLIENT
-    department: Optional[str] = None
+    password: str = Field(..., min_length=8, description="User password, minimum 8 characters")
+    username: str = Field(..., min_length=3, max_length=50, description="Username, between 3-50 characters")
+    company_name: str = Field(..., min_length=2, description="Company name, minimum 2 characters")
+    role: str = Field("client", description="User role, defaults to 'client'")
+    department: Optional[str] = Field(None, description="Department within the company")
+    
+    @field_validator('password')
+    def password_strength(cls, v):
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one digit')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        return v
     
 class UserLogin(BaseModel):
-    email: str
-    password: str
-    
+    email: EmailStr = Field(..., description="User email address")
+    password: str = Field(..., min_length=1, description="User password")
+
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(..., min_length=10, description="JWT refresh token")
 
 @router.post("/signup")
 async def sign_up(
@@ -192,10 +200,10 @@ async def check_admin_role(current_user = Depends(get_current_user),
     return current_user
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    email: Optional[EmailStr] = None
-    role: Optional[UserRole] = None
-    department: Optional[str] = None
+    username: Optional[str] = Field(None, min_length=3, max_length=50, description="Username, between 3-50 characters")
+    email: Optional[EmailStr] = Field(None, description="User email address")
+    role: Optional[str] = Field(None, description="User role")
+    department: Optional[str] = Field(None, description="Department within the company")
     
 @router.get("/users", dependencies=[Depends(check_admin_role)])
 async def list_users(
