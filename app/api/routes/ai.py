@@ -18,11 +18,6 @@ from azure.ai.language.conversations import ConversationAnalysisClient
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/ai", tags=["ai"])    
-class AddConversationRequest(BaseModel):
-    file: UploadFile = File(...)
-    date_string: str = Form(..., description="Date string: Y-m-d H:M")
-    participants: List[str] = []
-    company_id: str = Form(..., description="Company id")
     
 class AnalysisResponse(BaseModel):
     success: bool
@@ -30,16 +25,15 @@ class AnalysisResponse(BaseModel):
 
 @router.post("/alternative-analysis")
 async def alternative_analysis(
-    conversation_data: AddConversationRequest,
+    file: UploadFile = File(...),
+    date_string: str = Form(..., description="Date string: Y-m-d H:M"),
+    participants: str = Form("", description="Comma-separated participant UUIDs"),
+    company_id: str = Form(..., description="Company id"),
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
-    file = conversation_data.file
-    date_string = conversation_data.date_string
-    participants = conversation_data.participants
-    company_id = conversation_data.company_id
-    
     date_time = datetime.now()
+    participant_list = participants.split(",") if participants and participants.strip() else []
     
     # Safer datetime parsing
     if date_string:
@@ -118,8 +112,8 @@ async def alternative_analysis(
         process_topics(supabase, topics, conversation_id)
         
          # Step 4: Process participants
-        if participants:
-            process_participants(supabase, participants, conversation_id)
+        if participant_list:
+            process_participants(supabase, participant_list, conversation_id)
 
         # Step 5: Insert transcript messages
         process_transcripts(supabase, result["phrases"], conversation_id)
