@@ -74,7 +74,6 @@ async def get_conversations(supabase: Client = Depends(get_supabase)):
     response = supabase.table("conversations").select("*").execute()
     for i in response.data:
         i["categories"] = await get_categories(i["conversation_id"], supabase)
-    print(response.data) # Hay que quitar este print
     return {"conversations": response.data}
 
 
@@ -93,6 +92,9 @@ async def get_mine(
     conversation_ids = [item["conversation_id"] for item in participant_response.data]
     
     conversations_response = supabase.table("conversations").select("*").in_("conversation_id", conversation_ids).execute()
+
+    for i in conversations_response.data:
+        i["categories"] = await get_categories(i["conversation_id"], supabase)
     
     return {"conversations": conversations_response.data}
     
