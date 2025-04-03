@@ -42,7 +42,7 @@ async def alternative_analysis(
     
     # File upload step
     try:
-        file_url, audio_id, duration = await upload_audio_file(file, supabase, current_user)
+        file_url, audio_id, duration = await process_audio_for_analysis(file, supabase, current_user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
         
@@ -127,7 +127,7 @@ async def alternative_analysis(
         conversation_id=conversation_id
     )
     
-async def upload_audio_file(file: UploadFile, supabase: Client, current_user):
+async def process_audio_for_analysis(file: UploadFile, supabase: Client, current_user):
     """Uploads an audio file to Supabase storage and returns the file URL"""
     try:
         source = "local"
