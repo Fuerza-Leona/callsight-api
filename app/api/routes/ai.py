@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import uuid
@@ -17,10 +17,124 @@ from app.services.call_analysis.main import run as analyze_call
 from azure.ai.language.conversations import ConversationAnalysisClient
 from app.api.deps import get_current_user
 
-router = APIRouter(prefix="/ai", tags=["ai"])
+router = APIRouter(prefix="/ai", tags=["ai"])    
+class AddConversationRequest(BaseModel):
+    file: UploadFile = File(...)
+    date_string: str = Form(..., description="Date string: Y-m-d H:M")
+    participants: List[str] = []
+    company_id: str = Form(..., description="Company id")
+    
+class AnalysisResponse(BaseModel):
+    success: bool
+    conversation_id: str
 
+@router.post("/alternative-analysis")
+async def alternative_analysis(
+    conversation_data: AddConversationRequest,
+    current_user = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    file = conversation_data.file
+    date_string = conversation_data.date_string
+    participants = conversation_data.participants
+    company_id = conversation_data.company_id
+    
+    date_time = datetime.now()
+    
+    # Safer datetime parsing
+    if date_string:
+        try:
+            date_time = datetime.strptime(date_string, "%Y-%m-%d %H:%M")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD HH:MM")
+    
+    # File upload step
+    try:
+        file_url, audio_id, duration = await upload_audio_file(file, supabase, current_user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+        
+    # Transcription step
+    try:
+        result = getTranscription(file_url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+        
+    # Summarization step
+    try:
+        summary = summarize_conversation(result["phrases"])
+        result["summary"] = summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
 
+    # Topic extraction step
+    try:
+        topics = extract_important_topics(result["phrases"])
+        result["topics"] = topics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Topic extraction failed: {str(e)}")
+    
+    problem = ""
+    solution = ""
+    try:
+        problem = summary.get("Issue task", {}).get("issue", "")
+        solution = summary.get("Resolution task", {}).get("resolution", "")
+    except (TypeError, AttributeError) as e:
+        print(f"Warning: Could not extract problem/solution: {str(e)}")
 
+    start_time = date_time
+    end_time = start_time + timedelta(seconds=duration)
+    
+    conversation_id = None
+
+    # Database operations step
+    try:
+        # Step 1: Insert conversation record
+        query = supabase.table("conversations").insert({
+            "audio_id": audio_id,
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+            "company_id": company_id,
+        }).execute()
+
+        if not query.data or len(query.data) == 0:
+            raise HTTPException(status_code=500, detail="Failed to insert conversation record")
+                
+        conversation_id = query.data[0].get("conversation_id")
+        if not conversation_id:
+            raise HTTPException(status_code=500, detail="No conversation_id returned from database")
+            
+        # Step 2: Insert summary
+        summary_query = supabase.table("summaries").insert({
+            "conversation_id": conversation_id,
+            "problem": problem,
+            "solution": solution
+        }).execute()
+        
+        if not summary_query.data:
+            print("Warning: Summary insertion may have failed")
+
+        # Step 3: Process topics
+        process_topics(supabase, topics, conversation_id)
+        
+         # Step 4: Process participants
+        if participants:
+            process_participants(supabase, participants, conversation_id)
+
+        # Step 5: Insert transcript messages
+        process_transcripts(supabase, result["phrases"], conversation_id)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ERROR: Database operation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
+        
+    return AnalysisResponse(
+        success=True,
+        conversation_id=conversation_id
+    )
+    
 async def upload_audio_file(file: UploadFile, supabase: Client, current_user):
     """Uploads an audio file to Supabase storage and returns the file URL"""
     try:
@@ -278,140 +392,87 @@ def extract_important_topics(transcript):
     except Exception as e:
         print(f"Error extracting topics: {str(e)}")
         return []
-    
-class AddConversationRequest(BaseModel):
-    file: UploadFile = File(...)
-    date_string: str = Form(..., description="Date string: Y-m-d H:M")
-    participants: List[str] = []
-    company_id: str = Form(..., description="Company id")
 
-@router.post("/alternative-analysis")
-async def alternative_analysis(
-    conversation_data: AddConversationRequest,
-    current_user = Depends(get_current_user),
-    supabase: Client = Depends(get_supabase)
-):
-    file = conversation_data.file
-    date_string = conversation_data.date_string
-    participants = conversation_data.participants
-    company_id = conversation_data.company_id
-    date_time = datetime.strptime(date_string, "%Y-%m-%d %H:%M") if date_string else datetime.now()
-    
-    try:
-        file_url, audio_id, duration = await upload_audio_file(file, supabase, current_user)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
-        
-    # Transcription step
-    try:
-        result = getTranscription(file_url)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
-        
-    # Summarization step
-    try:
-        summary = summarize_conversation(result["phrases"])
-        result["summary"] = summary
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Summarization failed: {str(e)}")
-
-    try:
-        topics = extract_important_topics(result["phrases"])
-        result["topics"] = topics
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Topic extraction failed: {str(e)}")
-
-    problem = summary.get("Issue task", {}).get("issue", "")
-    solution = summary.get("Resolution task", {}).get("resolution", "")
-
-    start_time = date_time
-    end_time = start_time + timedelta(seconds=duration)
-
-    # Database operations step
-    try:
-        query = supabase.table("conversations").insert({
-            "audio_id": audio_id,
-            "start_time": start_time.isoformat(),
-            "end_time": end_time.isoformat(),
-            "company_id": company_id,
-        }).execute()
-
-        if not query.data or len(query.data) == 0:
-            raise ValueError("Failed to insert conversation record")
-                
-        conversation_id = query.data[0].get("conversation_id")
-        if not conversation_id:
-            raise ValueError("No conversation_id returned from database")
-                
-        result["conversation_id"] = conversation_id
+def process_topics(supabase: Client, topics: List[str], conversation_id: str) -> None:
+    """Process and insert topics with proper error handling."""
+    for topic in topics:
+        try:
+            topic_text = topic.lower()
+            # Check if topic already exists
+            existing_topic = supabase.table("topics").select("*").eq("topic", topic_text).execute()
             
-        # Insert summary
-        supabase.table("summaries").insert({
-            "conversation_id": conversation_id,
-            "problem": problem,
-            "solution": solution
-        }).execute()
-
-        for topic in result["topics"]:
-            try:
-                topic_text = topic.lower()
-                # Check if topic already exists
-                existing_topic = supabase.table("topics").select("*").eq("topic", topic_text).execute()
+            if existing_topic.data and len(existing_topic.data) > 0:
+                topic_id = existing_topic.data[0].get("topic_id")
+                if not topic_id:
+                    print(f"WARNING: Retrieved topic '{topic_text}' is missing topic_id")
+                    continue
+            else:
+                # Create new topic if it doesn't exist
+                topic_query = supabase.table("topics").insert({"topic": topic_text}).execute()
+                if not topic_query.data or len(topic_query.data) == 0:
+                    print(f"WARNING: Failed to insert new topic '{topic_text}'")
+                    continue
                 
-                if existing_topic.data:
-                    topic_id = existing_topic.data[0]["topic_id"]
-                else:
-                    # Create new topic if it doesn't exist
-                    topic_query = supabase.table("topics").insert({"topic": topic_text}).execute()
-                    topic_id = topic_query.data[0]["topic_id"]
-                
-                # Create relationship in junction table
-                supabase.table("topics_conversations").insert({
-                    "topic_id": topic_id,
-                    "conversation_id": conversation_id
-                }).execute()
-                
-            except Exception as e:
-                # Log error but continue processing other topics
-                print(f"Error processing topic '{topic}': {str(e)}")
-                continue
+                topic_id = topic_query.data[0].get("topic_id")
+                if not topic_id:
+                    print(f"WARNING: New topic '{topic_text}' is missing topic_id")
+                    continue
+            
+            # Create relationship in junction table
+            junction_query = supabase.table("topics_conversations").insert({
+                "topic_id": topic_id,
+                "conversation_id": conversation_id
+            }).execute()
+            
+            if not junction_query.data or len(junction_query.data) == 0:
+                print(f"WARNING: Failed to create relationship for topic '{topic_text}'")
+            
+        except Exception as e:
+            print(f"ERROR: Error processing topic '{topic}': {str(e)}")
+            # Continue processing other topics
 
-        if participants:
-            # Validate that participants are valid UUIDs
-            valid_participants = []
-            p = participants[0].split(",")
-            for participant in p:
-                try:
-                    # Attempt to validate UUID format
-                    uuid_obj = uuid.UUID(participant)
-                    valid_participants.append({"conversation_id": conversation_id, "user_id": str(uuid_obj)})
-                except ValueError:
-                    print(f"Warning: Invalid UUID format for participant: {participant}")
-                
-            if valid_participants:
-                supabase.table("participants").insert(valid_participants).execute()
 
-            # Insert transcripts
-        for i, phrases in enumerate(result["phrases"]):
-            try:
-                transcript_query = supabase.table("messages").insert({
-                    "conversation_id": conversation_id,
-                    "text": phrases["text"],
-                    "speaker": phrases["speaker"],
-                    "offsetmilliseconds": phrases["offsetMilliseconds"],
-                    "role": phrases.get("role", None),
-                    "confidence": phrases["confidence"],
-                    "positive": phrases["positive"],
-                    "negative": phrases["negative"],
-                    "neutral": phrases["neutral"]
-                }).execute()
+def process_participants(supabase: Client, participants: List[str], conversation_id: str) -> None:
+    """Process and insert participants with proper validation."""
+    valid_participants = []
+    
+    for participant in participants:
+        try:
+            # Just validate UUID format without converting to UUID object and back
+            uuid.UUID(participant)  # This will raise ValueError if invalid
+            valid_participants.append({
+                "conversation_id": conversation_id, 
+                "user_id": participant  # Use the string directly
+            })
+        except ValueError:
+            print(f"ERROR: Invalid UUID format for participant: {participant}")
+    
+    if valid_participants:
+        try:
+            participant_query = supabase.table("participants").insert(valid_participants).execute()
+            if not participant_query.data or len(participant_query.data) == 0:
+                print("WARNING: Participant insertion may have failed")
+        except Exception as e:
+            print(f"ERROR: Failed to insert participants: {str(e)}")
 
-                if not transcript_query.data:
-                    print(f"Warning: Failed to insert transcript {i}")
-            except Exception as e:
-                print(f"Error inserting transcript {i}: {str(e)}")
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
-        
-    return result
+def process_transcripts(supabase: Client, phrases: List[Dict[str, Any]], conversation_id: str) -> None:
+    """Process and insert transcript messages with proper error handling."""
+    for i, phrase in enumerate(phrases):
+        try:
+            transcript_query = supabase.table("messages").insert({
+                "conversation_id": conversation_id,
+                "text": phrase["text"],
+                "speaker": phrase["speaker"],
+                "offsetmilliseconds": phrase["offsetMilliseconds"],
+                "role": phrase.get("role"),
+                "confidence": phrase["confidence"],
+                "positive": phrase["positive"],
+                "negative": phrase["negative"],
+                "neutral": phrase["neutral"]
+            }).execute()
+
+            if not transcript_query.data or len(transcript_query.data) == 0:
+                print(f"ERROR: Failed to insert transcript {i}")
+        except Exception as e:
+            print(f"ERROR: Error inserting transcript {i}: {str(e)}")
