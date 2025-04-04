@@ -258,11 +258,10 @@ async def get_info_pertaining_call(
         messages = messages_response.data or []
         conversation = conversation_response.data or []
         for message in messages:
-            if message["role"] == "agent":
-                counter += 1
-                positive += message["positive"]
-                neutral += message["neutral"]
-                negative += message["negative"]
+            counter += 1
+            positive += message["positive"]
+            neutral += message["neutral"]
+            negative += message["negative"]
 
         participants_response = (
             supabase.table("participants")
@@ -282,9 +281,9 @@ async def get_info_pertaining_call(
         end_time = parser.parse(conversation[0]["end_time"])
         summary["duration"] = int((end_time - start_time).total_seconds() / 60)
 
-        summary["positive"] = positive / counter if messages else 0
-        summary["neutral"] = neutral / counter if messages else 0
-        summary["negative"] = negative  / counter if messages else 0
+        summary["positive"] = positive / counter if counter else 0
+        summary["neutral"] = neutral / counter if counter else 0
+        summary["negative"] = negative  / counter if counter else 0
 
         return {
             "conversation": conversation,
