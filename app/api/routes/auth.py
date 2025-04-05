@@ -186,6 +186,17 @@ async def get_current_user_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+async def check_user_role(
+        current_user = Depends(get_current_user),
+        supabase: Client = Depends(get_supabase)
+    ):
+    """Check the user role"""
+    user_id = current_user.id
+    response = supabase.table("users").select("role").eq("user_id", user_id).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+    return response.data[0]["role"]
+
 async def check_admin_role(current_user = Depends(get_current_user), 
                           supabase: Client = Depends(get_supabase)):
     """Check if the current user has admin role"""

@@ -52,6 +52,8 @@ class Settings(BaseSettings):
 
     ASSEMBLYAI_API_KEY : str = os.getenv("ASSEMBLYAI_API_KEY", "")
     OPENAI_API_KEY : str = os.getenv("OPENAI_API_KEY", "")
+
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
     class Config:
         env_file = ".env"

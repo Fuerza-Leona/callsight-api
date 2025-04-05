@@ -1,13 +1,25 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.routes import ai, audio, conversations, users, auth, companies, analysis, categories
+from app.api.routes import ai, audio, conversations, users, auth, companies, analysis, categories, topics
+from app.db.session import init_db_pool, pool
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db_pool()
+    try:
+        yield
+    finally:
+        if pool is not None:
+            await pool.close()
+            
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    debug=True
+    debug=True,
+    lifespan=lifespan
 )
 
 # Set up CORS middleware
@@ -28,6 +40,7 @@ app.include_router(ai.router, prefix=settings.API_V1_STR)
 app.include_router(companies.router, prefix=settings.API_V1_STR)
 app.include_router(analysis.router, prefix=settings.API_V1_STR)
 app.include_router(categories.router, prefix=settings.API_V1_STR)
+app.include_router(topics.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
