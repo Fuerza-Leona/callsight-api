@@ -16,8 +16,8 @@ router = APIRouter(prefix="/topics", tags=["topics"])
 @router.get("/")
 async def get_topics(
     clients: List[str] = Query(default=[]),
-    startDate: Optional[str] = Query(default=(datetime.now() - relativedelta(months=1)).strftime("%Y-%m-%d")),
-    endDate: Optional[str] = Query(default=datetime.now().strftime("%Y-%m-%d")),
+    startDate: Optional[str] = Query(default=datetime.now().replace(day=1).strftime("%Y-%m-%d")),
+    endDate: Optional[str] = Query(default=(datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")),
     limit: int = Query(default=10),
     current_user=Depends(get_current_user),
     supabase: Client=Depends(get_supabase)
