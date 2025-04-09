@@ -258,3 +258,48 @@ async def update_user(
         raise HTTPException(status_code=404, detail="User not found")
         
     return {"message": "User updated successfully", "user": response.data[0]}
+
+@router.get("/clients")
+async def get_my_clients(
+    current_user = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    """Get clients that the agent has worked with or all clients if admin"""
+    try:
+        user_id = current_user.id
+        
+        # Check user role
+        role_response = supabase.table("users").select("role").eq("user_id", user_id).execute()
+        if not role_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        user_role = role_response.data[0]["role"]
+        
+        if user_role == UserRole.ADMIN:
+            # Admin gets all clients
+            clients_response = supabase.table("users").select("user_id, username, email, company_id").eq("role", "client").execute()
+            return {"clients": clients_response.data}
+        elif user_role == UserRole.AGENT:
+            # Get conversations this user participated in
+            participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
+            
+            if not participant_response.data:
+                return {"clients": []}
+            
+            conversation_ids = [item["conversation_id"] for item in participant_response.data]
+            
+            # Get other participants from these conversations
+            other_participants = supabase.table("participants").select("user_id").in_("conversation_id", conversation_ids).neq("user_id", user_id).execute()
+            
+            if not other_participants.data:
+                return {"clients": []}
+                
+            other_user_ids = list(set([item["user_id"] for item in other_participants.data]))
+            
+            # Get client info for these users
+            clients_response = supabase.table("users").select("user_id, username, email, company_id").in_("user_id", other_user_ids).eq("role", "client").execute()
+            
+            return {"clients": clients_response.data}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
