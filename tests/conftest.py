@@ -1,5 +1,6 @@
 import os
 import pytest
+import pytest_asyncio
 from app.core.config import settings
 
 # Set test environment variables
@@ -8,6 +9,13 @@ os.environ["TESTING"] = "True"
 # Override any settings for testing if needed
 # For example, you might want to use a test database
 # settings.DATABASE_URL = "your_test_database_url"
+
+# Configure pytest-asyncio
+pytest_asyncio.config_mode = "strict"
+
+def pytest_configure(config):
+    config.option.asyncio_mode = "strict"
+    config.option.asyncio_default_fixture_loop_scope = "function"
 
 @pytest.fixture
 def test_app():
