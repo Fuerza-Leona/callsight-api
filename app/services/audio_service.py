@@ -3,6 +3,8 @@ from supabase import Client
 import uuid
 import librosa
 import io
+from app.services.convert_audio import convert_audio
+import os
 
 async def process_audio(file: UploadFile, supabase: Client, current_user):
     """Uploads an audio file to Supabase storage and returns the file URL"""
@@ -16,10 +18,13 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
 
         allowed_extensions = ["mp3", "mp4", "wav"]
         if file_ext.lower() not in allowed_extensions:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Unsupported file format. Only {', '.join(allowed_extensions)} files are allowed."
-            )
+            file = convert_audio(file)
+            file_ext = file.filename.split(".")[-1] if "." in file.filename else ""
+            if file_ext.lower() not in allowed_extensions:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Unsupported file format. Only {', '.join(allowed_extensions)} files are allowed."
+                ) 
 
         storage_path = f"{audio_id}.{file_ext}" if file_ext else audio_id
         
@@ -66,6 +71,14 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
         }
         
         db_response = supabase.table("audio_files").insert(file_data).execute()
+
+        # Clean up temp file used in convert_audio() after the file was converted
+        try:
+            file.file.close()
+            if hasattr(file.file, "name") and os.path.exists(file.file.name):
+                os.remove(file.file.name)
+        except Exception as cleanup_err:
+            print(f"Failed to clean up temp file: {cleanup_err}")
 
         if not db_response.data:
             raise HTTPException(status_code=500, detail="Failed to insert record into database")
