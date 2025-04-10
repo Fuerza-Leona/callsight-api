@@ -22,28 +22,28 @@ async def build_topics_query(start_date, end_date, role, user_id, clients, categ
     
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
-    param_index = 3
+
 
     if role == "agent":
         base_query += """
         INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
         conditions.append("p_agent.user_id = %s")
         params.append(user_id)
-        param_index += 1
+
 
     if clients:
         base_query += """
         INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
-        param_index += 1
+
         
     if categories:
         base_query += """
         INNER JOIN company_client cc ON c.company_id = cc.company_id"""        
         conditions.append("cc.category_id = ANY(%s::uuid[])")
         params.append(categories)
-        param_index += 1
+
         
     if conditions:
         base_query += """
