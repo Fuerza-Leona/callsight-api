@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.api.routes import ai, audio, conversations, users, auth, companies, analysis, categories, topics
-from app.db.session import init_db_pool, pool
+from app.db.session import init_db_pool, close_db_pool
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -12,9 +12,8 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        if pool is not None:
-            await pool.close()
-
+        await close_db_pool()
+            
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",

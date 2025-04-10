@@ -20,28 +20,28 @@ async def build_topics_query(start_date, end_date, role, user_id, clients, categ
         INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id
         INNER JOIN topics t ON tc.topic_id = t.topic_id"""
     
-    conditions = ["c.start_time BETWEEN $1 AND $2"]
+    conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
     param_index = 3
 
     if role == "agent":
         base_query += """
         INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
-        conditions.append(f"p_agent.user_id = ${param_index}")
+        conditions.append("p_agent.user_id = %s")
         params.append(user_id)
         param_index += 1
 
     if clients:
         base_query += """
         INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
-        conditions.append(f"p_client.user_id = ANY(${param_index}::uuid[])")
+        conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
         param_index += 1
         
     if categories:
         base_query += """
         INNER JOIN company_client cc ON c.company_id = cc.company_id"""        
-        conditions.append(f"cc.category_id = ANY(${param_index}::uuid[])")
+        conditions.append("cc.category_id = ANY(%s::uuid[])")
         params.append(categories)
         param_index += 1
         
@@ -52,9 +52,8 @@ async def build_topics_query(start_date, end_date, role, user_id, clients, categ
     base_query += """
         GROUP BY t.topic_id
         ORDER BY amount DESC
-        LIMIT ${}
-    """.format(param_index)
-    
+        LIMIT %s
+    """    
     params.append(limit)
     return base_query, params
 
