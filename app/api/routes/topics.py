@@ -11,6 +11,8 @@ from app.api.routes.auth import check_user_role
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
+from pydantic import BaseModel
+
 router = APIRouter(prefix="/topics", tags=["topics"])
 
 async def build_topics_query(start_date, end_date, role, user_id, clients, categories, limit):
@@ -58,16 +60,25 @@ async def build_topics_query(start_date, end_date, role, user_id, clients, categ
     return base_query, params
 
 
-@router.get("/")
+class TopicsRequest(BaseModel):
+    clients: List[str] = []
+    categories: List[str] = []
+    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+    limit: int = 10
+
+@router.post("/")
 async def get_topics(
-    clients: List[str] = Query(default=[]),
-    categories: List[str] = Query(default=[]),
-    startDate: Optional[str] = Query(default=datetime.now().replace(day=1).strftime("%Y-%m-%d")),
-    endDate: Optional[str] = Query(default=(datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")),
-    limit: int = Query(default=10),
+    request: TopicsRequest,
     current_user=Depends(get_current_user),
     supabase: Client=Depends(get_supabase)
 ):
+    clients = request.clients
+    categories = request.categories
+    startDate = request.startDate
+    endDate = request.endDate
+    limit = request.limit
+
     try:
         start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
         end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
