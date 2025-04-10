@@ -10,7 +10,7 @@ router = APIRouter(prefix="/audio", tags=["audio"])
 
 @router.get("/")
 async def list_audio(
-    skip: int = 0, 
+    skip: int = 0,
     limit: int = 100,
     supabase: Client = Depends(get_supabase)
 ):

@@ -14,7 +14,6 @@ async def get_problems(
     try:
         response = supabase.table("summaries").select("summary, problem, solution").eq("conversation_id", conversation_id).execute()
         return {"data": response.data.pop()}
-          
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-

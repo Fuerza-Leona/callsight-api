@@ -61,19 +61,19 @@ async def get_mine(
     """Get conversations for the currently authorized user"""
     user_id = current_user.id
     participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
-    
+
     if not participant_response.data:
         return {"conversations": []}
-    
+
     conversation_ids = [item["conversation_id"] for item in participant_response.data]
-    
+
     conversations_response = supabase.table("conversations").select("*").in_("conversation_id", conversation_ids).execute()
 
     for i in conversations_response.data:
         i["categories"] = await get_categories(i["conversation_id"], supabase)
-    
+
     return {"conversations": conversations_response.data}
-    
+
 @router.get("/myClientEmotions")
 async def get_emotions(
     current_user = Depends(get_current_user),
@@ -83,21 +83,21 @@ async def get_emotions(
     user_id = current_user.id
     #TODO: enable after multiple calls: participant_response = supabase.table("participants").select("conversation_id").execute()
     participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
-    
+
     print(participant_response)
     if not participant_response.data:
         return {"conversations": []}
-    
+
     conversation_ids = [item["conversation_id"] for item in participant_response.data]
     response = supabase.table("messages").select("positive, negative, neutral").in_("conversation_id", conversation_ids).execute()
-    
+
     positive_sum = round(sum(item["positive"] for item in response.data) / len(response.data) * 100) if response.data else 0
     negative_sum = round(sum(item["negative"] for item in response.data) / len(response.data) * 100) if response.data else 0
     neutral_sum = round(sum(item["neutral"] for item in response.data) / len(response.data) * 100) if response.data else 0
 
     return {"emotions": {"positive": positive_sum, "negative": negative_sum, "neutral": neutral_sum}}
 
-    
+
 @router.get("/{conversation_id}")
 async def get_call(
     conversation_id: str,
@@ -115,7 +115,7 @@ async def get_call(
         return conversation_response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @router.get("/{conversation_id}/messages")
 async def get_call(
     conversation_id: str,
@@ -129,18 +129,18 @@ async def get_call(
             .eq("conversation_id", conversation_id)
             .execute()
         )
-        
+
         if not conversation_response:
             return {"messages": []}
 
         conversation_ids = [item["conversation_id"] for item in conversation_response.data]
-        
+
         messages_response = supabase.table("messages").select("*").in_("conversation_id", conversation_ids).execute()
 
         return {"messages": messages_response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-     
+
 
 @router.get("/call/{call_id}/summary")
 async def get_call(
@@ -179,8 +179,8 @@ async def get_call(
         return {"summary": summary_response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
- 
- 
+
+
 @router.get("/call/{call_id}/participants")
 async def get_call(
     call_id: str = None,
@@ -197,7 +197,7 @@ async def get_call(
         return {"participants": participants.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
- 
+
 
 
 @router.post("/add", dependencies=[Depends(check_admin_role)])
@@ -209,7 +209,7 @@ async def add_conversation(
     try:
          # Generate a UUID for the new conversation
         conversation_id = str(uuid.uuid4())
-        
+
         # Create conversation record
         conversation = {
             "conversation_id": conversation_id,
@@ -219,9 +219,9 @@ async def add_conversation(
             "sentiment_score": conversation_data.sentiment_score,
             "confidence_score": conversation_data.confidence_score
         }
-        
+
         conversation_response = supabase.table("conversations").insert(conversation).execute()
-        
+
         participants = []
         for participant_id, speaker in conversation_data.participants:
             participants.append({
@@ -230,10 +230,10 @@ async def add_conversation(
                 "user_id": participant_id,
                 "speaker": speaker
             })
-        
+
         if participants:
             participant_response = supabase.table("participants").insert(participants).execute()
-        
+
         return {
             "conversation_id": conversation_id,
             "participants": participants
@@ -241,7 +241,7 @@ async def add_conversation(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    
+
 
 @router.get("/call/{call_id}")
 async def get_info_pertaining_call(
@@ -271,7 +271,7 @@ async def get_info_pertaining_call(
         )
 
         participants = participants_response.data or []
-        
+
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -287,7 +287,7 @@ async def get_info_pertaining_call(
 
         return {
             "conversation": conversation,
-            "summary": summary, 
+            "summary": summary,
             "messages": messages,
             "participants": participants
             }

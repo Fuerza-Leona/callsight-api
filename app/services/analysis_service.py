@@ -13,20 +13,20 @@ def analyze_conversation(transcript):
         "summary": summary,
         "topics": topics
     }
-    
+
 def analyze_sentiment(text):
     # Get Azure credentials from environment variables
     azure_key = settings.AZURE_AI_KEY
     azure_endpoint = settings.AZURE_AI_LANGUAGE_ENDPOINT
-    
+
     # Initialize the client
     credential = AzureKeyCredential(azure_key)
     text_analytics_client = TextAnalyticsClient(endpoint=azure_endpoint, credential=credential)
-    
+
     # Analyze sentiment
     documents = [text]
     response = text_analytics_client.analyze_sentiment(documents, language="es")
-    
+
     # Get the sentiment result
     result = response[0]
     if not result.is_error:
@@ -105,7 +105,7 @@ def summarize_conversation(transcript):
                 }
 
         return structured_summary
-    
+
 def extract_important_topics(transcript):
     """Extracts the 3 most important topics from a conversation transcript using OpenAI."""
     # Prepare the conversation text
@@ -113,9 +113,9 @@ def extract_important_topics(transcript):
         f"Speaker {phrase['speaker']}: {phrase['text']}"
         for phrase in transcript
     ])
-    
+
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    
+
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -127,7 +127,7 @@ def extract_important_topics(transcript):
 
     # Print just the content, not the whole response object
     response_content = response.choices[0].message.content
-    
+
     try:
         # Use json module instead of eval for safer parsing
         import json

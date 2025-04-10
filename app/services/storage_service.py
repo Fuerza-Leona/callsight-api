@@ -20,14 +20,14 @@ async def store_conversation_data(
     - Topics
     - Participants
     - Transcript messages
-    
+
     Returns the conversation_id of the created conversation.
     """
     # Extract data from analysis_result
     transcript = analysis_result.get("phrases", [])
     summary = analysis_result.get("summary", {})
     topics = analysis_result.get("topics", [])
-    
+
     # Extract problem and solution from summary
     problem = ""
     solution = ""
@@ -55,24 +55,24 @@ async def store_conversation_data(
 
         if not query.data or len(query.data) == 0:
             raise Exception("Failed to insert conversation record")
-                
+
         conversation_id = query.data[0].get("conversation_id")
         if not conversation_id:
             raise Exception("No conversation_id returned from database")
-            
+
         # Step 2: Insert summary
         summary_query = supabase.table("summaries").insert({
             "conversation_id": conversation_id,
             "problem": problem,
             "solution": solution
         }).execute()
-        
+
         if not summary_query.data:
             print("Warning: Summary insertion may have failed")
 
         # Step 3: Process topics
         await process_topics(supabase, topics, conversation_id)
-        
+
         # Step 4: Process participants
         if participant_list:
             await process_participants(supabase, participant_list, conversation_id)
@@ -81,7 +81,7 @@ async def store_conversation_data(
         await process_transcripts(supabase, transcript, conversation_id)
 
         return conversation_id
-        
+
     except Exception as e:
         print(f"ERROR: Database operation failed: {str(e)}")
         raise e
@@ -93,7 +93,7 @@ async def process_topics(supabase: Client, topics: List[str], conversation_id: s
             topic_text = topic.lower()
             # Check if topic already exists
             existing_topic = supabase.table("topics").select("*").eq("topic", topic_text).execute()
-            
+
             if existing_topic.data and len(existing_topic.data) > 0:
                 topic_id = existing_topic.data[0].get("topic_id")
                 if not topic_id:
@@ -105,21 +105,21 @@ async def process_topics(supabase: Client, topics: List[str], conversation_id: s
                 if not topic_query.data or len(topic_query.data) == 0:
                     print(f"WARNING: Failed to insert new topic '{topic_text}'")
                     continue
-                
+
                 topic_id = topic_query.data[0].get("topic_id")
                 if not topic_id:
                     print(f"WARNING: New topic '{topic_text}' is missing topic_id")
                     continue
-            
+
             # Create relationship in junction table
             junction_query = supabase.table("topics_conversations").insert({
                 "topic_id": topic_id,
                 "conversation_id": conversation_id
             }).execute()
-            
+
             if not junction_query.data or len(junction_query.data) == 0:
                 print(f"WARNING: Failed to create relationship for topic '{topic_text}'")
-            
+
         except Exception as e:
             print(f"ERROR: Error processing topic '{topic}': {str(e)}")
             # Continue processing other topics
@@ -128,18 +128,18 @@ async def process_topics(supabase: Client, topics: List[str], conversation_id: s
 async def process_participants(supabase: Client, participants: List[str], conversation_id: str) -> None:
     """Process and insert participants with proper validation."""
     valid_participants = []
-    
+
     for participant in participants:
         try:
             # Just validate UUID format without converting to UUID object and back
             uuid.UUID(participant)  # This will raise ValueError if invalid
             valid_participants.append({
-                "conversation_id": conversation_id, 
+                "conversation_id": conversation_id,
                 "user_id": participant  # Use the string directly
             })
         except ValueError:
             print(f"ERROR: Invalid UUID format for participant: {participant}")
-    
+
     if valid_participants:
         try:
             participant_query = supabase.table("participants").insert(valid_participants).execute()

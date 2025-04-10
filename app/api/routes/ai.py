@@ -11,18 +11,18 @@ from app.services.transcription_service import get_transcription
 from app.services.analysis_service import analyze_conversation
 from app.services.storage_service import store_conversation_data
 
-router = APIRouter(prefix="/ai", tags=["ai"])    
+router = APIRouter(prefix="/ai", tags=["ai"])
 class AnalysisResponse(BaseModel):
     success: bool
     conversation_id: str
 
 @router.post(
-    "/alternative-analysis", 
+    "/alternative-analysis",
     response_model=AnalysisResponse,
     status_code=201,
     responses={
         201: {
-            "description": "Successfully analyzed audio and created conversation", 
+            "description": "Successfully analyzed audio and created conversation",
             "model": AnalysisResponse
         },
         400: {
@@ -53,31 +53,31 @@ class AnalysisResponse(BaseModel):
     summary="Analyze an audio call recording",
     description="""
     Process an audio recording of a call center conversation.
-    
+
     This endpoint performs several operations:
     1. Uploads and processes the audio file
     2. Transcribes the conversation using speaker recognition
     3. Analyzes the content (sentiment, topic extraction, summarization)
     4. Stores the results in the database
-    
+
     The audio file should be in MP3, MP4, or WAV format.
     """
 )
 async def alternative_analysis(
     file: UploadFile = File(
-        ..., 
+        ...,
         description="Audio file of the call recording (MP3, MP4, or WAV format)"
     ),
     date_string: str = Form(
-        ..., 
+        ...,
         description="Date and time of the call in format 'YYYY-MM-DD HH:MM'"
     ),
     participants: str = Form(
-        "", 
+        "",
         description="Comma-separated list of participant UUIDs"
     ),
     company_id: str = Form(
-        ..., 
+        ...,
         description="UUID of the company associated with this call"
     ),
     current_user = Depends(get_current_user),
@@ -85,7 +85,7 @@ async def alternative_analysis(
 ):
     """
     Process and analyze a call center audio recording.
-    
+
     This comprehensive endpoint handles the full processing pipeline for call center audio:
     - Audio file validation and upload to storage
     - Transcription with speaker identification
@@ -94,19 +94,19 @@ async def alternative_analysis(
     - Conversation summarization
     - Problem and solution identification
     - Complete data storage in the database
-    
+
     The analysis is performed using a combination of Azure AI services and OpenAI.
     """
-    
+
     # Parse inputs
     date_time, participant_list = parse_inputs(date_string, participants)
-    
+
     # Audio processing
     try:
         file_url, audio_id, duration = await process_audio(file, supabase, current_user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
-        
+
     # Transcription and Analysis
     try:
         transcript_result = get_transcription(file_url)
@@ -127,34 +127,34 @@ async def alternative_analysis(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
-        
+
     return AnalysisResponse(
         success=True,
         conversation_id=conversation_id
     )
-    
+
 # async def process_audio_for_analysis(file: UploadFile, supabase: Client, current_user):
 #     """Uploads an audio file to Supabase storage and returns the file URL"""
 #     try:
 #         source = "local"
 #         audio_id = str(uuid.uuid4())
 #         user_id = current_user.id
-        
+
 #         # Extract file extension and create path
 #         file_ext = file.filename.split(".")[-1] if "." in file.filename else ""
 
 #         allowed_extensions = ["mp3", "mp4", "wav"]
 #         if file_ext.lower() not in allowed_extensions:
 #             raise HTTPException(
-#                 status_code=400, 
+#                 status_code=400,
 #                 detail=f"Unsupported file format. Only {', '.join(allowed_extensions)} files are allowed."
 #             )
 
 #         storage_path = f"{audio_id}.{file_ext}" if file_ext else audio_id
-        
+
 #         # Get file content from UploadFile
 #         file_content = await file.read()
-        
+
 #         # Upload to Supabase
 #         try:
 #             supabase.storage.from_("audios").upload(
@@ -167,7 +167,7 @@ async def alternative_analysis(
 #                 status_code=500,
 #                 detail=f"Failed to upload file to storage: {str(upload_error)}"
 #             )
-        
+
 #         # Get the public URL of the uploaded file
 #         file_url = supabase.storage.from_("audios").get_public_url(storage_path)
 
@@ -182,7 +182,7 @@ async def alternative_analysis(
 #             duration = int(librosa.get_duration(y=y, sr=sr))
 #         except Exception as e:
 #             print(f"Could not calculate duration: {str(e)}")
-        
+
 #         # Create a record in the database
 #         file_data = {
 #             "audio_id": audio_id,
@@ -193,12 +193,12 @@ async def alternative_analysis(
 #             "uploaded_at": None,  # Supabase will set this with default now()
 #             "uploaded_by": user_id,
 #         }
-        
+
 #         db_response = supabase.table("audio_files").insert(file_data).execute()
 
 #         if not db_response.data:
 #             raise HTTPException(status_code=500, detail="Failed to insert record into database")
-        
+
 #         return file_url, audio_id, duration
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
@@ -208,11 +208,11 @@ async def alternative_analysis(
 #     sample_conversation = []
 #     for i, utterance in enumerate(utterances):
 #         sample_conversation.append(f"Speaker {utterance.speaker}: {utterance.text}")
-    
+
 #     conversation_text = "\n".join(sample_conversation)
-    
+
 #     client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    
+
 #     response = client.chat.completions.create(
 #         model="gpt-4o",
 #         messages=[
@@ -221,7 +221,7 @@ async def alternative_analysis(
 #         ],
 #         response_format={"type": "json_object"}
 #     )
-    
+
 #     try:
 #         roles = eval(response.choices[0].message.content)
 #         return roles
@@ -232,15 +232,15 @@ async def alternative_analysis(
 #     # Get Azure credentials from environment variables
 #     azure_key = settings.AZURE_AI_KEY
 #     azure_endpoint = settings.AZURE_AI_LANGUAGE_ENDPOINT
-    
+
 #     # Initialize the client
 #     credential = AzureKeyCredential(azure_key)
 #     text_analytics_client = TextAnalyticsClient(endpoint=azure_endpoint, credential=credential)
-    
+
 #     # Analyze sentiment
 #     documents = [text]
 #     response = text_analytics_client.analyze_sentiment(documents, language="es")
-    
+
 #     # Get the sentiment result
 #     result = response[0]
 #     if not result.is_error:
@@ -265,10 +265,10 @@ async def alternative_analysis(
 #         file_url,
 #         config=config
 #     )
-    
+
 #     # Use LLM to classify speakers
 #     speaker_roles = classify_speakers_with_gpt(transcript.utterances)
-    
+
 #     output = {
 #         "confidence": transcript.confidence,
 #         "phrases": []
@@ -357,7 +357,7 @@ async def alternative_analysis(
 #                 }
 
 #         return structured_summary
-    
+
 # def extract_important_topics(transcript):
 #     """Extracts the 3 most important topics from a conversation transcript using OpenAI."""
 #     # Prepare the conversation text
@@ -365,9 +365,9 @@ async def alternative_analysis(
 #         f"Speaker {phrase['speaker']}: {phrase['text']}"
 #         for phrase in transcript
 #     ])
-    
+
 #     client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    
+
 #     response = client.chat.completions.create(
 #         model="gpt-4o",
 #         messages=[
@@ -379,7 +379,7 @@ async def alternative_analysis(
 
 #     # Print just the content, not the whole response object
 #     response_content = response.choices[0].message.content
-    
+
 #     try:
 #         # Use json module instead of eval for safer parsing
 #         import json
@@ -398,7 +398,7 @@ async def alternative_analysis(
 #             topic_text = topic.lower()
 #             # Check if topic already exists
 #             existing_topic = supabase.table("topics").select("*").eq("topic", topic_text).execute()
-            
+
 #             if existing_topic.data and len(existing_topic.data) > 0:
 #                 topic_id = existing_topic.data[0].get("topic_id")
 #                 if not topic_id:
@@ -410,21 +410,21 @@ async def alternative_analysis(
 #                 if not topic_query.data or len(topic_query.data) == 0:
 #                     print(f"WARNING: Failed to insert new topic '{topic_text}'")
 #                     continue
-                
+
 #                 topic_id = topic_query.data[0].get("topic_id")
 #                 if not topic_id:
 #                     print(f"WARNING: New topic '{topic_text}' is missing topic_id")
 #                     continue
-            
+
 #             # Create relationship in junction table
 #             junction_query = supabase.table("topics_conversations").insert({
 #                 "topic_id": topic_id,
 #                 "conversation_id": conversation_id
 #             }).execute()
-            
+
 #             if not junction_query.data or len(junction_query.data) == 0:
 #                 print(f"WARNING: Failed to create relationship for topic '{topic_text}'")
-            
+
 #         except Exception as e:
 #             print(f"ERROR: Error processing topic '{topic}': {str(e)}")
 #             # Continue processing other topics
@@ -433,18 +433,18 @@ async def alternative_analysis(
 # def process_participants(supabase: Client, participants: List[str], conversation_id: str) -> None:
 #     """Process and insert participants with proper validation."""
 #     valid_participants = []
-    
+
 #     for participant in participants:
 #         try:
 #             # Just validate UUID format without converting to UUID object and back
 #             uuid.UUID(participant)  # This will raise ValueError if invalid
 #             valid_participants.append({
-#                 "conversation_id": conversation_id, 
+#                 "conversation_id": conversation_id,
 #                 "user_id": participant  # Use the string directly
 #             })
 #         except ValueError:
 #             print(f"ERROR: Invalid UUID format for participant: {participant}")
-    
+
 #     if valid_participants:
 #         try:
 #             participant_query = supabase.table("participants").insert(valid_participants).execute()

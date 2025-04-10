@@ -32,7 +32,7 @@ async def get_topics(
         if role == "admin":
             if not clients:
                 query = """
-                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount  
+                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
                     FROM conversations c
                     INNER JOIN participants p ON c.conversation_id = p.conversation_id
                     INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id
@@ -45,7 +45,7 @@ async def get_topics(
                 result = await execute_query(query, start_date, end_date, limit)
             else:
                 query = """
-                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount  
+                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
                     FROM conversations c
                     INNER JOIN participants p ON c.conversation_id = p.conversation_id
                     INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id

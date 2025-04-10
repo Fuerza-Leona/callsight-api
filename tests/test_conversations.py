@@ -41,12 +41,12 @@ def test_get_conversations(mock_supabase):
         }
     ]
     mock_supabase.table().select().execute.return_value.data = mock_data
-    
+
     # Mock the get_categories function to return some test categories
     with patch("app.api.routes.conversations.get_categories", return_value=["support", "billing"]):
         # Make request to the API
         response = client.get("/api/v1/conversations/")
-    
+
     # Assert response
     assert response.status_code == 200
     assert "conversations" in response.json()
@@ -58,7 +58,7 @@ def test_get_mine(mock_current_user, mock_supabase):
     # Setup mock responses for participants query
     mock_participants = [{"conversation_id": "test-conv-1"}]
     mock_supabase.table().select().eq().execute.return_value.data = mock_participants
-    
+
     # Setup mock responses for conversations query
     mock_conversations = [
         {
@@ -68,12 +68,12 @@ def test_get_mine(mock_current_user, mock_supabase):
         }
     ]
     mock_supabase.table().select().in_().execute.return_value.data = mock_conversations
-    
+
     # Mock the get_categories function
     with patch("app.api.routes.conversations.get_categories", return_value=["support"]):
         # Make request to the API
         response = client.get("/api/v1/conversations/mine")
-    
+
     # Assert response
     assert response.status_code == 200
     assert "conversations" in response.json()
@@ -85,17 +85,17 @@ def test_get_emotions(mock_current_user, mock_supabase):
     # Setup mock responses for participants query
     mock_participants = [{"conversation_id": "test-conv-1"}]
     mock_supabase.table().select().eq().execute.return_value.data = mock_participants
-    
+
     # Setup mock responses for messages query
     mock_messages = [
         {"positive": 0.7, "negative": 0.1, "neutral": 0.2},
         {"positive": 0.6, "negative": 0.2, "neutral": 0.2}
     ]
     mock_supabase.table().select().in_().execute.return_value.data = mock_messages
-    
+
     # Make request to the API
     response = client.get("/api/v1/conversations/myClientEmotions")
-    
+
     # Assert response
     assert response.status_code == 200
     assert "emotions" in response.json()
