@@ -23,7 +23,7 @@ class UserSignUp(BaseModel):
     company_name: str = Field(..., min_length=2, description="Company name, minimum 2 characters")
     role: str = Field("client", description="User role, defaults to 'client'")
     department: Optional[str] = Field(None, description="Department within the company")
-    
+
     @field_validator('password')
     def password_strength(cls, v):
         if not any(char.isdigit() for char in v):
@@ -31,7 +31,7 @@ class UserSignUp(BaseModel):
         if not any(char.isupper() for char in v):
             raise ValueError('Password must contain at least one uppercase letter')
         return v
-    
+
 class UserLogin(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., min_length=1, description="User password")
@@ -47,15 +47,15 @@ async def sign_up(
     try:
         # Check if email already exists in your users table
         check_response = supabase.table("users").select("email").eq("email", user_data.email).execute()
-        
+
         if check_response.data and len(check_response.data) > 0:
             raise HTTPException(status_code=400, detail="Email already registered")
-        
+
         company_id = None
-        
+
         # Check if company already exists
         check_company = supabase.table("company_client").select("*").eq("name", user_data.company_name).execute()
-        
+
         # If it does just set the company id
         if check_company.data:
             company_id = check_company.data[0]["company_id"]
@@ -64,17 +64,17 @@ async def sign_up(
             if not create_company.data:
                 raise HTTPException(status_code=500, detail="Failed to create company")
             company_id = create_company.data[0]["company_id"]
-            
-        
+
+
         # Create user in Supabase Auth
         auth_response = supabase.auth.sign_up({
             "email": user_data.email,
             "password": user_data.password
         })
-        
+
         # Get the user ID from Supabase Auth
         user_id = auth_response.user.id
-        
+
         # Create a record in your users table
         user_record = {
             "user_id": user_id,
@@ -85,9 +85,9 @@ async def sign_up(
             "company_id": company_id
             # created_at will be handled by Supabase's default value
         }
-        
+
         db_response = supabase.table("users").insert(user_record).execute()
-        
+
         return {
             "message": "User created successfully",
             "user_id": user_id,
@@ -108,13 +108,13 @@ async def login(
             "email": credentials.email,
             "password": credentials.password
         })
-        
+
         user_id = auth_response.user.id
-        
+
         # Get the user data from your table
         user_response = supabase.table("users").select("*").eq("user_id", user_id).execute()
         user_data = user_response.data[0] if user_response.data else {}
-        
+
         # Return the session information and user data
         return {
             "access_token": auth_response.session.access_token,
@@ -139,7 +139,7 @@ async def logout(
         return {"message": "Logged out successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @router.post("/refresh")
 async def refresh_access_token(
     request: RefreshTokenRequest,
@@ -151,7 +151,7 @@ async def refresh_access_token(
     try:
         # Use Supabase's built-in refresh token functionality
         response = supabase.auth.refresh_session(request.refresh_token)
-        
+
         return {
             "access_token": response.session.access_token,
             "refresh_token": response.session.refresh_token  # Supabase may also refresh the refresh token
@@ -161,7 +161,7 @@ async def refresh_access_token(
             status_code=401,
             detail=f"Invalid refresh token: {str(e)}"
         )
-    
+
 @router.get("/me")
 async def get_current_user_profile(
     current_user = Depends(get_current_user),
@@ -170,10 +170,10 @@ async def get_current_user_profile(
     try:
         user_id = current_user.id
         response = supabase.table("users").select("*").eq("user_id", user_id).execute()
-        
+
         if not response.data:
             raise HTTPException(status_code=404, detail="User profile not found")
-            
+
         user_data = response.data[0]
         return {
             "user_id": user_data["user_id"],
@@ -185,7 +185,7 @@ async def get_current_user_profile(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 async def check_user_role(
         current_user = Depends(get_current_user),
         supabase: Client = Depends(get_supabase)
@@ -197,15 +197,15 @@ async def check_user_role(
         raise HTTPException(status_code=404, detail="User not found")
     return response.data[0]["role"]
 
-async def check_admin_role(current_user = Depends(get_current_user), 
+async def check_admin_role(current_user = Depends(get_current_user),
                           supabase: Client = Depends(get_supabase)):
     """Check if the current user has admin role"""
     user_id = current_user.id
     response = supabase.table("users").select("role").eq("user_id", user_id).execute()
-    
+
     if not response.data or response.data[0]["role"] != "admin":
         raise HTTPException(
-            status_code=403, 
+            status_code=403,
             detail="Not authorized. Admin role required."
         )
     return current_user
@@ -215,7 +215,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = Field(None, description="User email address")
     role: Optional[str] = Field(None, description="User role")
     department: Optional[str] = Field(None, description="Department within the company")
-    
+
 @router.get("/users", dependencies=[Depends(check_admin_role)])
 async def list_users(
     skip: int = 0,
@@ -233,10 +233,10 @@ async def get_user(
 ):
     """Get a specific user by ID - admin only endpoint"""
     response = supabase.table("users").select("*").eq("user_id", user_id).execute()
-    
+
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     return response.data[0]
 
 @router.patch("/users/{user_id}", dependencies=[Depends(check_admin_role)])
@@ -248,15 +248,15 @@ async def update_user(
     """Update user data - admin only endpoint"""
     # Create dict with only the fields that were provided
     update_data = {k: v for k, v in user_data.dict().items() if v is not None}
-    
+
     if not update_data:
         return {"message": "No fields to update"}
-    
+
     response = supabase.table("users").update(update_data).eq("user_id", user_id).execute()
-    
+
     if not response.data:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     return {"message": "User updated successfully", "user": response.data[0]}
 
 @router.get("/clients")
@@ -267,14 +267,14 @@ async def get_my_clients(
     """Get clients that the agent has worked with or all clients if admin"""
     try:
         user_id = current_user.id
-        
+
         # Check user role
         role_response = supabase.table("users").select("role").eq("user_id", user_id).execute()
         if not role_response.data:
             raise HTTPException(status_code=404, detail="User not found")
-            
+
         user_role = role_response.data[0]["role"]
-        
+
         if user_role == UserRole.ADMIN:
             # Admin gets all clients
             clients_response = supabase.table("users").select("user_id, username, email, company_id").eq("role", "client").execute()
@@ -282,24 +282,24 @@ async def get_my_clients(
         elif user_role == UserRole.AGENT:
             # Get conversations this user participated in
             participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
-            
+
             if not participant_response.data:
                 return {"clients": []}
-            
+
             conversation_ids = [item["conversation_id"] for item in participant_response.data]
-            
+
             # Get other participants from these conversations
             other_participants = supabase.table("participants").select("user_id").in_("conversation_id", conversation_ids).neq("user_id", user_id).execute()
-            
+
             if not other_participants.data:
                 return {"clients": []}
-                
+
             other_user_ids = list(set([item["user_id"] for item in other_participants.data]))
-            
+
             # Get client info for these users
             clients_response = supabase.table("users").select("user_id, username, email, company_id").in_("user_id", other_user_ids).eq("role", "client").execute()
-            
+
             return {"clients": clients_response.data}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

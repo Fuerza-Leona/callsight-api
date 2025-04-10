@@ -13,7 +13,7 @@ async def get_companies(supabase: Client = Depends(get_supabase)):
         return {"companies": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-     
+
 @router.get("/{company_id}/list", dependencies=[Depends(check_admin_role)])
 async def get_companies(
     company_id: str,

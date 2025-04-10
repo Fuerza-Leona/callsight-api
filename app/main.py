@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     finally:
         if pool is not None:
             await pool.close()
-            
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",

@@ -3,7 +3,7 @@ from supabase import Client
 
 from app.db.session import get_supabase
 
-router = APIRouter(prefix="/users", tags=["users"]) 
+router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/")
 async def get_all(supabase: Client = Depends(get_supabase)):
@@ -30,7 +30,7 @@ async def get_clients(supabase: Client = Depends(get_supabase)):
         return {"data": response.data, "users": users}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-        
+
 @router.get("/employees/{company_id}")
 async def get_companies(
     company_id: str,

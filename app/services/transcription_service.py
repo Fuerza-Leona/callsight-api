@@ -17,10 +17,10 @@ def get_transcription(file_url: str):
         file_url,
         config=config
     )
-    
+
     # Use LLM to classify speakers
     speaker_roles = classify_speakers_with_gpt(transcript.utterances)
-    
+
     output = {
         "confidence": transcript.confidence,
         "phrases": []
@@ -46,11 +46,11 @@ def classify_speakers_with_gpt(utterances):
     sample_conversation = []
     for i, utterance in enumerate(utterances):
         sample_conversation.append(f"Speaker {utterance.speaker}: {utterance.text}")
-    
+
     conversation_text = "\n".join(sample_conversation)
-    
+
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    
+
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
@@ -59,7 +59,7 @@ def classify_speakers_with_gpt(utterances):
         ],
         response_format={"type": "json_object"}
     )
-    
+
     try:
         roles = eval(response.choices[0].message.content)
         return roles

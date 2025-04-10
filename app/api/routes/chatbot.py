@@ -15,4 +15,3 @@ async def get_companies(
         return {"response": "Wasaaa el hector no me ha implementado"}
     except Exception as e:
         pass
-     
