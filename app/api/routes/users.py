@@ -26,8 +26,7 @@ async def get_employees(supabase: Client = Depends(get_supabase)):
 async def get_clients(supabase: Client = Depends(get_supabase)):
     try:
         response = supabase.table("users").select("user_id, username").eq("role", "client").execute()
-        users = [i["username"] for i in response.data]
-        return {"data": response.data, "users": users}
+        return {"clients": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
