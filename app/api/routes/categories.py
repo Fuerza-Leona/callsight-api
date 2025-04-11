@@ -8,8 +8,7 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 @router.get("/")
 async def get_categories(supabase: Client = Depends(get_supabase)):
     try:
-        response = supabase.table("category").select("name").execute()
-        names = [i["name"]for i in response.data]
-        return {"categories": names}
+        response = supabase.table("category").select("category_id, name").execute()
+        return {"categories": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
