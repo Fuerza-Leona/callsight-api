@@ -20,7 +20,8 @@ async def get_companies(
     supabase: Client = Depends(get_supabase)
 ):
     try:
-        response = supabase.table("users").select("*").eq("company_id", company_id).execute()
+        response = supabase.table("users").select("*, company_client(company_id, name)").eq("company_client.name", company_id).execute()
+        print(response)
         return {"companies": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
