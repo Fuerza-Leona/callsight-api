@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Tuple, List
 from fastapi import HTTPException
 
+
 def parse_inputs(date_string: str, participants: str) -> Tuple[datetime, List[str]]:
     """
     Parse and validate inputs from the API request
@@ -22,7 +23,9 @@ def parse_inputs(date_string: str, participants: str) -> Tuple[datetime, List[st
         try:
             date_time = datetime.strptime(date_string, "%Y-%m-%d %H:%M")
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format. Expected YYYY-MM-DD HH:MM")
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Expected YYYY-MM-DD HH:MM"
+            )
 
     # Parse participants
     participant_list = []

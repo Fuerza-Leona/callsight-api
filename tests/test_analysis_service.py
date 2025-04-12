@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import json
 
+
 # Sample transcript data for testing
 @pytest.fixture
 def sample_transcript():
@@ -14,7 +15,7 @@ def sample_transcript():
             "offsetMilliseconds": 1000,
             "positive": 0.7,
             "negative": 0.1,
-            "neutral": 0.2
+            "neutral": 0.2,
         },
         {
             "text": "Hola, tengo un problema con mi factura. Hay un cargo que no reconozco.",
@@ -24,7 +25,7 @@ def sample_transcript():
             "offsetMilliseconds": 5000,
             "positive": 0.2,
             "negative": 0.6,
-            "neutral": 0.2
+            "neutral": 0.2,
         },
         {
             "text": "Entiendo su preocupación. Permítame revisar su cuenta para verificar ese cargo.",
@@ -34,7 +35,7 @@ def sample_transcript():
             "offsetMilliseconds": 12000,
             "positive": 0.6,
             "negative": 0.1,
-            "neutral": 0.3
+            "neutral": 0.3,
         },
         {
             "text": "Gracias, el cargo es del 15 de abril por $49.99.",
@@ -44,13 +45,14 @@ def sample_transcript():
             "offsetMilliseconds": 18000,
             "positive": 0.3,
             "negative": 0.4,
-            "neutral": 0.3
-        }
+            "neutral": 0.3,
+        },
     ]
 
+
 # Test analyze_sentiment function
-@patch('app.services.analysis_service.AzureKeyCredential')
-@patch('app.services.analysis_service.TextAnalyticsClient')
+@patch("app.services.analysis_service.AzureKeyCredential")
+@patch("app.services.analysis_service.TextAnalyticsClient")
 def test_analyze_sentiment(mock_text_analytics_client, mock_azure_credential):
     from app.services.analysis_service import analyze_sentiment
 
@@ -75,11 +77,14 @@ def test_analyze_sentiment(mock_text_analytics_client, mock_azure_credential):
     assert result["neutral"] == 0.10
 
     # Verify mock calls
-    mock_client_instance.analyze_sentiment.assert_called_once_with([text], language="es")
+    mock_client_instance.analyze_sentiment.assert_called_once_with(
+        [text], language="es"
+    )
+
 
 # Test analyze_sentiment with error
-@patch('app.services.analysis_service.AzureKeyCredential')
-@patch('app.services.analysis_service.TextAnalyticsClient')
+@patch("app.services.analysis_service.AzureKeyCredential")
+@patch("app.services.analysis_service.TextAnalyticsClient")
 def test_analyze_sentiment_error(mock_text_analytics_client, mock_azure_credential):
     from app.services.analysis_service import analyze_sentiment
 
@@ -101,6 +106,7 @@ def test_analyze_sentiment_error(mock_text_analytics_client, mock_azure_credenti
     assert result["negative"] == 0
     assert result["neutral"] == 1
 
+
 class MockConversationClient:
     def __init__(self, *args, **kwargs):
         self.begin_conversation_analysis = MagicMock()
@@ -111,6 +117,7 @@ class MockConversationClient:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
+
 
 # Test summarize_conversation function
 def test_summarize_conversation(sample_transcript):
@@ -129,12 +136,12 @@ def test_summarize_conversation(sample_transcript):
                                 "summaries": [
                                     {
                                         "aspect": "issue",
-                                        "text": "El cliente reporta un cargo no reconocido en su factura por $49.99 del 15 de abril."
+                                        "text": "El cliente reporta un cargo no reconocido en su factura por $49.99 del 15 de abril.",
                                     }
                                 ]
                             }
-                        ]
-                    }
+                        ],
+                    },
                 },
                 {
                     "taskName": "Resolution task",
@@ -145,13 +152,13 @@ def test_summarize_conversation(sample_transcript):
                                 "summaries": [
                                     {
                                         "aspect": "resolution",
-                                        "text": "El agente ofreció revisar la cuenta del cliente para verificar el cargo."
+                                        "text": "El agente ofreció revisar la cuenta del cliente para verificar el cargo.",
                                     }
                                 ]
                             }
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             ]
         }
     }
@@ -164,10 +171,11 @@ def test_summarize_conversation(sample_transcript):
     mock_client = MockConversationClient()
     mock_client.begin_conversation_analysis.return_value = mock_poller
 
-    # Patch both credential and client
-    with patch('app.services.analysis_service.AzureKeyCredential') as mock_credential, \
-         patch('app.services.analysis_service.ConversationAnalysisClient', return_value=mock_client):
-
+    # Patch only the client since we don't use the credential mock
+    with patch(
+        "app.services.analysis_service.ConversationAnalysisClient",
+        return_value=mock_client,
+    ):
         # Call the function
         result = summarize_conversation(sample_transcript)
 
@@ -176,11 +184,17 @@ def test_summarize_conversation(sample_transcript):
         assert "issue" in result["Issue task"]
         assert "Resolution task" in result
         assert "resolution" in result["Resolution task"]
-        assert "El cliente reporta un cargo no reconocido" in result["Issue task"]["issue"]
-        assert "El agente ofreció revisar la cuenta" in result["Resolution task"]["resolution"]
+        assert (
+            "El cliente reporta un cargo no reconocido" in result["Issue task"]["issue"]
+        )
+        assert (
+            "El agente ofreció revisar la cuenta"
+            in result["Resolution task"]["resolution"]
+        )
+
 
 # Test extract_important_topics function
-@patch('app.services.analysis_service.OpenAI')
+@patch("app.services.analysis_service.OpenAI")
 def test_extract_important_topics(mock_openai, sample_transcript):
     from app.services.analysis_service import extract_important_topics
 
@@ -190,7 +204,15 @@ def test_extract_important_topics(mock_openai, sample_transcript):
 
     mock_response = MagicMock()
     mock_message = MagicMock()
-    mock_message.content = json.dumps({"temas_importantes": ["facturación", "cargo desconocido", "verificación cuenta"]})
+    mock_message.content = json.dumps(
+        {
+            "temas_importantes": [
+                "facturación",
+                "cargo desconocido",
+                "verificación cuenta",
+            ]
+        }
+    )
     mock_choice = MagicMock()
     mock_choice.message = mock_message
     mock_response.choices = [mock_choice]
@@ -210,19 +232,24 @@ def test_extract_important_topics(mock_openai, sample_transcript):
     mock_client.chat.completions.create.assert_called_once()
     assert mock_client.chat.completions.create.call_args[1]["model"] == "gpt-4o"
 
+
 # Test analyze_conversation function (integration of the above functions)
-@patch('app.services.analysis_service.extract_important_topics')
-@patch('app.services.analysis_service.summarize_conversation')
+@patch("app.services.analysis_service.extract_important_topics")
+@patch("app.services.analysis_service.summarize_conversation")
 def test_analyze_conversation(mock_summarize, mock_topics, sample_transcript):
     from app.services.analysis_service import analyze_conversation
 
-   # Set up mock return values
+    # Set up mock return values
     mock_summarize.return_value = {
         "Issue task": {"issue": "Cargo no reconocido en factura"},
-        "Resolution task": {"resolution": "Revisión de cuenta"}
+        "Resolution task": {"resolution": "Revisión de cuenta"},
     }
 
-    mock_topics.return_value = ["facturación", "cargo desconocido", "verificación cuenta"]
+    mock_topics.return_value = [
+        "facturación",
+        "cargo desconocido",
+        "verificación cuenta",
+    ]
 
     # Call the function
     result = analyze_conversation(sample_transcript)

@@ -12,9 +12,12 @@ from app.services.analysis_service import analyze_conversation
 from app.services.storage_service import store_conversation_data
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+
+
 class AnalysisResponse(BaseModel):
     success: bool
     conversation_id: str
+
 
 @router.post(
     "/alternative-analysis",
@@ -23,32 +26,34 @@ class AnalysisResponse(BaseModel):
     responses={
         201: {
             "description": "Successfully analyzed audio and created conversation",
-            "model": AnalysisResponse
+            "model": AnalysisResponse,
         },
         400: {
             "description": "Bad request - invalid inputs",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Invalid date format. Expected YYYY-MM-DD HH:MM"}
+                    "example": {
+                        "detail": "Invalid date format. Expected YYYY-MM-DD HH:MM"
+                    }
                 }
-            }
+            },
         },
         401: {
             "description": "Unauthorized - authentication required",
             "content": {
-                "application/json": {
-                    "example": {"detail": "Not authenticated"}
-                }
-            }
+                "application/json": {"example": {"detail": "Not authenticated"}}
+            },
         },
         500: {
             "description": "Internal server error during processing",
             "content": {
                 "application/json": {
-                    "example": {"detail": "File upload failed: Could not connect to storage"}
+                    "example": {
+                        "detail": "File upload failed: Could not connect to storage"
+                    }
                 }
-            }
-        }
+            },
+        },
     },
     summary="Analyze an audio call recording",
     description="""
@@ -61,27 +66,23 @@ class AnalysisResponse(BaseModel):
     4. Stores the results in the database
 
     The audio file should be in MP3, MP4, or WAV format.
-    """
+    """,
 )
 async def alternative_analysis(
     file: UploadFile = File(
-        ...,
-        description="Audio file of the call recording (MP3, MP4, or WAV format)"
+        ..., description="Audio file of the call recording (MP3, MP4, or WAV format)"
     ),
     date_string: str = Form(
-        ...,
-        description="Date and time of the call in format 'YYYY-MM-DD HH:MM'"
+        ..., description="Date and time of the call in format 'YYYY-MM-DD HH:MM'"
     ),
     participants: str = Form(
-        "",
-        description="Comma-separated list of participant UUIDs"
+        "", description="Comma-separated list of participant UUIDs"
     ),
     company_id: str = Form(
-        ...,
-        description="UUID of the company associated with this call"
+        ..., description="UUID of the company associated with this call"
     ),
-    current_user = Depends(get_current_user),
-    supabase: Client = Depends(get_supabase)
+    current_user=Depends(get_current_user),
+    supabase: Client = Depends(get_supabase),
 ):
     """
     Process and analyze a call center audio recording.
@@ -123,15 +124,15 @@ async def alternative_analysis(
             duration,
             company_id,
             analysis_result,
-            participant_list
+            participant_list,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database operation failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Database operation failed: {str(e)}"
+        )
 
-    return AnalysisResponse(
-        success=True,
-        conversation_id=conversation_id
-    )
+    return AnalysisResponse(success=True, conversation_id=conversation_id)
+
 
 # async def process_audio_for_analysis(file: UploadFile, supabase: Client, current_user):
 #     """Uploads an audio file to Supabase storage and returns the file URL"""

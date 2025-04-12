@@ -6,6 +6,7 @@ import io
 from app.services.convert_audio import convert_audio
 import os
 
+
 async def process_audio(file: UploadFile, supabase: Client, current_user):
     """Uploads an audio file to Supabase storage and returns the file URL"""
     try:
@@ -23,7 +24,7 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
             if file_ext.lower() not in allowed_extensions:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Unsupported file format. Only {', '.join(allowed_extensions)} files are allowed."
+                    detail=f"Unsupported file format. Only {', '.join(allowed_extensions)} files are allowed.",
                 )
 
         storage_path = f"{audio_id}.{file_ext}" if file_ext else audio_id
@@ -36,12 +37,12 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
             supabase.storage.from_("audios").upload(
                 storage_path,
                 file_content,
-                file_options={"content_type": file.content_type}
+                file_options={"content_type": file.content_type},
             )
         except Exception as upload_error:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to upload file to storage: {str(upload_error)}"
+                detail=f"Failed to upload file to storage: {str(upload_error)}",
             )
 
         # Get the public URL of the uploaded file
@@ -81,7 +82,9 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
             print(f"Failed to clean up temp file: {cleanup_err}")
 
         if not db_response.data:
-            raise HTTPException(status_code=500, detail="Failed to insert record into database")
+            raise HTTPException(
+                status_code=500, detail="Failed to insert record into database"
+            )
 
         return file_url, audio_id, duration
     except Exception as e:

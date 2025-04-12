@@ -1,15 +1,15 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import Client
-from typing import Optional
 
 from app.db.session import get_supabase
 
 security = HTTPBearer()
 
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    supabase: Client = Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
 ):
     """
     Validate access token and return user information.
@@ -35,6 +35,7 @@ async def get_current_user(
             detail=f"Invalid authentication credentials: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
 
 # Example of a protected route:
 """
