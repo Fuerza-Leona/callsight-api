@@ -83,28 +83,90 @@ async def get_mine(
 
     return {"conversations": conversations_response.data}
 
-@router.get("/myClientEmotions")
+
+async def build_client_emotions_query(start_date, end_date, role, user_id, clients, categories):
+    base_query = """
+        SELECT 
+            ROUND(AVG(m.positive)::numeric, 2) AS positive,
+            ROUND(AVG(m.negative)::numeric, 2) AS negative,
+            ROUND(AVG(m.neutral)::numeric, 2) AS neutral
+        FROM 
+            conversations c
+        INNER JOIN 
+            messages m ON c.conversation_id = m.conversation_id"""
+    
+    conditions = ["c.start_time BETWEEN %s AND %s"]
+    params = [start_date, end_date]
+
+    if role == "agent":
+        base_query += """
+        INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
+        conditions.append("p_agent.user_id = %s")
+        params.append(user_id)
+
+    if clients:
+        base_query += """
+        INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
+        conditions.append("p_client.user_id = ANY(%s::uuid[])")
+        params.append(clients)
+
+        
+    if categories:
+        base_query += """
+        INNER JOIN company_client cc ON c.company_id = cc.company_id"""        
+        conditions.append("cc.category_id = ANY(%s::uuid[])")
+        params.append(categories)
+
+        
+    if conditions:
+        base_query += """
+        WHERE m.role = 'client' AND """ + "\n        AND ".join(conditions)
+
+    return base_query, params
+
+
+class ClientEmotionsRequest(BaseModel):
+    clients: List[str] = []
+    categories: List[str] = []
+    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+
+
+@router.post("/myClientEmotions")
 async def get_emotions(
+    request: ClientEmotionsRequest,
     current_user = Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
-    """Return emotions across all messages in conversations for the currently authorized user"""
+    clients = request.clients
+    categories = request.categories
+    startDate = request.startDate
+    endDate = request.endDate
     user_id = current_user.id
-    #TODO: enable after multiple calls: participant_response = supabase.table("participants").select("conversation_id").execute()
-    participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
 
-    print(participant_response)
-    if not participant_response.data:
-        return {"conversations": []}
+    try:
+        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        if start_date > end_date:
+            raise ValueError("Start date cannot be after end date")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+    
+    role = await check_user_role(current_user, supabase)
+    if role not in ["admin", "agent"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    query, params = await build_client_emotions_query(start_date, end_date, role, user_id, clients, categories) 
 
-    conversation_ids = [item["conversation_id"] for item in participant_response.data]
-    response = supabase.table("messages").select("positive, negative, neutral").in_("conversation_id", conversation_ids).execute()
-
-    positive_sum = round(sum(item["positive"] for item in response.data) / len(response.data) * 100) if response.data else 0
-    negative_sum = round(sum(item["negative"] for item in response.data) / len(response.data) * 100) if response.data else 0
-    neutral_sum = round(sum(item["neutral"] for item in response.data) / len(response.data) * 100) if response.data else 0
-
-    return {"emotions": {"positive": positive_sum, "negative": negative_sum, "neutral": neutral_sum}}
+    try:
+        response = await execute_query(query, *params)
+        if response:
+            row = response[0]
+            return {"emotions": {"positive": row["positive"], "negative": row["negative"], "neutral": row["neutral"]}}
+        return {"emotions": {"positive": 0, "negative": 0, "neutral": 0}}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
 
 @router.get("/{conversation_id}")
