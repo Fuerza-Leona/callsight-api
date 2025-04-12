@@ -1,6 +1,5 @@
 import pytest
 import io
-import uuid
 from unittest.mock import MagicMock, patch, AsyncMock
 from fastapi.testclient import TestClient
 from fastapi import UploadFile
@@ -14,12 +13,14 @@ from app.services.transcription_service import get_transcription
 # Create test client
 client = TestClient(app)
 
+
 # Mock user for authentication
 @pytest.fixture
 def mock_current_user():
     mock_user = MagicMock()
     mock_user.id = "test-user-id"
     return mock_user
+
 
 # Mock Supabase client
 @pytest.fixture
@@ -35,10 +36,13 @@ def mock_supabase():
 
     # Mock table insertion
     table_mock = MagicMock()
-    table_mock.insert.return_value.execute.return_value.data = [{"audio_id": "test-audio-id"}]
+    table_mock.insert.return_value.execute.return_value.data = [
+        {"audio_id": "test-audio-id"}
+    ]
     mock_client.table.return_value = table_mock
 
     return mock_client
+
 
 # Override dependencies for testing
 @pytest.fixture(autouse=True)
@@ -48,11 +52,13 @@ def override_dependencies(mock_current_user, mock_supabase):
     yield
     app.dependency_overrides = {}
 
+
 # Mock file for testing
 @pytest.fixture
 def mock_audio_file():
     file_content = b"test audio content"
     return io.BytesIO(file_content)
+
 
 # Test audio upload and processing
 @pytest.mark.asyncio
@@ -64,21 +70,25 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     mock_file.read = AsyncMock(return_value=mock_audio_file.getvalue())
     mock_file.seek = AsyncMock()
 
-    mock_supabase.reset_mock();
+    mock_supabase.reset_mock()
 
-    storage_mock = MagicMock();
-    storage_mock.upload.return_value = None;
+    storage_mock = MagicMock()
+    storage_mock.upload.return_value = None
     storage_mock.get_public_url.return_value = "https://example.com/test-audio.mp3"
     mock_supabase.storage.from_.return_value = storage_mock
 
     # Mock librosa duration calculation
-    with patch("librosa.load") as mock_load, \
-         patch("librosa.get_duration") as mock_duration:
+    with (
+        patch("librosa.load") as mock_load,
+        patch("librosa.get_duration") as mock_duration,
+    ):
         mock_load.return_value = (None, None)  # y, sr values
         mock_duration.return_value = 60  # 60 seconds
 
         # Call the function
-        file_url, audio_id, duration = await process_audio(mock_file, mock_supabase, mock_current_user)
+        file_url, audio_id, duration = await process_audio(
+            mock_file, mock_supabase, mock_current_user
+        )
 
     # Assertions
     assert file_url == "https://example.com/test-audio.mp3"
@@ -89,16 +99,20 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     assert mock_supabase.storage.from_.called
     assert mock_supabase.table.called
 
+
 # Test transcription service
 @pytest.mark.asyncio
 async def test_transcription_service():
     file_url = "https://example.com/test-audio.mp3"
 
     # Mock assemblyai transcription
-    with patch("assemblyai.Transcriber") as mock_transcriber_class, \
-         patch("app.services.transcription_service.classify_speakers_with_gpt") as mock_classify, \
-         patch("app.services.transcription_service.analyze_sentiment") as mock_sentiment:
-
+    with (
+        patch("assemblyai.Transcriber") as mock_transcriber_class,
+        patch(
+            "app.services.transcription_service.classify_speakers_with_gpt"
+        ) as mock_classify,
+        patch("app.services.transcription_service.analyze_sentiment") as mock_sentiment,
+    ):
         # Set up mock transcriber
         mock_transcriber = MagicMock()
         mock_transcriber_class.return_value = mock_transcriber
@@ -132,7 +146,7 @@ async def test_transcription_service():
         # Set up sentiment analysis mock
         mock_sentiment.side_effect = [
             {"positive": 0.8, "negative": 0.1, "neutral": 0.1},  # For utterance 1
-            {"positive": 0.3, "negative": 0.6, "neutral": 0.1}   # For utterance 2
+            {"positive": 0.3, "negative": 0.6, "neutral": 0.1},  # For utterance 2
         ]
 
         # Call the function
@@ -155,21 +169,31 @@ async def test_transcription_service():
         assert result["phrases"][1]["negative"] == 0.6
 
         # Verify mock calls
-        mock_transcriber.transcribe.assert_called_once_with(file_url, config=mock_transcriber_class().transcribe.call_args[1]["config"])
+        mock_transcriber.transcribe.assert_called_once_with(
+            file_url, config=mock_transcriber_class().transcribe.call_args[1]["config"]
+        )
         assert mock_classify.call_count == 1
         assert mock_sentiment.call_count == 2
 
+
 # Test the full AI analysis endpoint
 @pytest.mark.asyncio
-async def test_alternative_analysis_endpoint(mock_supabase, mock_current_user, mock_audio_file):
+async def test_alternative_analysis_endpoint(
+    mock_supabase, mock_current_user, mock_audio_file
+):
     # Setup mocks for all dependent services
-    with patch("app.api.routes.ai.process_audio") as mock_process_audio, \
-         patch("app.api.routes.ai.get_transcription") as mock_get_transcription, \
-         patch("app.api.routes.ai.analyze_conversation") as mock_analyze, \
-         patch("app.api.routes.ai.store_conversation_data") as mock_store:
-
+    with (
+        patch("app.api.routes.ai.process_audio") as mock_process_audio,
+        patch("app.api.routes.ai.get_transcription") as mock_get_transcription,
+        patch("app.api.routes.ai.analyze_conversation") as mock_analyze,
+        patch("app.api.routes.ai.store_conversation_data") as mock_store,
+    ):
         # Set up return values
-        mock_process_audio.return_value = ("https://example.com/test-audio.mp3", "test-audio-id", 60)
+        mock_process_audio.return_value = (
+            "https://example.com/test-audio.mp3",
+            "test-audio-id",
+            60,
+        )
 
         mock_transcript_result = {
             "confidence": 0.95,
@@ -182,7 +206,7 @@ async def test_alternative_analysis_endpoint(mock_supabase, mock_current_user, m
                     "offsetMilliseconds": 1000,
                     "positive": 0.8,
                     "negative": 0.1,
-                    "neutral": 0.1
+                    "neutral": 0.1,
                 },
                 {
                     "text": "I'm having an issue with my account.",
@@ -192,9 +216,9 @@ async def test_alternative_analysis_endpoint(mock_supabase, mock_current_user, m
                     "offsetMilliseconds": 5000,
                     "positive": 0.3,
                     "negative": 0.6,
-                    "neutral": 0.1
-                }
-            ]
+                    "neutral": 0.1,
+                },
+            ],
         }
         mock_get_transcription.return_value = mock_transcript_result
 
@@ -202,9 +226,9 @@ async def test_alternative_analysis_endpoint(mock_supabase, mock_current_user, m
             "phrases": mock_transcript_result["phrases"],
             "summary": {
                 "Issue task": {"issue": "Account access problem"},
-                "Resolution task": {"resolution": "Reset account credentials"}
+                "Resolution task": {"resolution": "Reset account credentials"},
             },
-            "topics": ["account access", "password reset", "login issues"]
+            "topics": ["account access", "password reset", "login issues"],
         }
         mock_analyze.return_value = mock_analysis_result
 
@@ -220,8 +244,8 @@ async def test_alternative_analysis_endpoint(mock_supabase, mock_current_user, m
             data={
                 "date_string": "2023-05-15 14:30",
                 "participants": "user-id-1,user-id-2",
-                "company_id": "company-id-1"
-            }
+                "company_id": "company-id-1",
+            },
         )
 
         # Assertions
@@ -231,6 +255,8 @@ async def test_alternative_analysis_endpoint(mock_supabase, mock_current_user, m
 
         # Verify mock calls
         mock_process_audio.assert_called_once()
-        mock_get_transcription.assert_called_once_with("https://example.com/test-audio.mp3")
+        mock_get_transcription.assert_called_once_with(
+            "https://example.com/test-audio.mp3"
+        )
         mock_analyze.assert_called_once_with(mock_transcript_result["phrases"])
         mock_store.assert_called_once()

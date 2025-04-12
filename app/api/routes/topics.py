@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from typing import List, Optional
 from app.api.deps import get_current_user
@@ -10,7 +10,10 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/topics", tags=["topics"])
 
-async def build_topics_query(start_date, end_date, role, user_id, clients, categories, limit):
+
+async def build_topics_query(
+    start_date, end_date, role, user_id, clients, categories, limit
+):
     base_query = """
         SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
         FROM conversations c
@@ -55,7 +58,9 @@ class TopicsRequest(BaseModel):
     clients: List[str] = []
     categories: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (
+        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
+    ).strftime("%Y-%m-%d")
     limit: int = 10
 
 
@@ -63,7 +68,7 @@ class TopicsRequest(BaseModel):
 async def get_topics(
     request: TopicsRequest,
     current_user=Depends(get_current_user),
-    supabase: Client=Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
     categories = request.categories
@@ -85,7 +90,9 @@ async def get_topics(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_topics_query(start_date, end_date, role, user_id, clients, categories, limit)
+    query, params = await build_topics_query(
+        start_date, end_date, role, user_id, clients, categories, limit
+    )
     try:
         result = await execute_query(query, *params)
         return {"topics": result}

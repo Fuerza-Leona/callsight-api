@@ -2,18 +2,13 @@
 import argparse
 import uvicorn
 import sys
-from app.core.config import settings
+
 
 def start_server(host: str, port: int, reload: bool) -> None:
     """Start the uvicorn server with the provided configuration."""
     print(f"Starting Callsight API server at {host}:{port}")
-    uvicorn.run(
-        "app.main:app",
-        host=host,
-        port=port,
-        reload=reload,
-        log_level="info"
-    )
+    uvicorn.run("app.main:app", host=host, port=port, reload=reload, log_level="info")
+
 
 def main() -> None:
     """Main entry point for the CLI."""
@@ -25,20 +20,18 @@ def main() -> None:
         "--host",
         type=str,
         default="0.0.0.0",
-        help="Host to bind the server to (default: 0.0.0.0)"
+        help="Host to bind the server to (default: 0.0.0.0)",
     )
 
     parser.add_argument(
         "--port",
         type=int,
         default=8000,
-        help="Port to bind the server to (default: 8000)"
+        help="Port to bind the server to (default: 8000)",
     )
 
     parser.add_argument(
-        "--reload",
-        action="store_true",
-        help="Enable auto-reload for development"
+        "--reload", action="store_true", help="Enable auto-reload for development"
     )
 
     args = parser.parse_args()
@@ -51,6 +44,7 @@ def main() -> None:
     except Exception as e:
         print(f"Error starting Callsight API server: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

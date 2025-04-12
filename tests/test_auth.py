@@ -8,6 +8,7 @@ from app.db.session import get_supabase
 # Create test client
 client = TestClient(app)
 
+
 # Mock Supabase client
 @pytest.fixture
 def mock_supabase():
@@ -15,6 +16,7 @@ def mock_supabase():
     app.dependency_overrides[get_supabase] = lambda: mock_client
     yield mock_client
     app.dependency_overrides = {}
+
 
 def test_login(mock_supabase):
     # Setup mock user and session response
@@ -30,14 +32,14 @@ def test_login(mock_supabase):
         "username": "testuser",
         "email": "test@example.com",
         "role": "agent",
-        "department": "support"
+        "department": "support",
     }
     mock_supabase.table().select().eq().execute.return_value.data = [mock_user_data]
 
     # Make request to the API
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "test@example.com", "password": "TestPass123"}
+        json={"email": "test@example.com", "password": "TestPass123"},
     )
 
     # Assert response
@@ -52,6 +54,7 @@ def test_login(mock_supabase):
     mock_supabase.auth.sign_in_with_password.assert_called_once()
     mock_supabase.table().select().eq().execute.assert_called_once()
 
+
 def test_signup(mock_supabase):
     # Setup mock responses
     # First check if email exists - should return empty array
@@ -64,7 +67,7 @@ def test_signup(mock_supabase):
     # Create a sequence of responses for different calls
     mock_supabase.table().select().eq().execute.side_effect = [
         MagicMock(data=[]),  # Email check - no existing user
-        company_check_response  # Company check - existing company
+        company_check_response,  # Company check - existing company
     ]
 
     # Mock auth signup response
@@ -90,8 +93,8 @@ def test_signup(mock_supabase):
             "username": "newuser",
             "company_name": "Existing Company",
             "role": "agent",
-            "department": "sales"
-        }
+            "department": "sales",
+        },
     )
 
     # Assert response

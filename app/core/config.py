@@ -1,14 +1,13 @@
 import os
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
-import subprocess
-import json
 
 # Try to load load from .env file
 try:
     load_dotenv()
-except Exception as e:
-    print(f"Error obtaining environment variables")
+except Exception:
+    print("Error obtaining environment variables")
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CallSight API"
@@ -50,12 +49,13 @@ class Settings(BaseSettings):
     # CORS settings
     BACKEND_CORS_ORIGINS: list = ["*"]
 
-    ASSEMBLYAI_API_KEY : str = os.getenv("ASSEMBLYAI_API_KEY", "")
-    OPENAI_API_KEY : str = os.getenv("OPENAI_API_KEY", "")
+    ASSEMBLYAI_API_KEY: str = os.getenv("ASSEMBLYAI_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
     class Config:
         env_file = ".env"
+
 
 settings = Settings()

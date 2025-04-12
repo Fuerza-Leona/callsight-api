@@ -1,7 +1,6 @@
 import os
 import pytest
 import pytest_asyncio
-from app.core.config import settings
 
 # Set test environment variables
 os.environ["TESTING"] = "True"
@@ -13,9 +12,11 @@ os.environ["TESTING"] = "True"
 # Configure pytest-asyncio
 pytest_asyncio.config_mode = "strict"
 
+
 def pytest_configure(config):
     config.option.asyncio_mode = "strict"
     config.option.asyncio_default_fixture_loop_scope = "function"
+
 
 @pytest.fixture
 def test_app():

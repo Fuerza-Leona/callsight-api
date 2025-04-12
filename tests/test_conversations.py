@@ -9,6 +9,7 @@ from app.api.deps import get_current_user
 # Create test client
 client = TestClient(app)
 
+
 # Mock user for authentication
 @pytest.fixture
 def mock_current_user():
@@ -16,11 +17,13 @@ def mock_current_user():
     mock_user.id = "test-user-id"
     return mock_user
 
+
 # Mock Supabase client
 @pytest.fixture
 def mock_supabase():
     mock_client = MagicMock()
     return mock_client
+
 
 # Override dependencies for testing
 @pytest.fixture(autouse=True)
@@ -30,6 +33,7 @@ def override_dependencies(mock_current_user, mock_supabase):
     yield
     app.dependency_overrides = {}
 
+
 # Test getting all conversations
 def test_get_conversations(mock_supabase):
     # Setup mock responses
@@ -37,13 +41,16 @@ def test_get_conversations(mock_supabase):
         {
             "conversation_id": "test-conv-1",
             "start_time": "2023-01-01T10:00:00",
-            "end_time": "2023-01-01T10:15:00"
+            "end_time": "2023-01-01T10:15:00",
         }
     ]
     mock_supabase.table().select().execute.return_value.data = mock_data
 
     # Mock the get_categories function to return some test categories
-    with patch("app.api.routes.conversations.get_categories", return_value=["support", "billing"]):
+    with patch(
+        "app.api.routes.conversations.get_categories",
+        return_value=["support", "billing"],
+    ):
         # Make request to the API
         response = client.get("/api/v1/conversations/")
 
@@ -52,6 +59,7 @@ def test_get_conversations(mock_supabase):
     assert "conversations" in response.json()
     assert len(response.json()["conversations"]) == 1
     assert response.json()["conversations"][0]["conversation_id"] == "test-conv-1"
+
 
 # Test getting conversations for the current user
 def test_get_mine(mock_current_user, mock_supabase):
@@ -64,7 +72,7 @@ def test_get_mine(mock_current_user, mock_supabase):
         {
             "conversation_id": "test-conv-1",
             "start_time": "2023-01-01T10:00:00",
-            "end_time": "2023-01-01T10:15:00"
+            "end_time": "2023-01-01T10:15:00",
         }
     ]
     mock_supabase.table().select().in_().execute.return_value.data = mock_conversations
@@ -79,6 +87,7 @@ def test_get_mine(mock_current_user, mock_supabase):
     assert "conversations" in response.json()
     assert len(response.json()["conversations"]) == 1
     assert response.json()["conversations"][0]["conversation_id"] == "test-conv-1"
+
 
 # Test getting emotions data
 def test_get_emotions(mock_current_user, mock_supabase):
@@ -98,8 +107,8 @@ def test_get_emotions(mock_current_user, mock_supabase):
                     "clients": [],
                     "categories": [],
                     "startDate": "2023-01-01",
-                    "endDate": "2023-01-31"
-                }
+                    "endDate": "2023-01-31",
+                },
             )
 
     # Assert response

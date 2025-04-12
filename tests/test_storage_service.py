@@ -1,14 +1,14 @@
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime
-import uuid
 
 from app.services.storage_service import (
     store_conversation_data,
     process_topics,
     process_participants,
-    process_transcripts
+    process_transcripts,
 )
+
 
 # Sample data for testing
 @pytest.fixture
@@ -23,7 +23,7 @@ def sample_analysis_result():
                 "offsetMilliseconds": 1000,
                 "positive": 0.7,
                 "negative": 0.1,
-                "neutral": 0.2
+                "neutral": 0.2,
             },
             {
                 "text": "Hola, tengo un problema con mi servicio de internet.",
@@ -33,26 +33,28 @@ def sample_analysis_result():
                 "offsetMilliseconds": 5000,
                 "positive": 0.2,
                 "negative": 0.6,
-                "neutral": 0.2
-            }
+                "neutral": 0.2,
+            },
         ],
         "summary": {
             "Issue task": {"issue": "Problema con servicio de internet"},
-            "Resolution task": {"resolution": "Soporte técnico proporcionado"}
+            "Resolution task": {"resolution": "Soporte técnico proporcionado"},
         },
-        "topics": ["internet", "servicio técnico", "soporte"]
+        "topics": ["internet", "servicio técnico", "soporte"],
     }
+
 
 # Test store_conversation_data
 @pytest.mark.asyncio
 async def test_store_conversation_data(sample_analysis_result):
-
     # Mock supabase
     mock_supabase = MagicMock()
 
     # Mock conversation
     conversation_mock = MagicMock()
-    conversation_mock.execute.return_value.data = [{"conversation_id": "test-conversation-id"}]
+    conversation_mock.execute.return_value.data = [
+        {"conversation_id": "test-conversation-id"}
+    ]
     mock_supabase.table.return_value.insert.return_value = conversation_mock
 
     # Test data
@@ -63,10 +65,17 @@ async def test_store_conversation_data(sample_analysis_result):
     participant_list = ["user1-id", "user2-id"]
 
     # Mock the sub-functions to isolate the main function
-    with patch("app.services.storage_service.process_topics", new=AsyncMock()) as mock_process_topics, \
-         patch("app.services.storage_service.process_participants", new=AsyncMock()) as mock_process_participants, \
-         patch("app.services.storage_service.process_transcripts", new=AsyncMock()) as mock_process_transcripts:
-
+    with (
+        patch(
+            "app.services.storage_service.process_topics", new=AsyncMock()
+        ) as mock_process_topics,
+        patch(
+            "app.services.storage_service.process_participants", new=AsyncMock()
+        ) as mock_process_participants,
+        patch(
+            "app.services.storage_service.process_transcripts", new=AsyncMock()
+        ) as mock_process_transcripts,
+    ):
         # Set them up as AsyncMock since they're async functions
         mock_process_topics.side_effect = AsyncMock()
         mock_process_participants.side_effect = AsyncMock()
@@ -80,7 +89,7 @@ async def test_store_conversation_data(sample_analysis_result):
             duration,
             company_id,
             sample_analysis_result,
-            participant_list
+            participant_list,
         )
 
         # Basic assertions
@@ -113,12 +122,12 @@ async def test_process_topics():
 
     # Set up the table.insert method to return different mocks depending on args
     mock_supabase.table.return_value.insert.side_effect = [
-        topic_insert_mock,      # First call - for topic
-        junction_insert_mock,   # Second call - for junction
-        topic_insert_mock,      # Repeat for additional topics
+        topic_insert_mock,  # First call - for topic
+        junction_insert_mock,  # Second call - for junction
+        topic_insert_mock,  # Repeat for additional topics
         junction_insert_mock,
         topic_insert_mock,
-        junction_insert_mock
+        junction_insert_mock,
     ]
 
     # Test data
@@ -130,6 +139,7 @@ async def test_process_topics():
 
     # Verify only that the function completed without error
     assert True
+
 
 # Test process_participants
 @pytest.mark.asyncio
@@ -143,7 +153,10 @@ async def test_process_participants():
     mock_supabase.table.return_value.insert.return_value = insert_mock
 
     # Test data
-    participants = ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]
+    participants = [
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+    ]
     conversation_id = "test-conversation-id"
 
     # Call the function
@@ -169,6 +182,7 @@ async def test_process_participants():
         assert "user_id" in item
         assert item["conversation_id"] == conversation_id
 
+
 # Test process_participants with invalid UUID
 @pytest.mark.asyncio
 async def test_process_participants_invalid_uuid():
@@ -177,7 +191,9 @@ async def test_process_participants_invalid_uuid():
 
     # Configure the response
     insert_response = MagicMock()
-    insert_response.execute.return_value.data = [{"participant_id": "test-participant-id"}]
+    insert_response.execute.return_value.data = [
+        {"participant_id": "test-participant-id"}
+    ]
     mock_supabase.table.return_value.insert.return_value = insert_response
 
     # Test data with one valid and one invalid UUID
@@ -198,6 +214,7 @@ async def test_process_participants_invalid_uuid():
     assert isinstance(inserted_data, list)
     assert len(inserted_data) == 1
     assert inserted_data[0]["user_id"] == participants[0]
+
 
 # Test process_transcripts
 @pytest.mark.asyncio
@@ -220,7 +237,7 @@ async def test_process_transcripts():
             "offsetMilliseconds": 1000,
             "positive": 0.7,
             "negative": 0.1,
-            "neutral": 0.2
+            "neutral": 0.2,
         },
         {
             "text": "Hola, tengo un problema con mi servicio de internet.",
@@ -230,8 +247,8 @@ async def test_process_transcripts():
             "offsetMilliseconds": 5000,
             "positive": 0.2,
             "negative": 0.6,
-            "neutral": 0.2
-        }
+            "neutral": 0.2,
+        },
     ]
     conversation_id = "test-conversation-id"
 

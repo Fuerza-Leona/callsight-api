@@ -5,6 +5,7 @@ from app.db.session import get_supabase
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
+
 @router.get("/")
 async def get_categories(supabase: Client = Depends(get_supabase)):
     try:
