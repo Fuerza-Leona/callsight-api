@@ -1,8 +1,9 @@
 from supabase import create_client, Client
 from psycopg.rows import dict_row
-from psycopg_pool import AsyncConnectionPool  
+from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import settings
+
 
 def get_supabase() -> Client:
     """
@@ -17,6 +18,7 @@ def get_supabase() -> Client:
 
 
 pool = None  # Global variable to hold the database connection pool
+
 
 async def init_db_pool():
     """
@@ -34,11 +36,13 @@ async def init_db_pool():
     pool = AsyncConnectionPool(conninfo=url, kwargs={"row_factory": dict_row})
     await pool.open()
 
+
 async def close_db_pool():
     """Close the database connection pool"""
     global pool
     if pool:
         await pool.close()
+
 
 async def get_db_connection():
     """
@@ -50,6 +54,7 @@ async def get_db_connection():
     :return: The database connection pool.
     """
     return pool
+
 
 async def execute_query(query: str, *args):
     """
