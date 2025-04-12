@@ -10,12 +10,6 @@ jobs:
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
 
     steps:
-      - name: Write .env file
-        run: |
-          cat << 'EOF' > .env
-          ${{ secrets.ENV_FILE }}
-          EOF
-
       - name: Deploy to production
         uses: johnbeynon/render-deploy-action@v0.0.8
         with:
