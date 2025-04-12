@@ -86,15 +86,15 @@ async def get_mine(
 
 async def build_client_emotions_query(start_date, end_date, role, user_id, clients, categories):
     base_query = """
-        SELECT 
+        SELECT
             ROUND(AVG(m.positive)::numeric, 2) AS positive,
             ROUND(AVG(m.negative)::numeric, 2) AS negative,
             ROUND(AVG(m.neutral)::numeric, 2) AS neutral
-        FROM 
+        FROM
             conversations c
-        INNER JOIN 
+        INNER JOIN
             messages m ON c.conversation_id = m.conversation_id"""
-    
+
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
 
@@ -110,14 +110,14 @@ async def build_client_emotions_query(start_date, end_date, role, user_id, clien
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-        
+
     if categories:
         base_query += """
-        INNER JOIN company_client cc ON c.company_id = cc.company_id"""        
+        INNER JOIN company_client cc ON c.company_id = cc.company_id"""
         conditions.append("cc.category_id = ANY(%s::uuid[])")
         params.append(categories)
 
-        
+
     if conditions:
         base_query += """
         WHERE m.role = 'client' AND """ + "\n        AND ".join(conditions)
@@ -151,12 +151,12 @@ async def get_emotions(
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
-    
+
     role = await check_user_role(current_user, supabase)
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
-    
-    query, params = await build_client_emotions_query(start_date, end_date, role, user_id, clients, categories) 
+
+    query, params = await build_client_emotions_query(start_date, end_date, role, user_id, clients, categories)
 
     try:
         response = await execute_query(query, *params)
@@ -164,7 +164,7 @@ async def get_emotions(
             row = response[0]
             return {"emotions": {"positive": row["positive"], "negative": row["negative"], "neutral": row["neutral"]}}
         return {"emotions": {"positive": 0, "negative": 0, "neutral": 0}}
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
@@ -364,18 +364,18 @@ async def get_info_pertaining_call(
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-    
+
+
 async def build_conversations_summary(start_date, end_date, role, user_id, clients, categories):
     base_query = """
-        SELECT 
+        SELECT
             ROUND(AVG(a.duration_seconds) / 60, 2) AS average_minutes,
-            COUNT(DISTINCT c.conversation_id) AS conversation_count 
-        FROM 
+            COUNT(DISTINCT c.conversation_id) AS conversation_count
+        FROM
             conversations c
-        INNER JOIN 
+        INNER JOIN
             audio_files a ON c.audio_id = a.audio_id"""
-    
+
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
 
@@ -393,14 +393,14 @@ async def build_conversations_summary(start_date, end_date, role, user_id, clien
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-        
+
     if categories:
         base_query += """
-        INNER JOIN company_client cc ON c.company_id = cc.company_id"""        
+        INNER JOIN company_client cc ON c.company_id = cc.company_id"""
         conditions.append("cc.category_id = ANY(%s::uuid[])")
         params.append(categories)
 
-        
+
     if conditions:
         base_query += """
         WHERE """ + "\n        AND ".join(conditions)
@@ -432,15 +432,15 @@ async def get_conversation_summary(
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
-            
+
     user_id = current_user.id
     role = await check_user_role(current_user, supabase)
-        
+
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
-        
-    query, params = await build_conversations_summary(start_date, end_date, role, user_id, clients, categories) 
-    try: 
+
+    query, params = await build_conversations_summary(start_date, end_date, role, user_id, clients, categories)
+    try:
         result = await execute_query(query, *params)
         return {"summary": result[0]}
     except Exception as e:
@@ -450,17 +450,17 @@ async def get_conversation_summary(
 
 async def build_conversations_categories_query(start_date, end_date, role, user_id, clients, categories):
     base_query = """
-        SELECT 
+        SELECT
             cat.name AS name,
-            COUNT(DISTINCT c.conversation_id) AS count 
-        FROM 
+            COUNT(DISTINCT c.conversation_id) AS count
+        FROM
             conversations c
-        INNER JOIN 
+        INNER JOIN
             company_client cc ON c.company_id = cc.company_id
-        INNER JOIN 
+        INNER JOIN
             category cat ON cc.category_id = cat.category_id"""
-    
-    
+
+
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
 
@@ -478,22 +478,22 @@ async def build_conversations_categories_query(start_date, end_date, role, user_
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-        
+
     if categories:
         base_query += """
-        INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""        
+        INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""
         conditions.append("ccc.category_id = ANY(%s::uuid[])")
         params.append(categories)
 
-        
+
     if conditions:
         base_query += """
         WHERE """ + "\n        AND ".join(conditions)
-    
+
     base_query += """
         GROUP BY cat.name"""
 
-    
+
     return base_query, params
 
 class ConversationsCategoriesRequest(BaseModel):
@@ -521,15 +521,15 @@ async def get_conversations_categories(
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
-            
+
     user_id = current_user.id
     role = await check_user_role(current_user, supabase)
-        
+
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
-        
-    query, params = await build_conversations_categories_query(start_date, end_date, role, user_id, clients, categories) 
-    try: 
+
+    query, params = await build_conversations_categories_query(start_date, end_date, role, user_id, clients, categories)
+    try:
         result = await execute_query(query, *params)
         return {"categories": result}
     except Exception as e:
@@ -538,15 +538,15 @@ async def get_conversations_categories(
 
 async def build_conversations_ratings_query(start_date, end_date, role, user_id, clients, categories):
     base_query = """
-        SELECT 
+        SELECT
             r.rating AS rating,
-            COUNT(DISTINCT c.conversation_id) AS count 
-        FROM 
+            COUNT(DISTINCT c.conversation_id) AS count
+        FROM
             conversations c
-        INNER JOIN 
+        INNER JOIN
             ratings r ON r.conversation_id = c.conversation_id"""
-    
-    
+
+
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
 
@@ -564,18 +564,18 @@ async def build_conversations_ratings_query(start_date, end_date, role, user_id,
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-        
+
     if categories:
         base_query += """
-        INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""        
+        INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""
         conditions.append("ccc.category_id = ANY(%s::uuid[])")
         params.append(categories)
 
-        
+
     if conditions:
         base_query += """
         WHERE """ + "\n        AND ".join(conditions)
-    
+
     base_query += """
         GROUP BY r.rating
         ORDER BY r.rating """
@@ -607,15 +607,15 @@ async def get_conversations_categories(
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
-            
+
     user_id = current_user.id
     role = await check_user_role(current_user, supabase)
-        
+
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
-        
-    query, params = await build_conversations_ratings_query(start_date, end_date, role, user_id, clients, categories) 
-    try: 
+
+    query, params = await build_conversations_ratings_query(start_date, end_date, role, user_id, clients, categories)
+    try:
         result = await execute_query(query, *params)
         return {"ratings": result}
     except Exception as e:

@@ -90,7 +90,7 @@ def test_get_emotions(mock_current_user, mock_supabase):
             mock_execute_query.return_value = [
                 {"positive": 0.65, "negative": 0.15, "neutral": 0.2}
             ]
-            
+
             # Make request to the API - using POST method with JSON body
             response = client.post(
                 "/api/v1/conversations/myClientEmotions",

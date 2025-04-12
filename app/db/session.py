@@ -70,7 +70,7 @@ async def execute_query(query: str, *args):
     """
     if pool is None:
         raise RuntimeError("Database pool is not initialized.")
-    
+
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(query, args)
