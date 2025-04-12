@@ -446,3 +446,92 @@ async def get_conversation_summary(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
+
+
+async def build_conversations_categories_query(start_date, end_date, role, user_id, clients, categories):
+    base_query = """
+        SELECT 
+            cat.name AS name,
+            COUNT(DISTINCT c.conversation_id) AS count 
+        FROM 
+            conversations c
+        INNER JOIN 
+            company_client cc ON c.company_id = cc.company_id
+        INNER JOIN 
+            category cat ON cc.category_id = cat.category_id"""
+    
+    
+    conditions = ["c.start_time BETWEEN %s AND %s"]
+    params = [start_date, end_date]
+
+
+    if role == "agent":
+        base_query += """
+        INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
+        conditions.append("p_agent.user_id = %s")
+        params.append(user_id)
+
+
+    if clients:
+        base_query += """
+        INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
+        conditions.append("p_client.user_id = ANY(%s::uuid[])")
+        params.append(clients)
+
+        
+    if categories:
+        base_query += """
+        INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""        
+        conditions.append("ccc.category_id = ANY(%s::uuid[])")
+        params.append(categories)
+
+        
+    if conditions:
+        base_query += """
+        WHERE """ + "\n        AND ".join(conditions)
+    
+    base_query += """
+        GROUP BY cat.name"""
+
+    
+    return base_query, params
+
+class ConversationsCategoriesRequest(BaseModel):
+    clients: List[str] = []
+    categories: List[str] = []
+    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+
+@router.post("/categories")
+async def get_conversations_categories(
+    request: ConversationsCategoriesRequest,
+    current_user=Depends(get_current_user),
+    supabase: Client=Depends(get_supabase)
+):
+    clients = request.clients
+    categories = request.categories
+    startDate = request.startDate
+    endDate = request.endDate
+    user_id = current_user.id
+
+    try:
+        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        if start_date > end_date:
+            raise ValueError("Start date cannot be after end date")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+            
+    user_id = current_user.id
+    role = await check_user_role(current_user, supabase)
+        
+    if role not in ["admin", "agent"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+        
+    query, params = await build_conversations_categories_query(start_date, end_date, role, user_id, clients, categories) 
+    try: 
+        result = await execute_query(query, *params)
+        return {"categories": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+
