@@ -9,15 +9,14 @@ from app.db.session import get_supabase
 from app.api.deps import get_current_user
 from app.api.routes.auth import check_admin_role
 
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from pydantic import BaseModel
 
 from app.db.session import execute_query
 from app.api.routes.auth import check_user_role
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
+
 
 class AddConversationRequest(BaseModel):
     audio_id: str
@@ -27,9 +26,9 @@ class AddConversationRequest(BaseModel):
     confidence_score: float
     participants: list[(str, int)]
 
+
 async def get_categories(
-    conversation_id: str = "",
-    supabase: Client = Depends(get_supabase)
+    conversation_id: str = "", supabase: Client = Depends(get_supabase)
 ):
     """Get categories for a given conversation"""
     try:
@@ -45,14 +44,17 @@ async def get_categories(
         for item in conversation_response.data:
             for participant in item["participants"]:
                 if participant["users"]["company_client"]["category"]:
-                    categories.append(participant["users"]["company_client"]["category"]["name"])
+                    categories.append(
+                        participant["users"]["company_client"]["category"]["name"]
+                    )
 
         return list(set(categories))
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-#TODO: agregar admin access despues de sprint 1
+
+# TODO: agregar admin access despues de sprint 1
 @router.get("/")
 async def get_conversations(supabase: Client = Depends(get_supabase)):
     """Get conversations for the currently authorized user"""
@@ -64,19 +66,28 @@ async def get_conversations(supabase: Client = Depends(get_supabase)):
 
 @router.get("/mine")
 async def get_mine(
-    current_user = Depends(get_current_user),
-    supabase: Client = Depends(get_supabase)
+    current_user=Depends(get_current_user), supabase: Client = Depends(get_supabase)
 ):
     """Get conversations for the currently authorized user"""
     user_id = current_user.id
-    participant_response = supabase.table("participants").select("conversation_id").eq("user_id", user_id).execute()
+    participant_response = (
+        supabase.table("participants")
+        .select("conversation_id")
+        .eq("user_id", user_id)
+        .execute()
+    )
 
     if not participant_response.data:
         return {"conversations": []}
 
     conversation_ids = [item["conversation_id"] for item in participant_response.data]
 
-    conversations_response = supabase.table("conversations").select("*").in_("conversation_id", conversation_ids).execute()
+    conversations_response = (
+        supabase.table("conversations")
+        .select("*")
+        .in_("conversation_id", conversation_ids)
+        .execute()
+    )
 
     for i in conversations_response.data:
         i["categories"] = await get_categories(i["conversation_id"], supabase)
@@ -84,7 +95,9 @@ async def get_mine(
     return {"conversations": conversations_response.data}
 
 
-async def build_client_emotions_query(start_date, end_date, role, user_id, clients, categories):
+async def build_client_emotions_query(
+    start_date, end_date, role, user_id, clients, categories
+):
     base_query = """
         SELECT
             ROUND(AVG(m.positive)::numeric, 2) AS positive,
@@ -110,13 +123,11 @@ async def build_client_emotions_query(start_date, end_date, role, user_id, clien
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-
     if categories:
         base_query += """
         INNER JOIN company_client cc ON c.company_id = cc.company_id"""
         conditions.append("cc.category_id = ANY(%s::uuid[])")
         params.append(categories)
-
 
     if conditions:
         base_query += """
@@ -129,13 +140,15 @@ class ClientEmotionsRequest(BaseModel):
     clients: List[str] = []
     categories: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (
+        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
+    ).strftime("%Y-%m-%d")
 
 
 @router.post("/myClientEmotions")
 async def get_emotions(
     request: ClientEmotionsRequest,
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
@@ -156,13 +169,21 @@ async def get_emotions(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_client_emotions_query(start_date, end_date, role, user_id, clients, categories)
+    query, params = await build_client_emotions_query(
+        start_date, end_date, role, user_id, clients, categories
+    )
 
     try:
         response = await execute_query(query, *params)
         if response:
             row = response[0]
-            return {"emotions": {"positive": row["positive"], "negative": row["negative"], "neutral": row["neutral"]}}
+            return {
+                "emotions": {
+                    "positive": row["positive"],
+                    "negative": row["negative"],
+                    "neutral": row["neutral"],
+                }
+            }
         return {"emotions": {"positive": 0, "negative": 0, "neutral": 0}}
 
     except Exception as e:
@@ -170,10 +191,7 @@ async def get_emotions(
 
 
 @router.get("/{conversation_id}")
-async def get_call(
-    conversation_id: str,
-    supabase: Client = Depends(get_supabase)
-):
+async def get_call(conversation_id: str, supabase: Client = Depends(get_supabase)):
     """Get a given conversation by id"""
     try:
         conversation_response = (
@@ -187,10 +205,10 @@ async def get_call(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/{conversation_id}/messages")
-async def get_call(
-    conversation_id: str,
-    supabase: Client = Depends(get_supabase)
+async def get_call_messages(
+    conversation_id: str, supabase: Client = Depends(get_supabase)
 ):
     """Get messages for a given conversation"""
     try:
@@ -204,9 +222,16 @@ async def get_call(
         if not conversation_response:
             return {"messages": []}
 
-        conversation_ids = [item["conversation_id"] for item in conversation_response.data]
+        conversation_ids = [
+            item["conversation_id"] for item in conversation_response.data
+        ]
 
-        messages_response = supabase.table("messages").select("*").in_("conversation_id", conversation_ids).execute()
+        messages_response = (
+            supabase.table("messages")
+            .select("*")
+            .in_("conversation_id", conversation_ids)
+            .execute()
+        )
 
         return {"messages": messages_response.data}
     except Exception as e:
@@ -214,17 +239,31 @@ async def get_call(
 
 
 @router.get("/call/{call_id}/summary")
-async def get_call(
-    call_id: str = None,
-    supabase: Client = Depends(get_supabase)
+async def get_call_summary(
+    call_id: str = None, supabase: Client = Depends(get_supabase)
 ):
     """Get summary for a given conversation"""
     try:
-        conversation = supabase.table("conversations").select("*").eq("conversation_id", call_id).execute()
+        conversation = (
+            supabase.table("conversations")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
 
-        summary_response = supabase.table("summaries").select("*").eq("conversation_id", call_id).execute()
+        summary_response = (
+            supabase.table("summaries")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
 
-        messages = supabase.table("messages").select("*").eq("conversation_id", call_id).execute()
+        messages = (
+            supabase.table("messages")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
         positive = neutral = negative = 0
         counter = 0
         for message in messages.data:
@@ -241,11 +280,17 @@ async def get_call(
         # Replace the datetime parsing lines with this:
         start_time = parser.parse(conversation.data[0]["start_time"])
         end_time = parser.parse(conversation.data[0]["end_time"])
-        summary_response.data[0]["duration"] = int((end_time - start_time).total_seconds() / 60)
+        summary_response.data[0]["duration"] = int(
+            (end_time - start_time).total_seconds() / 60
+        )
 
-        summary_response.data[0]["positive"] = positive / counter if messages.data else 0
+        summary_response.data[0]["positive"] = (
+            positive / counter if messages.data else 0
+        )
         summary_response.data[0]["neutral"] = neutral / counter if messages.data else 0
-        summary_response.data[0]["negative"] = negative  / counter if messages.data else 0
+        summary_response.data[0]["negative"] = (
+            negative / counter if messages.data else 0
+        )
 
         return {"summary": summary_response.data}
     except Exception as e:
@@ -253,9 +298,8 @@ async def get_call(
 
 
 @router.get("/call/{call_id}/participants")
-async def get_call(
-    call_id: str = None,
-    supabase: Client = Depends(get_supabase)
+async def get_call_participants(
+    call_id: str = None, supabase: Client = Depends(get_supabase)
 ):
     """Get participants a given conversation"""
     try:
@@ -270,15 +314,13 @@ async def get_call(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 @router.post("/add", dependencies=[Depends(check_admin_role)])
 async def add_conversation(
-    conversation_data: AddConversationRequest,
-    supabase: Client = Depends(get_supabase)
+    conversation_data: AddConversationRequest, supabase: Client = Depends(get_supabase)
 ):
     """Add a conversation (call) - Admin only endpoint"""
     try:
-         # Generate a UUID for the new conversation
+        # Generate a UUID for the new conversation
         conversation_id = str(uuid.uuid4())
 
         # Create conversation record
@@ -288,42 +330,54 @@ async def add_conversation(
             "start_time": conversation_data.start_time.isoformat(),
             "end_time": conversation_data.end_time.isoformat(),
             "sentiment_score": conversation_data.sentiment_score,
-            "confidence_score": conversation_data.confidence_score
+            "confidence_score": conversation_data.confidence_score,
         }
 
-        conversation_response = supabase.table("conversations").insert(conversation).execute()
+        supabase.table("conversations").insert(conversation).execute()
 
         participants = []
         for participant_id, speaker in conversation_data.participants:
-            participants.append({
-                "participant_id": str(uuid.uuid4()),
-                "conversation_id": conversation_id,
-                "user_id": participant_id,
-                "speaker": speaker
-            })
+            participants.append(
+                {
+                    "participant_id": str(uuid.uuid4()),
+                    "conversation_id": conversation_id,
+                    "user_id": participant_id,
+                    "speaker": speaker,
+                }
+            )
 
         if participants:
-            participant_response = supabase.table("participants").insert(participants).execute()
+            supabase.table("participants").insert(participants).execute()
 
-        return {
-            "conversation_id": conversation_id,
-            "participants": participants
-        }
+        return {"conversation_id": conversation_id, "participants": participants}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 @router.get("/call/{call_id}")
 async def get_info_pertaining_call(
-    call_id: str,
-    supabase: Client = Depends(get_supabase)
+    call_id: str, supabase: Client = Depends(get_supabase)
 ):
     try:
-        conversation_response = supabase.table("conversations").select("*").eq("conversation_id", call_id).execute()
-        summary_response = supabase.table("summaries").select("*").eq("conversation_id", call_id).execute()
+        conversation_response = (
+            supabase.table("conversations")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
+        summary_response = (
+            supabase.table("summaries")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
         summary = summary_response.data[0] if summary_response.data else {}
-        messages_response = supabase.table("messages").select("*").eq("conversation_id", call_id).execute()
+        messages_response = (
+            supabase.table("messages")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
         positive = neutral = negative = 0
         counter = 0
         messages = messages_response.data or []
@@ -354,19 +408,21 @@ async def get_info_pertaining_call(
 
         summary["positive"] = positive / counter if counter else 0
         summary["neutral"] = neutral / counter if counter else 0
-        summary["negative"] = negative  / counter if counter else 0
+        summary["negative"] = negative / counter if counter else 0
 
         return {
             "conversation": conversation,
             "summary": summary,
             "messages": messages,
-            "participants": participants
-            }
+            "participants": participants,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def build_conversations_summary(start_date, end_date, role, user_id, clients, categories):
+async def build_conversations_summary(
+    start_date, end_date, role, user_id, clients, categories
+):
     base_query = """
         SELECT
             ROUND(AVG(a.duration_seconds) / 60, 2) AS average_minutes,
@@ -379,13 +435,11 @@ async def build_conversations_summary(start_date, end_date, role, user_id, clien
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
 
-
     if role == "agent":
         base_query += """
         INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
         conditions.append("p_agent.user_id = %s")
         params.append(user_id)
-
 
     if clients:
         base_query += """
@@ -393,13 +447,11 @@ async def build_conversations_summary(start_date, end_date, role, user_id, clien
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-
     if categories:
         base_query += """
         INNER JOIN company_client cc ON c.company_id = cc.company_id"""
         conditions.append("cc.category_id = ANY(%s::uuid[])")
         params.append(categories)
-
 
     if conditions:
         base_query += """
@@ -407,17 +459,21 @@ async def build_conversations_summary(start_date, end_date, role, user_id, clien
 
     return base_query, params
 
+
 class ConversationSummaryRequest(BaseModel):
     clients: List[str] = []
     categories: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (
+        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
+    ).strftime("%Y-%m-%d")
+
 
 @router.post("/summary")
 async def get_conversation_summary(
     request: ConversationSummaryRequest,
     current_user=Depends(get_current_user),
-    supabase: Client=Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
     categories = request.categories
@@ -439,7 +495,9 @@ async def get_conversation_summary(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_conversations_summary(start_date, end_date, role, user_id, clients, categories)
+    query, params = await build_conversations_summary(
+        start_date, end_date, role, user_id, clients, categories
+    )
     try:
         result = await execute_query(query, *params)
         return {"summary": result[0]}
@@ -447,8 +505,9 @@ async def get_conversation_summary(
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
 
-
-async def build_conversations_categories_query(start_date, end_date, role, user_id, clients, categories):
+async def build_conversations_categories_query(
+    start_date, end_date, role, user_id, clients, categories
+):
     base_query = """
         SELECT
             cat.name AS name,
@@ -460,10 +519,8 @@ async def build_conversations_categories_query(start_date, end_date, role, user_
         INNER JOIN
             category cat ON cc.category_id = cat.category_id"""
 
-
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
-
 
     if role == "agent":
         base_query += """
@@ -471,20 +528,17 @@ async def build_conversations_categories_query(start_date, end_date, role, user_
         conditions.append("p_agent.user_id = %s")
         params.append(user_id)
 
-
     if clients:
         base_query += """
         INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-
     if categories:
         base_query += """
         INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""
         conditions.append("ccc.category_id = ANY(%s::uuid[])")
         params.append(categories)
-
 
     if conditions:
         base_query += """
@@ -493,20 +547,23 @@ async def build_conversations_categories_query(start_date, end_date, role, user_
     base_query += """
         GROUP BY cat.name"""
 
-
     return base_query, params
+
 
 class ConversationsCategoriesRequest(BaseModel):
     clients: List[str] = []
     categories: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (
+        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
+    ).strftime("%Y-%m-%d")
+
 
 @router.post("/categories")
 async def get_conversations_categories(
     request: ConversationsCategoriesRequest,
     current_user=Depends(get_current_user),
-    supabase: Client=Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
     categories = request.categories
@@ -528,7 +585,9 @@ async def get_conversations_categories(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_conversations_categories_query(start_date, end_date, role, user_id, clients, categories)
+    query, params = await build_conversations_categories_query(
+        start_date, end_date, role, user_id, clients, categories
+    )
     try:
         result = await execute_query(query, *params)
         return {"categories": result}
@@ -536,7 +595,9 @@ async def get_conversations_categories(
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
 
-async def build_conversations_ratings_query(start_date, end_date, role, user_id, clients, categories):
+async def build_conversations_ratings_query(
+    start_date, end_date, role, user_id, clients, categories
+):
     base_query = """
         SELECT
             r.rating AS rating,
@@ -546,10 +607,8 @@ async def build_conversations_ratings_query(start_date, end_date, role, user_id,
         INNER JOIN
             ratings r ON r.conversation_id = c.conversation_id"""
 
-
     conditions = ["c.start_time BETWEEN %s AND %s"]
     params = [start_date, end_date]
-
 
     if role == "agent":
         base_query += """
@@ -557,20 +616,17 @@ async def build_conversations_ratings_query(start_date, end_date, role, user_id,
         conditions.append("p_agent.user_id = %s")
         params.append(user_id)
 
-
     if clients:
         base_query += """
         INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
         conditions.append("p_client.user_id = ANY(%s::uuid[])")
         params.append(clients)
 
-
     if categories:
         base_query += """
         INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""
         conditions.append("ccc.category_id = ANY(%s::uuid[])")
         params.append(categories)
-
 
     if conditions:
         base_query += """
@@ -582,17 +638,21 @@ async def build_conversations_ratings_query(start_date, end_date, role, user_id,
 
     return base_query, params
 
+
 class ConversationsRatingsRequest(BaseModel):
     clients: List[str] = []
     categories: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (
+        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
+    ).strftime("%Y-%m-%d")
+
 
 @router.post("/ratings")
-async def get_conversations_categories(
+async def get_conversations_ratings(
     request: ConversationsRatingsRequest,
     current_user=Depends(get_current_user),
-    supabase: Client=Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
     categories = request.categories
@@ -614,7 +674,9 @@ async def get_conversations_categories(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_conversations_ratings_query(start_date, end_date, role, user_id, clients, categories)
+    query, params = await build_conversations_ratings_query(
+        start_date, end_date, role, user_id, clients, categories
+    )
     try:
         result = await execute_query(query, *params)
         return {"ratings": result}
