@@ -82,19 +82,25 @@ def test_get_mine(mock_current_user, mock_supabase):
 
 # Test getting emotions data
 def test_get_emotions(mock_current_user, mock_supabase):
-    # Setup mock responses for participants query
-    mock_participants = [{"conversation_id": "test-conv-1"}]
-    mock_supabase.table().select().eq().execute.return_value.data = mock_participants
+    # Mock the check_user_role function to return "agent"
+    with patch("app.api.routes.conversations.check_user_role", return_value="agent"):
+        # Mock the execute_query function
+        with patch("app.api.routes.conversations.execute_query") as mock_execute_query:
+            # Set up the return value for the SQL query
+            mock_execute_query.return_value = [
+                {"positive": 0.65, "negative": 0.15, "neutral": 0.2}
+            ]
 
-    # Setup mock responses for messages query
-    mock_messages = [
-        {"positive": 0.7, "negative": 0.1, "neutral": 0.2},
-        {"positive": 0.6, "negative": 0.2, "neutral": 0.2}
-    ]
-    mock_supabase.table().select().in_().execute.return_value.data = mock_messages
-
-    # Make request to the API
-    response = client.get("/api/v1/conversations/myClientEmotions")
+            # Make request to the API - using POST method with JSON body
+            response = client.post(
+                "/api/v1/conversations/myClientEmotions",
+                json={
+                    "clients": [],
+                    "categories": [],
+                    "startDate": "2023-01-01",
+                    "endDate": "2023-01-31"
+                }
+            )
 
     # Assert response
     assert response.status_code == 200
@@ -102,3 +108,7 @@ def test_get_emotions(mock_current_user, mock_supabase):
     assert "positive" in response.json()["emotions"]
     assert "negative" in response.json()["emotions"]
     assert "neutral" in response.json()["emotions"]
+    # Check the exact values we mocked
+    assert response.json()["emotions"]["positive"] == 0.65
+    assert response.json()["emotions"]["negative"] == 0.15
+    assert response.json()["emotions"]["neutral"] == 0.2

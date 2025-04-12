@@ -1,94 +1,93 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 from typing import List, Optional
-
-
 from app.api.deps import get_current_user
-from app.db.session import get_supabase
+from app.db.session import get_supabase, execute_query
 from app.api.routes.auth import check_user_role
-from app.db.session import execute_query
-
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/topics", tags=["topics"])
 
-@router.get("/")
+async def build_topics_query(start_date, end_date, role, user_id, clients, categories, limit):
+    base_query = """
+        SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
+        FROM conversations c
+        INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id
+        INNER JOIN topics t ON tc.topic_id = t.topic_id"""
+
+    conditions = ["c.start_time BETWEEN %s AND %s"]
+    params = [start_date, end_date]
+
+    if role == "agent":
+        base_query += """
+        INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
+        conditions.append("p_agent.user_id = %s")
+        params.append(user_id)
+
+    if clients:
+        base_query += """
+        INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
+        conditions.append("p_client.user_id = ANY(%s::uuid[])")
+        params.append(clients)
+
+    if categories:
+        base_query += """
+        INNER JOIN company_client cc ON c.company_id = cc.company_id"""
+        conditions.append("cc.category_id = ANY(%s::uuid[])")
+        params.append(categories)
+
+    if conditions:
+        base_query += """
+        WHERE """ + "\n        AND ".join(conditions)
+
+    base_query += """
+        GROUP BY t.topic_id
+        ORDER BY amount DESC
+        LIMIT %s
+    """
+    params.append(limit)
+    return base_query, params
+
+
+class TopicsRequest(BaseModel):
+    clients: List[str] = []
+    categories: List[str] = []
+    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
+    endDate: Optional[str] = (datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")
+    limit: int = 10
+
+
+@router.post("/")
 async def get_topics(
-    clients: List[str] = Query(default=[]),
-    startDate: Optional[str] = Query(default=datetime.now().replace(day=1).strftime("%Y-%m-%d")),
-    endDate: Optional[str] = Query(default=(datetime.now().replace(day=1) + relativedelta(months=1, days=-1)).strftime("%Y-%m-%d")),
-    limit: int = Query(default=10),
+    request: TopicsRequest,
     current_user=Depends(get_current_user),
     supabase: Client=Depends(get_supabase)
 ):
-    user_id = current_user.id
-    start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-    end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+    clients = request.clients
+    categories = request.categories
+    startDate = request.startDate
+    endDate = request.endDate
+    limit = request.limit
 
     try:
-        role = await check_user_role(current_user, supabase)
+        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        if start_date > end_date:
+            raise ValueError("Start date cannot be after end date")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
 
-        if role == "admin":
-            if not clients:
-                query = """
-                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
-                    FROM conversations c
-                    INNER JOIN participants p ON c.conversation_id = p.conversation_id
-                    INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id
-                    INNER JOIN topics t ON tc.topic_id = t.topic_id
-                    WHERE c.start_time BETWEEN $1 AND $2
-                    GROUP BY t.topic_id
-                    ORDER BY amount DESC
-                    LIMIT $3
-                """
-                result = await execute_query(query, start_date, end_date, limit)
-            else:
-                query = """
-                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
-                    FROM conversations c
-                    INNER JOIN participants p ON c.conversation_id = p.conversation_id
-                    INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id
-                    INNER JOIN topics t ON tc.topic_id = t.topic_id
-                    WHERE c.start_time BETWEEN $1 AND $2
-                    AND p.user_id = ANY($3)
-                    GROUP BY t.topic_id
-                    ORDER BY amount DESC
-                    LIMIT $4
-                """
-                result = await execute_query(query, start_date, end_date, clients, limit)
-            return {"topics": result}
+    user_id = current_user.id
+    role = await check_user_role(current_user, supabase)
 
-        elif role == "agent":
-            if not clients:
-                query = """
-                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
-                    FROM conversations c
-                    INNER JOIN participants p ON c.conversation_id = p.conversation_id
-                    INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id
-                    INNER JOIN topics t ON tc.topic_id = t.topic_id
-                    WHERE p.user_id = $1 AND c.start_time BETWEEN $2 AND $3
-                    GROUP BY t.topic_id
-                    ORDER BY amount DESC
-                    LIMIT $4
-                """
-                result = await execute_query(query, user_id, start_date, end_date, limit)
-            else:
-                query = """
-                    SELECT t.topic AS topic, COUNT(DISTINCT c.conversation_id) AS amount
-                    FROM conversations c
-                    INNER JOIN participants p ON c.conversation_id = p.conversation_id
-                    INNER JOIN topics_conversations tc ON c.conversation_id = tc.conversation_id
-                    INNER JOIN topics t ON tc.topic_id = t.topic_id
-                    WHERE p.user_id = $1 AND c.start_time BETWEEN $2 AND $3
-                    AND p.user_id = ANY($4)
-                    GROUP BY t.topic_id
-                    ORDER BY amount DESC
-                    LIMIT $5
-                """
-                result = await execute_query(query, user_id, start_date, end_date, clients, limit)
-            return {"topics": result}
-
+    if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    query, params = await build_topics_query(start_date, end_date, role, user_id, clients, categories, limit)
+    try:
+        result = await execute_query(query, *params)
+        return {"topics": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")

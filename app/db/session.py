@@ -1,8 +1,9 @@
 from supabase import create_client, Client
-from fastapi import Depends
-from asyncpg import create_pool
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 
 from app.core.config import settings
+
 
 def get_supabase() -> Client:
     """
@@ -18,6 +19,7 @@ def get_supabase() -> Client:
 
 pool = None  # Global variable to hold the database connection pool
 
+
 async def init_db_pool():
     """
     Initializes the database connection pool.
@@ -30,7 +32,17 @@ async def init_db_pool():
     """
     url = settings.DATABASE_URL
     global pool
-    pool = await create_pool(url, statement_cache_size=0)
+    # Use dict_row by default so rows are returned as dictionaries
+    pool = AsyncConnectionPool(conninfo=url, kwargs={"row_factory": dict_row})
+    await pool.open()
+
+
+async def close_db_pool():
+    """Close the database connection pool"""
+    global pool
+    if pool:
+        await pool.close()
+
 
 async def get_db_connection():
     """
@@ -42,6 +54,7 @@ async def get_db_connection():
     :return: The database connection pool.
     """
     return pool
+
 
 async def execute_query(query: str, *args):
     """
@@ -57,5 +70,8 @@ async def execute_query(query: str, *args):
     """
     if pool is None:
         raise RuntimeError("Database pool is not initialized.")
-    async with pool.acquire() as conn:
-        return await conn.fetch(query, *args)
+
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query, args)
+            return await cur.fetchall()
