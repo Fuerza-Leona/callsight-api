@@ -13,6 +13,7 @@ from app.api.routes import (
     analysis,
     categories,
     topics,
+    chatbot,
 )
 from app.db.session import init_db_pool, close_db_pool
 
@@ -54,6 +55,7 @@ app.include_router(companies.router, prefix=settings.API_V1_STR)
 app.include_router(analysis.router, prefix=settings.API_V1_STR)
 app.include_router(categories.router, prefix=settings.API_V1_STR)
 app.include_router(topics.router, prefix=settings.API_V1_STR)
+app.include_router(chatbot.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
