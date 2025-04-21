@@ -12,7 +12,6 @@ azure-ai-language-conversations==1.1.0
 azure-ai-textanalytics==5.3.0
 azure-common==1.1.28
 azure-core==1.32.0
-Callsight_API @ file:///Users/miguelmendoza/Documents/Tec/6th/callsight-api
 certifi==2025.1.31
 cffi==1.17.1
 charset-normalizer==3.4.1
