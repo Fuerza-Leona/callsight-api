@@ -4,10 +4,6 @@ WORKDIR /app
 
 # Install system dependencies required for building Python packages
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    gcc \
-    ffmpeg \
-    libsndfile1 \
     python3-dev \
     libpq-dev \ 
     && rm -rf /var/lib/apt/lists/*
@@ -17,7 +13,6 @@ RUN pip cache purge && \
     python -m pip install --upgrade pip && \
     python -m pip install --upgrade setuptools wheel && \
     pip install meson importlib-metadata toml setuptools-metadata
-
 # Install numpy first with legacy resolver to avoid dependency conflicts
 RUN pip install numpy --use-deprecated=legacy-resolver
 
