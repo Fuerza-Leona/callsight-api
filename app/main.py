@@ -12,6 +12,7 @@ from app.api.routes import (
     analysis,
     categories,
     topics,
+    tickets,
 )
 
 
@@ -42,6 +43,7 @@ app.include_router(companies.router, prefix=settings.API_V1_STR)
 app.include_router(analysis.router, prefix=settings.API_V1_STR)
 app.include_router(categories.router, prefix=settings.API_V1_STR)
 app.include_router(topics.router, prefix=settings.API_V1_STR)
+app.include_router(tickets.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
