@@ -11,11 +11,13 @@ azure-ai-language-conversations==1.1.0
 azure-ai-textanalytics==5.3.0
 azure-common==1.1.28
 azure-core==1.32.0
+Callsight_API @ file:///Users/miguelmendoza/Documents/Tec/6th/callsight-api
 certifi==2025.1.31
 cffi==1.17.1
 charset-normalizer==3.4.1
 click==8.1.8
 coverage==7.8.0
+DateTime==5.5
 decorator==5.2.1
 deprecation==2.1.0
 distro==1.9.0
@@ -65,6 +67,8 @@ pytest-mock==3.14.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-multipart==0.0.20
+pytz==2025.2
+PyYAML==6.0.2
 realtime==2.4.1
 requests==2.32.3
 scikit-learn==1.6.1
