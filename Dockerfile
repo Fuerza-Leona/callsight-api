@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \ 
     && rm -rf /var/lib/apt/lists/*
 
+# Create venv outside of mounted directory
+RUN python -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
 # Upgrade pip and install build tools
 RUN pip cache purge && \
     python -m pip install --upgrade pip && \
