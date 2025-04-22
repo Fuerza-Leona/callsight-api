@@ -4,6 +4,7 @@ from app.db.session import get_supabase
 from app.api.deps import get_current_user
 from app.core.config import settings
 
+import json
 from uuid import uuid4
 from datetime import datetime
 
@@ -126,32 +127,23 @@ async def continue_chat(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-""" @router.get("/{conversation_id}")
-async def get_chat(
-    conversation_id: str = "",
-    #current_user=Depends(get_current_user),
-    supabase: Client = Depends(get_supabase)
-):
-    try:
-        response = client.responses.input_items.list("resp_6807ce331a188191a41ef49b9fa9b13c0413c6fd1ef76301")
-        return {"response": response}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) """
-
 @router.post("/suggestions")
-async def post_chat(
-    request: ChatRequest,
-    #current_user=Depends(get_current_user),
+async def get_suggestions(
+    #request: ChatRequest,
+    current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant for a call center that gives 3 reccomendations on helpful things to ask."},
-                {"role": "user", "content": request.prompt},
+                {"role": "system", "content": "You are a helpful assistant for a call center from the company NEORIS that gives 3 reccomendations on helpful things to ask. You only answer in JSON in the following format { \"recommendations\": [ \"Prompt1\", \"Prompt2\", \"Prompt3\"]}. Your suggestions should be general things that are appropiate for every call center. Your response are like the following [Summarize the companys policy on refunds, Tips for dealing with an angry caller, How to stay calm during a stressful call, Best practices for active listening, What phrases build trust with customers, Checklist for starting a new customer call, How to make a customer feel heard, What to say to reassure a frustrated customer]"},
+                {"role": "user", "content": "Dame 3 recomendaciones de prompts que te pueda preguntar, en formato json"},
             ],
         )
-        return {"response": response.choices[0].message.content}
+        json_string = response.choices[0].message.content
+        parsed = json.loads(json_string)
+        #return {"response": response.choices[0].message.content}
+        return parsed
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
