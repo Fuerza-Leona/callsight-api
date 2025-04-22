@@ -5,6 +5,7 @@ alembic==1.14.1
 annotated-types==0.7.0
 anyio==4.8.0
 assemblyai==0.37.0
+async-timeout==5.0.1
 asyncpg==0.30.0
 attrs==25.3.0
 audioread==3.0.1
@@ -16,7 +17,6 @@ certifi==2025.1.31
 cffi==1.17.1
 charset-normalizer==3.4.1
 click==8.1.8
-coverage==7.8.0
 DateTime==5.5
 decorator==5.2.1
 deprecation==2.1.0
@@ -54,6 +54,7 @@ pooch==1.8.2
 postgrest==0.19.3
 propcache==0.3.1
 psycopg==3.2.6
+psycopg-pool==3.2.6
 psycopg2-binary==2.9.10
 pycparser==2.22
 pydantic==2.10.6
@@ -67,8 +68,8 @@ pytest-mock==3.14.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-multipart==0.0.20
-pytz==2025.2
 PyYAML==6.0.2
+pytz==2025.2
 realtime==2.4.1
 requests==2.32.3
 scikit-learn==1.6.1
@@ -90,3 +91,4 @@ urllib3==2.3.0
 uvicorn==0.34.0
 websockets==14.2
 yarl==1.18.3
+zope.interface==7.2
