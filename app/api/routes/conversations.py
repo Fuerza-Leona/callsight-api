@@ -12,7 +12,6 @@ from app.api.routes.auth import check_admin_role
 from dateutil.relativedelta import relativedelta
 
 
-from app.db.session import execute_query
 from app.api.routes.auth import check_user_role
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])

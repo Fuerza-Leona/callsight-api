@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from typing import List, Optional
 from app.api.deps import get_current_user
-from app.db.session import get_supabase, execute_query
+from app.db.session import get_supabase
 from app.api.routes.auth import check_user_role
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
