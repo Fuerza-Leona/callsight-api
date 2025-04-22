@@ -18,18 +18,37 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 async def post_chat(
     request: ChatRequest,
-    #current_user=Depends(get_current_user),
-    supabase: Client = Depends(get_supabase)
+    current_user=Depends(get_current_user),
+    supabase: Client = Depends(get_supabase),
 ):
+    """Create a new chat"""
     try:
+        gpt_model = "gpt-3.5-turbo"
         response = client.responses.create(
-            model="gpt-3.5-turbo",
+            model=gpt_model,
             input=[
                 {"role": "system", "content": "You are a helpful assistant for a call center."},
                 {"role": "user", "content": request.prompt},
             ],
         )
+        title = client.responses.create(
+            model=gpt_model,
+            previous_response_id=response.id,
+            input=[
+                {"role": "user", "content": "create a title for this conversation"},
+            ],
+        )
+        chatbot_conversation = {
+            "user_id": current_user.id,
+            "title": title.output_text,
+            "last_response_id": response.id,
+            "model": gpt_model
+        }
+
+        supabase.table("chatbot_conversations").insert(chatbot_conversation).execute()
         return {"response": response.output_text}
+        #return {"response": response.output_text, "title": title.output_text}
+        #return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -40,7 +59,11 @@ async def continue_chat(
     #current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase)
 ):
-    """Test id: resp_6807cc6371d8819185c5832054ff4c910413c6fd1ef76301"""
+    """
+    Continuar un chat existente
+    
+    Test id: resp_6807cc6371d8819185c5832054ff4c910413c6fd1ef76301
+    """
     try:
         response = client.responses.create(
             model="gpt-3.5-turbo",
@@ -50,9 +73,31 @@ async def continue_chat(
                 {"role": "user", "content": request.prompt},
             ],
         )
+        chatbot_message = {
+            "message_id": response.id,
+            "conversation_id": conversation_id, #se la tengo que dar al endpoint
+            "role": response.output.role,
+            "content": response.output_text,
+            "created_at": response.created_at,
+            "previous_response_id": previous_response_id
+        }
+
+        supabase.table("chatbot_messages").insert(chatbot_message).execute()
         return {"response": response.output_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+""" @router.get("/{conversation_id}")
+async def get_chat(
+    conversation_id: str = "",
+    #current_user=Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        response = client.responses.input_items.list("resp_6807ce331a188191a41ef49b9fa9b13c0413c6fd1ef76301")
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) """
 
 @router.post("/suggestions")
 async def post_chat(
