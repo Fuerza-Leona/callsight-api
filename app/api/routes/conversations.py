@@ -12,7 +12,6 @@ from app.api.routes.auth import check_admin_role
 from dateutil.relativedelta import relativedelta
 
 
-from app.db.session import execute_query
 from app.api.routes.auth import check_user_role
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
@@ -95,48 +94,7 @@ async def get_mine(
     return {"conversations": conversations_response.data}
 
 
-async def build_client_emotions_query(
-    start_date, end_date, role, user_id, clients, categories
-):
-    base_query = """
-        SELECT
-            ROUND(AVG(m.positive)::numeric, 2) AS positive,
-            ROUND(AVG(m.negative)::numeric, 2) AS negative,
-            ROUND(AVG(m.neutral)::numeric, 2) AS neutral
-        FROM
-            conversations c
-        INNER JOIN
-            messages m ON c.conversation_id = m.conversation_id"""
-
-    conditions = ["c.start_time BETWEEN %s AND %s"]
-    params = [start_date, end_date]
-
-    if role == "agent":
-        base_query += """
-        INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
-        conditions.append("p_agent.user_id = %s")
-        params.append(user_id)
-
-    if clients:
-        base_query += """
-        INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
-        conditions.append("p_client.user_id = ANY(%s::uuid[])")
-        params.append(clients)
-
-    if categories:
-        base_query += """
-        INNER JOIN company_client cc ON c.company_id = cc.company_id"""
-        conditions.append("cc.category_id = ANY(%s::uuid[])")
-        params.append(categories)
-
-    if conditions:
-        base_query += """
-        WHERE m.role = 'client' AND """ + "\n        AND ".join(conditions)
-
-    return base_query, params
-
-
-class ClientEmotionsRequest(BaseModel):
+class ConversationsFilteringParameters(BaseModel):
     clients: List[str] = []
     categories: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
@@ -147,7 +105,7 @@ class ClientEmotionsRequest(BaseModel):
 
 @router.post("/myClientEmotions")
 async def get_emotions(
-    request: ClientEmotionsRequest,
+    request: ConversationsFilteringParameters,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
@@ -169,14 +127,21 @@ async def get_emotions(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_client_emotions_query(
-        start_date, end_date, role, user_id, clients, categories
-    )
-
     try:
-        response = await execute_query(query, *params)
-        if response:
-            row = response[0]
+        response = supabase.rpc(
+            "build_client_emotions_query",
+            {
+                "start_date": startDate,
+                "end_date": endDate,
+                "user_role": role,
+                "id": user_id,
+                "clients": clients if clients else None,
+                "categories": categories if categories else None,
+            },
+        ).execute()
+
+        if response.data:
+            row = response.data[0]
             return {
                 "emotions": {
                     "positive": row["positive"],
@@ -420,58 +385,9 @@ async def get_info_pertaining_call(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def build_conversations_summary(
-    start_date, end_date, role, user_id, clients, categories
-):
-    base_query = """
-        SELECT
-            ROUND(AVG(a.duration_seconds) / 60, 2) AS average_minutes,
-            COUNT(DISTINCT c.conversation_id) AS conversation_count
-        FROM
-            conversations c
-        INNER JOIN
-            audio_files a ON c.audio_id = a.audio_id"""
-
-    conditions = ["c.start_time BETWEEN %s AND %s"]
-    params = [start_date, end_date]
-
-    if role == "agent":
-        base_query += """
-        INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
-        conditions.append("p_agent.user_id = %s")
-        params.append(user_id)
-
-    if clients:
-        base_query += """
-        INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
-        conditions.append("p_client.user_id = ANY(%s::uuid[])")
-        params.append(clients)
-
-    if categories:
-        base_query += """
-        INNER JOIN company_client cc ON c.company_id = cc.company_id"""
-        conditions.append("cc.category_id = ANY(%s::uuid[])")
-        params.append(categories)
-
-    if conditions:
-        base_query += """
-        WHERE """ + "\n        AND ".join(conditions)
-
-    return base_query, params
-
-
-class ConversationSummaryRequest(BaseModel):
-    clients: List[str] = []
-    categories: List[str] = []
-    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (
-        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
-    ).strftime("%Y-%m-%d")
-
-
 @router.post("/summary")
 async def get_conversation_summary(
-    request: ConversationSummaryRequest,
+    request: ConversationsFilteringParameters,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
@@ -495,73 +411,26 @@ async def get_conversation_summary(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_conversations_summary(
-        start_date, end_date, role, user_id, clients, categories
-    )
     try:
-        result = await execute_query(query, *params)
-        return {"summary": result[0]}
+        result = supabase.rpc(
+            "build_conversations_summary",
+            {
+                "start_date": startDate,
+                "end_date": endDate,
+                "user_role": role,
+                "id": user_id,
+                "clients": clients if clients else None,
+                "categories": categories if categories else None,
+            },
+        ).execute()
+        return {"summary": result.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
-
-
-async def build_conversations_categories_query(
-    start_date, end_date, role, user_id, clients, categories
-):
-    base_query = """
-        SELECT
-            cat.name AS name,
-            COUNT(DISTINCT c.conversation_id) AS count
-        FROM
-            conversations c
-        INNER JOIN
-            company_client cc ON c.company_id = cc.company_id
-        INNER JOIN
-            category cat ON cc.category_id = cat.category_id"""
-
-    conditions = ["c.start_time BETWEEN %s AND %s"]
-    params = [start_date, end_date]
-
-    if role == "agent":
-        base_query += """
-        INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
-        conditions.append("p_agent.user_id = %s")
-        params.append(user_id)
-
-    if clients:
-        base_query += """
-        INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
-        conditions.append("p_client.user_id = ANY(%s::uuid[])")
-        params.append(clients)
-
-    if categories:
-        base_query += """
-        INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""
-        conditions.append("ccc.category_id = ANY(%s::uuid[])")
-        params.append(categories)
-
-    if conditions:
-        base_query += """
-        WHERE """ + "\n        AND ".join(conditions)
-
-    base_query += """
-        GROUP BY cat.name"""
-
-    return base_query, params
-
-
-class ConversationsCategoriesRequest(BaseModel):
-    clients: List[str] = []
-    categories: List[str] = []
-    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (
-        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
-    ).strftime("%Y-%m-%d")
 
 
 @router.post("/categories")
 async def get_conversations_categories(
-    request: ConversationsCategoriesRequest,
+    request: ConversationsFilteringParameters,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
@@ -585,72 +454,26 @@ async def get_conversations_categories(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_conversations_categories_query(
-        start_date, end_date, role, user_id, clients, categories
-    )
     try:
-        result = await execute_query(query, *params)
-        return {"categories": result}
+        result = supabase.rpc(
+            "build_conversations_categories_query",
+            {
+                "start_date": startDate,
+                "end_date": endDate,
+                "user_role": role,
+                "id": user_id,
+                "clients": clients if clients else None,
+                "categories": categories if categories else None,
+            },
+        ).execute()
+        return {"categories": result.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
 
-async def build_conversations_ratings_query(
-    start_date, end_date, role, user_id, clients, categories
-):
-    base_query = """
-        SELECT
-            r.rating AS rating,
-            COUNT(DISTINCT c.conversation_id) AS count
-        FROM
-            conversations c
-        INNER JOIN
-            ratings r ON r.conversation_id = c.conversation_id"""
-
-    conditions = ["c.start_time BETWEEN %s AND %s"]
-    params = [start_date, end_date]
-
-    if role == "agent":
-        base_query += """
-        INNER JOIN participants p_agent ON c.conversation_id = p_agent.conversation_id"""
-        conditions.append("p_agent.user_id = %s")
-        params.append(user_id)
-
-    if clients:
-        base_query += """
-        INNER JOIN participants p_client ON c.conversation_id = p_client.conversation_id"""
-        conditions.append("p_client.user_id = ANY(%s::uuid[])")
-        params.append(clients)
-
-    if categories:
-        base_query += """
-        INNER JOIN company_client ccc ON c.company_id = ccc.company_id"""
-        conditions.append("ccc.category_id = ANY(%s::uuid[])")
-        params.append(categories)
-
-    if conditions:
-        base_query += """
-        WHERE """ + "\n        AND ".join(conditions)
-
-    base_query += """
-        GROUP BY r.rating
-        ORDER BY r.rating """
-
-    return base_query, params
-
-
-class ConversationsRatingsRequest(BaseModel):
-    clients: List[str] = []
-    categories: List[str] = []
-    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate: Optional[str] = (
-        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
-    ).strftime("%Y-%m-%d")
-
-
 @router.post("/ratings")
 async def get_conversations_ratings(
-    request: ConversationsRatingsRequest,
+    request: ConversationsFilteringParameters,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
@@ -674,11 +497,18 @@ async def get_conversations_ratings(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query, params = await build_conversations_ratings_query(
-        start_date, end_date, role, user_id, clients, categories
-    )
     try:
-        result = await execute_query(query, *params)
-        return {"ratings": result}
+        result = supabase.rpc(
+            "build_conversations_ratings_query",
+            {
+                "start_date": startDate,
+                "end_date": endDate,
+                "user_role": role,
+                "id": user_id,
+                "clients": clients if clients else None,
+                "categories": categories if categories else None,
+            },
+        ).execute()
+        return {"ratings": result.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")

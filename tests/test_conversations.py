@@ -94,22 +94,20 @@ def test_get_emotions(mock_current_user, mock_supabase):
     # Mock the check_user_role function to return "agent"
     with patch("app.api.routes.conversations.check_user_role", return_value="agent"):
         # Mock the execute_query function
-        with patch("app.api.routes.conversations.execute_query") as mock_execute_query:
-            # Set up the return value for the SQL query
-            mock_execute_query.return_value = [
-                {"positive": 0.65, "negative": 0.15, "neutral": 0.2}
-            ]
+        mock_rpc_response = MagicMock()
+        mock_rpc_response.data = [{"positive": 0.65, "negative": 0.15, "neutral": 0.2}]
+        mock_supabase.rpc.return_value.execute.return_value = mock_rpc_response
 
-            # Make request to the API - using POST method with JSON body
-            response = client.post(
-                "/api/v1/conversations/myClientEmotions",
-                json={
-                    "clients": [],
-                    "categories": [],
-                    "startDate": "2023-01-01",
-                    "endDate": "2023-01-31",
-                },
-            )
+        # Make request to the API - using POST method with JSON body
+        response = client.post(
+            "/api/v1/conversations/myClientEmotions",
+            json={
+                "clients": [],
+                "categories": [],
+                "startDate": "2023-01-01",
+                "endDate": "2023-01-31",
+            },
+        )
 
     # Assert response
     assert response.status_code == 200

@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.api.routes import (
@@ -14,23 +13,12 @@ from app.api.routes import (
     categories,
     topics,
 )
-from app.db.session import init_db_pool, close_db_pool
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db_pool()
-    try:
-        yield
-    finally:
-        await close_db_pool()
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     debug=True,
-    lifespan=lifespan,
 )
 
 
