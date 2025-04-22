@@ -31,7 +31,7 @@ async def post_chat(
         response = client.responses.create(
             model=gpt_model,
             input=[
-                {"role": "system", "content": "You are a helpful assistant for a call center."},
+                {"role": "system", "content": "Eres un ayudante para un call center."},
                 {"role": "user", "content": request.prompt},
             ],
         )
@@ -39,7 +39,7 @@ async def post_chat(
             model=gpt_model,
             previous_response_id=response.id,
             input=[
-                {"role": "user", "content": "create a title for this conversation"},
+                {"role": "user", "content": "Crea un titulo para esta conversación"},
             ],
         )
         created_at = datetime.fromtimestamp(response.created_at).isoformat()
@@ -96,7 +96,7 @@ async def continue_chat(
             model="gpt-3.5-turbo",
             previous_response_id=previous_response_id,
             input=[
-                {"role": "system", "content": "You are a helpful assistant for a call center."},
+                {"role": "system", "content": "Eres un asistente para un call center."},
                 {"role": "user", "content": request.prompt},
             ],
         )
@@ -137,7 +137,8 @@ async def get_suggestions(
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant for a call center from the company NEORIS that gives 3 reccomendations on helpful things to ask. You only answer in JSON in the following format { \"recommendations\": [ \"Prompt1\", \"Prompt2\", \"Prompt3\"]}. Your suggestions should be general things that are appropiate for every call center. Your response are like the following [Summarize the companys policy on refunds, Tips for dealing with an angry caller, How to stay calm during a stressful call, Best practices for active listening, What phrases build trust with customers, Checklist for starting a new customer call, How to make a customer feel heard, What to say to reassure a frustrated customer]"},
+                {"role": "system", "content": "Eres un asistente útil para un agente de soporte a cliente de la empresa NEORIS. Tu tarea es dar 3 recomendaciones de prompts que este agente le puede preguntar a ChatGPT para mejorar su trabajo o resolver dudas. Solo respondes en JSON con el siguiente formato: { \"recommendations\": [ \"Prompt1\", \"Prompt2\", \"Prompt3\"] }. Las preguntas deben ser generales y útiles para cualquier agente de soporte en un centro de llamadas. Algunos ejemplos: [Cómo explicar una política de reembolsos, Frases para calmar a un cliente molesto, Cómo manejar una llamada difícil, Pasos para resolver un problema técnico, Mejores prácticas para comunicarse con claridad, Qué hacer si un cliente interrumpe mucho, Cómo empatizar sin comprometerse, Técnicas para escuchar activamente]."},
+                #{"role": "system", "content": "You are a helpful assistant for a call center from the company NEORIS that gives 3 reccomendations on helpful things to ask. You only answer in JSON in the following format { \"recommendations\": [ \"Prompt1\", \"Prompt2\", \"Prompt3\"]}. Your suggestions should be general things that are appropiate for every call center. Your response are like the following [Summarize the companys policy on refunds, Tips for dealing with an angry caller, How to stay calm during a stressful call, Best practices for active listening, What phrases build trust with customers, Checklist for starting a new customer call, How to make a customer feel heard, What to say to reassure a frustrated customer]"},
                 {"role": "user", "content": "Dame 3 recomendaciones de prompts que te pueda preguntar, en formato json"},
             ],
         )
