@@ -2,12 +2,12 @@
 # See https://pre-commit.com/hooks.html for more hooks
 
 repos:
-  - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.5.1
-    hooks:
-      - id: commitizen
-        stages: [commit-msg]
-      - id: commitizen-branch
+  # - repo: https://github.com/commitizen-tools/commitizen
+  #   rev: v4.5.1
+  #   hooks:
+  #     - id: commitizen
+  #       stages: [commit-msg]
+  #     - id: commitizen-branch
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
