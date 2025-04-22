@@ -4,6 +4,9 @@ from app.db.session import get_supabase
 from app.api.deps import get_current_user
 from app.core.config import settings
 
+from uuid import uuid4
+from datetime import datetime
+
 from openai import OpenAI
 from pydantic import BaseModel
 
@@ -23,6 +26,7 @@ async def post_chat(
 ):
     """Create a new chat"""
     try:
+        conversation_id = str(uuid4())
         gpt_model = "gpt-3.5-turbo"
         response = client.responses.create(
             model=gpt_model,
@@ -38,17 +42,38 @@ async def post_chat(
                 {"role": "user", "content": "create a title for this conversation"},
             ],
         )
+        created_at = datetime.fromtimestamp(response.created_at).isoformat()
         chatbot_conversation = {
+            "chatbot_conversation_id": conversation_id,
             "user_id": current_user.id,
             "title": title.output_text,
             "last_response_id": response.id,
             "model": gpt_model
         }
+        user_message = {
+            "chatbot_message_id": str(uuid4()),
+            "chatbot_conversation_id": conversation_id,
+            "role": 'user',
+            "content": request.prompt,
+            "created_at": created_at,
+            "previous_response_id": None
+        }
+        chatbot_message = {
+            "chatbot_message_id": response.id,
+            "chatbot_conversation_id": conversation_id,
+            "role": 'assistant',
+            "content": response.output_text,
+            "created_at": created_at,
+            "previous_response_id": None
+        }
 
         supabase.table("chatbot_conversations").insert(chatbot_conversation).execute()
-        return {"response": response.output_text}
+        supabase.table("chatbot_messages").insert(user_message).execute()
+        supabase.table("chatbot_messages").insert(chatbot_message).execute()
+        
+        #return {"response": response.output_text}
         #return {"response": response.output_text, "title": title.output_text}
-        #return {"response": response}
+        return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
