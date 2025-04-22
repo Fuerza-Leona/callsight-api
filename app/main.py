@@ -18,7 +18,7 @@ from app.api.routes import (
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    debug=True
+    debug=True,
 )
 
 

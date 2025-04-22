@@ -61,6 +61,6 @@ async def get_topics(
             },
         ).execute()
         return {"topics": response.data}
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")

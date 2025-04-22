@@ -126,7 +126,7 @@ async def get_emotions(
     role = await check_user_role(current_user, supabase)
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     try:
         response = supabase.rpc(
             "build_client_emotions_query",
@@ -136,12 +136,11 @@ async def get_emotions(
                 "user_role": role,
                 "id": user_id,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None
+                "categories": categories if categories else None,
             },
         ).execute()
 
         if response.data:
-
             row = response.data[0]
             return {
                 "emotions": {
@@ -384,7 +383,8 @@ async def get_info_pertaining_call(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.post("/summary")
 async def get_conversation_summary(
     request: ConversationsFilteringParameters,
@@ -411,7 +411,6 @@ async def get_conversation_summary(
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
 
-
     try:
         result = supabase.rpc(
             "build_conversations_summary",
@@ -422,12 +421,13 @@ async def get_conversation_summary(
                 "id": user_id,
                 "clients": clients if clients else None,
                 "categories": categories if categories else None,
-            }
+            },
         ).execute()
         return {"summary": result.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
-    
+
+
 @router.post("/categories")
 async def get_conversations_categories(
     request: ConversationsFilteringParameters,
@@ -453,7 +453,7 @@ async def get_conversations_categories(
 
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     try:
         result = supabase.rpc(
             "build_conversations_categories_query",
@@ -463,13 +463,14 @@ async def get_conversations_categories(
                 "user_role": role,
                 "id": user_id,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None
-            }
+                "categories": categories if categories else None,
+            },
         ).execute()
         return {"categories": result.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
-    
+
+
 @router.post("/ratings")
 async def get_conversations_ratings(
     request: ConversationsFilteringParameters,
@@ -495,7 +496,7 @@ async def get_conversations_ratings(
 
     if role not in ["admin", "agent"]:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     try:
         result = supabase.rpc(
             "build_conversations_ratings_query",
@@ -505,8 +506,8 @@ async def get_conversations_ratings(
                 "user_role": role,
                 "id": user_id,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None
-            }
+                "categories": categories if categories else None,
+            },
         ).execute()
         return {"ratings": result.data}
     except Exception as e:

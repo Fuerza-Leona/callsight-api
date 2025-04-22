@@ -1,6 +1,7 @@
 from supabase import create_client, Client
 from app.core.config import settings
 
+
 def get_supabase() -> Client:
     """
     Initializes and returns a Supabase client.
