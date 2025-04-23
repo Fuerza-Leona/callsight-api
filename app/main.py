@@ -13,6 +13,7 @@ from app.api.routes import (
     categories,
     topics,
     tickets,
+    chatbot,
 )
 
 
@@ -44,6 +45,7 @@ app.include_router(analysis.router, prefix=settings.API_V1_STR)
 app.include_router(categories.router, prefix=settings.API_V1_STR)
 app.include_router(topics.router, prefix=settings.API_V1_STR)
 app.include_router(tickets.router, prefix=settings.API_V1_STR)
+app.include_router(chatbot.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
