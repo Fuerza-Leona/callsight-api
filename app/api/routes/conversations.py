@@ -63,37 +63,6 @@ async def get_conversations(supabase: Client = Depends(get_supabase)):
     return {"conversations": response.data}
 
 
-@router.get("/mine")
-async def get_mine(
-    current_user=Depends(get_current_user), supabase: Client = Depends(get_supabase)
-):
-    """Get conversations for the currently authorized user"""
-    user_id = current_user.id
-    participant_response = (
-        supabase.table("participants")
-        .select("conversation_id")
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    if not participant_response.data:
-        return {"conversations": []}
-
-    conversation_ids = [item["conversation_id"] for item in participant_response.data]
-
-    conversations_response = (
-        supabase.table("conversations")
-        .select("*")
-        .in_("conversation_id", conversation_ids)
-        .execute()
-    )
-
-    for i in conversations_response.data:
-        i["categories"] = await get_categories(i["conversation_id"], supabase)
-
-    return {"conversations": conversations_response.data}
-
-
 class ConversationsFilteringParameters(BaseModel):
     clients: List[str] = []
     categories: List[str] = []
@@ -101,6 +70,54 @@ class ConversationsFilteringParameters(BaseModel):
     endDate: Optional[str] = (
         datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
     ).strftime("%Y-%m-%d")
+
+
+class MyConversationsFilteringParameters(ConversationsFilteringParameters):
+    conversation_id: Optional[str] = None
+
+
+@router.post("/mine")
+async def get_mine(
+    request: MyConversationsFilteringParameters,
+    current_user=Depends(get_current_user),
+    supabase: Client = Depends(get_supabase),
+):
+    """Get conversations for the currently authorized user"""
+    clients = request.clients
+    categories = request.categories
+    startDate = request.startDate
+    endDate = request.endDate
+    conversation_id = request.conversation_id
+    user_id = current_user.id
+
+    try:
+        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        if start_date > end_date:
+            raise ValueError("Start date cannot be after end date")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+
+    role = await check_user_role(current_user, supabase)
+    if role not in ["admin", "agent"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    try:
+        response = supabase.rpc(
+            "build_get_my_conversations_query",
+            {
+                "start_date": startDate,
+                "end_date": endDate,
+                "user_role": role,
+                "id": user_id,
+                "conv_id": conversation_id if conversation_id else None,
+                "clients": clients if clients else None,
+                "categories": categories if categories else None,
+            },
+        ).execute()
+        return {"conversations": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
 
 @router.post("/myClientEmotions")
