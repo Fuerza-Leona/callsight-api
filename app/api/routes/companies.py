@@ -16,7 +16,7 @@ async def get_all_companies(supabase: Client = Depends(get_supabase)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{company_id}/list", dependencies=[Depends(check_admin_role)])
+@router.get("/{company_id}/list")
 async def get_users_in_company(
     company_id: str, supabase: Client = Depends(get_supabase)
 ):
@@ -24,6 +24,6 @@ async def get_users_in_company(
         response = (
             supabase.table("users").select("*").eq("company_id", company_id).execute()
         )
-        return {"companies": response.data}
+        return {"participants": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
