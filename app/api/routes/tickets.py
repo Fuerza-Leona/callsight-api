@@ -63,7 +63,7 @@ async def get_mine(
         else:
             company_response = (
                 supabase.table("users")
-                .select("company_id,company_client(name)")
+                .select("company_id,company_client(name), company_client(logo)")
                 .eq("user_id", current_user.id)
                 .execute()
             )
