@@ -74,7 +74,7 @@ async def post_chat(
         supabase.table("chatbot_messages").insert(chatbot_message).execute()
 
         # return {"response": response}
-        return {"response": response.output_text, "title": title.output_text}
+        return {"response": response.output_text, "title": title.output_text, "id": response.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
