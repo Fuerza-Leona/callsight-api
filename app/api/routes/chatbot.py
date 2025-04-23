@@ -77,7 +77,7 @@ async def post_chat(
         return {
             "response": response.output_text,
             "title": title.output_text,
-            "id": response.id,
+            "conversation_id": conversation_id,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
