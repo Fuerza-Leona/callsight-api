@@ -21,7 +21,7 @@ async def get_users_in_company(name: str, supabase: Client = Depends(get_supabas
     try:
         company_response = (
             supabase.table("company_client")
-            .select("comany_id")
+            .select("company_id")
             .eq("name", name)
             .execute()
         )
@@ -29,7 +29,7 @@ async def get_users_in_company(name: str, supabase: Client = Depends(get_supabas
         if not company_response.data:
             raise HTTPException(status_code=404, detail="Company not found")
 
-        company_id = company_response.data[0]["id"]
+        company_id = company_response.data[0]["company_id"]
 
         users_response = (
             supabase.table("users").select("*").eq("company_id", company_id).execute()
