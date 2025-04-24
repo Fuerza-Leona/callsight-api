@@ -28,19 +28,38 @@ async def get_user_companies(
         role = await check_user_role(current_user, supabase)
 
         if role in [UserRole.ADMIN, UserRole.AGENT]:
+            # Para administradores y agentes, obtener todas las empresas
             companies = supabase.table("company_client").select("*").execute()
         else:
-            companies = (
+            # Para clientes, obtener solo su empresa
+            # El problema parece estar en esta consulta
+            user_query = (
                 supabase.table("users")
-                .select("company_id,company_client(name)")
+                .select("company_id")
                 .eq("user_id", current_user.id)
+                .single()
                 .execute()
             )
+            
+            if user_query.data:
+                company_id = user_query.data.get("company_id")
+                if company_id:
+                    # Ahora obtenemos los detalles de la empresa con el company_id
+                    company_query = (
+                        supabase.table("company_client")
+                        .select("*")
+                        .eq("company_id", company_id)
+                        .execute()
+                    )
+                    companies = company_query
+                else:
+                    companies.data = []
+            else:
+                companies.data = []
 
         return {"companies": companies.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ------------------- Ticket List -------------------
 @router.get(
@@ -61,15 +80,22 @@ async def get_mine(
         if role in [UserRole.ADMIN, UserRole.AGENT] and company_id:
             resolved_company_id = company_id
         else:
-            company_response = (
+            # Modificamos esta consulta para evitar el error
+            user_response = (
                 supabase.table("users")
-                .select("company_id,company_client(name), company_client(logo)")
+                .select("company_id")  # Solo seleccionamos company_id
                 .eq("user_id", current_user.id)
+                .single()  # Obtenemos un solo registro
                 .execute()
             )
-            if not company_response.data:
-                raise HTTPException(status_code=404, detail="Company not found")
-            resolved_company_id = company_response.data[0]["company_id"]
+            
+            if not user_response.data:
+                raise HTTPException(status_code=404, detail="User not found")
+                
+            resolved_company_id = user_response.data.get("company_id")
+            
+            if not resolved_company_id:
+                raise HTTPException(status_code=404, detail="Company ID not found for user")
 
         # Filter tickets by company_id and sort manually
         tickets_response = (
@@ -84,8 +110,6 @@ async def get_mine(
         return {"tickets": tickets}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
 # ------------------- Ticket Messages -------------------
 @router.get(
     "/{ticket_id}/messages",
