@@ -10,6 +10,7 @@ from app.services.audio_service import process_audio
 from app.services.transcription_service import get_transcription
 from app.services.analysis_service import analyze_conversation
 from app.services.storage_service import store_conversation_data
+from app.services.company_service import get_company_id
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -98,6 +99,9 @@ async def alternative_analysis(
 
     The analysis is performed using a combination of Azure AI services and OpenAI.
     """
+
+    # get company_id
+    company_id = await get_company_id(supabase, company_id)
 
     # Parse inputs
     date_time, participant_list = parse_inputs(date_string, participants)
