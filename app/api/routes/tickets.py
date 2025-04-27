@@ -103,12 +103,18 @@ async def get_ticket_messages(
     try:
         messages_response = (
             supabase.table("ticket_messages")
-            .select("*")
+            .select("*, users(user_id, role)")
             .eq("ticket_id", ticket_id)
             .execute()
         )
 
         messages = sorted(messages_response.data, key=lambda x: x["created_at"])
+
+        for message in messages:
+            if message.get("users") and message["users"].get("role"):
+                message["sender_role"] = message["users"]["role"]
+            else:
+                message["sender_role"] = "unknown"
 
         return {"messages": messages}
     except Exception as e:
