@@ -177,13 +177,19 @@ async def get_suggestions(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/all_chats")
 async def get_all_chats(
     current_user=Depends(get_current_user), supabase: Client = Depends(get_supabase)
 ):
     try:
         user_id = current_user.id
-        response = supabase.table("chatbot_conversations").select("chatbot_conversation_id","title").eq("user_id", user_id).execute()
+        response = (
+            supabase.table("chatbot_conversations")
+            .select("chatbot_conversation_id", "title")
+            .eq("user_id", user_id)
+            .execute()
+        )
 
         if not response.data:
             raise HTTPException(status_code=404, detail="User profile not found")
@@ -197,20 +203,38 @@ async def get_all_chats(
 async def get_chat_history(
     conversation_id: str,
     current_user=Depends(get_current_user),
-    supabase: Client = Depends(get_supabase)
+    supabase: Client = Depends(get_supabase),
 ):
     try:
         user_id = current_user.id
-        valid_chat = (supabase.table("chatbot_conversations").select("chatbot_conversation_id").eq("user_id", user_id).eq("chatbot_conversation_id", conversation_id).single().execute())
-        
+        valid_chat = (
+            supabase.table("chatbot_conversations")
+            .select("chatbot_conversation_id")
+            .eq("user_id", user_id)
+            .eq("chatbot_conversation_id", conversation_id)
+            .single()
+            .execute()
+        )
+
         if not valid_chat.data:
-            raise HTTPException(status_code=403, detail="Unauthorized access to conversation")
-        
+            raise HTTPException(
+                status_code=403, detail="Unauthorized access to conversation"
+            )
+
         """ response = supabase.table("chatbot_conversations").select("chatbot_messages(role, created_at, content, previous_response_id)").eq("user_id", user_id).eq("chatbot_conversation_id", conversation_id).execute() """
-        response = (supabase.table("chatbot_messages").select("role, created_at, content, previous_response_id").eq("chatbot_conversation_id", conversation_id).order("created_at", desc=False).execute())
+        response = (
+            supabase.table("chatbot_messages")
+            .select("role, created_at, content, previous_response_id")
+            .eq("chatbot_conversation_id", conversation_id)
+            .order("created_at", desc=False)
+            .execute()
+        )
 
         if not response.data:
-            raise HTTPException(status_code=404, detail="No chatbot history matching this conversation_id for this user")
+            raise HTTPException(
+                status_code=404,
+                detail="No chatbot history matching this conversation_id for this user",
+            )
         """ else:
             last_response_id = supabase.table("chatbot_messages").select("previous_response_id").eq("chatbot_conversation_id", conversation_id).order("created_at", desc=True).limit(1).execute()
             #Fetch the last 2 chatbot_message_ids that start with 'resp'
@@ -224,7 +248,7 @@ async def get_chat_history(
             .limit(2)
             .execute()
             ) """
-            
+
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
