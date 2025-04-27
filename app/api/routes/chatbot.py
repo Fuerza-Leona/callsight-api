@@ -6,7 +6,7 @@ from app.core.config import settings
 
 import json
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from openai import OpenAI
 from pydantic import BaseModel
@@ -44,7 +44,9 @@ async def post_chat(
                 {"role": "user", "content": "Crea un titulo para esta conversación"},
             ],
         )
-        created_at = datetime.fromtimestamp(response.created_at).isoformat()
+        created_at = datetime.fromtimestamp(response.created_at)
+        user_created_at = (created_at - timedelta(seconds=1)).isoformat()
+        created_at = created_at.isoformat()
         chatbot_conversation = {
             "chatbot_conversation_id": conversation_id,
             "user_id": current_user.id,
@@ -57,7 +59,7 @@ async def post_chat(
             "chatbot_conversation_id": conversation_id,
             "role": "user",
             "content": request.prompt,
-            "created_at": created_at,
+            "created_at": user_created_at,
             "previous_response_id": None,
         }
         chatbot_message = {
@@ -112,13 +114,15 @@ async def continue_chat(
                 {"role": "user", "content": request.prompt},
             ],
         )
-        created_at = datetime.fromtimestamp(response.created_at).isoformat()
+        created_at = datetime.fromtimestamp(response.created_at)
+        user_created_at = (created_at - timedelta(seconds=1)).isoformat()
+        created_at = created_at.isoformat()
         user_message = {
             "chatbot_message_id": str(uuid4()),
             "chatbot_conversation_id": conversation_id,
             "role": "user",
             "content": request.prompt,
-            "created_at": created_at,
+            "created_at": user_created_at,
             "previous_response_id": previous_response_id,
         }
         chatbot_message = {
@@ -146,6 +150,7 @@ async def continue_chat(
 
 @router.post("/suggestions")
 async def get_suggestions(
+    # TO DO: pass user context to generate the prompts
     # request: ChatRequest,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
@@ -169,5 +174,57 @@ async def get_suggestions(
         parsed = json.loads(json_string)
         # return {"response": response.choices[0].message.content}
         return parsed
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/all_chats")
+async def get_all_chats(
+    current_user=Depends(get_current_user), supabase: Client = Depends(get_supabase)
+):
+    try:
+        user_id = current_user.id
+        response = supabase.table("chatbot_conversations").select("chatbot_conversation_id","title").eq("user_id", user_id).execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User profile not found")
+
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chat_history/{conversation_id}")
+async def get_chat_history(
+    conversation_id: str,
+    current_user=Depends(get_current_user),
+    supabase: Client = Depends(get_supabase)
+):
+    try:
+        user_id = current_user.id
+        valid_chat = (supabase.table("chatbot_conversations").select("chatbot_conversation_id").eq("user_id", user_id).eq("chatbot_conversation_id", conversation_id).single().execute())
+        
+        if not valid_chat.data:
+            raise HTTPException(status_code=403, detail="Unauthorized access to conversation")
+        
+        """ response = supabase.table("chatbot_conversations").select("chatbot_messages(role, created_at, content, previous_response_id)").eq("user_id", user_id).eq("chatbot_conversation_id", conversation_id).execute() """
+        response = (supabase.table("chatbot_messages").select("role, created_at, content, previous_response_id").eq("chatbot_conversation_id", conversation_id).order("created_at", desc=False).execute())
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="No chatbot history matching this conversation_id for this user")
+        """ else:
+            last_response_id = supabase.table("chatbot_messages").select("previous_response_id").eq("chatbot_conversation_id", conversation_id).order("created_at", desc=True).limit(1).execute()
+            #Fetch the last 2 chatbot_message_ids that start with 'resp'
+            #Only if the chatbot will not allow to choose which message to reply to, unlike chatgpt
+            #Does not use last_response_id column from the database
+            last_two = (supabase.table("chatbot_messages")
+            .select("chatbot_message_id")
+            .eq("chatbot_conversation_id", conversation_id)
+            .like("chatbot_message_id", "resp%")
+            .order("created_at", desc=True)
+            .limit(2)
+            .execute()
+            ) """
+            
+        return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
