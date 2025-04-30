@@ -120,6 +120,18 @@ async def get_mine(
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
 
+@router.get("/minenumber")
+async def get_mine_number(
+    current_user=Depends(get_current_user),
+    supabase: Client = Depends(get_supabase),
+):
+    try:
+        response = supabase.table("participants").select("*").eq("user_id", current_user.id).execute()
+        return {"number": len(response.data)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+
+
 @router.post("/myClientEmotions")
 async def get_emotions(
     request: ConversationsFilteringParameters,
