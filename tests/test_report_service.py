@@ -1,7 +1,6 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from datetime import datetime
-import io
 
 from app.services.report_service import create_monthly_report, save_report_to_storage
 
@@ -57,7 +56,7 @@ def test_create_monthly_report(sample_report_data):
     categories_data = sample_report_data["categories_data"]
     ratings_data = sample_report_data["ratings_data"]
     emotions_data = sample_report_data["emotions_data"]
-    
+
     # Call the function
     pdf_data = create_monthly_report(
         company_name,
@@ -67,15 +66,15 @@ def test_create_monthly_report(sample_report_data):
         topics_data,
         categories_data,
         ratings_data,
-        emotions_data
+        emotions_data,
     )
-    
+
     # Verify it returned bytes
     assert isinstance(pdf_data, bytes)
     assert len(pdf_data) > 0
-    
+
     # Basic check for PDF format (should start with %PDF)
-    assert pdf_data.startswith(b'%PDF')
+    assert pdf_data.startswith(b"%PDF")
 
 
 # Test create_monthly_report with minimal data
@@ -90,7 +89,7 @@ def test_create_monthly_report_minimal():
     categories_data = []
     ratings_data = []
     emotions_data = {"positive": 0, "neutral": 0, "negative": 0}
-    
+
     # Call the function
     pdf_data = create_monthly_report(
         company_name,
@@ -100,9 +99,9 @@ def test_create_monthly_report_minimal():
         topics_data,
         categories_data,
         ratings_data,
-        emotions_data
+        emotions_data,
     )
-    
+
     # Verify basic output
     assert isinstance(pdf_data, bytes)
     assert len(pdf_data) > 0
@@ -114,41 +113,38 @@ async def test_save_report_to_storage():
     """Test saving report to storage and creating database entry"""
     # Mock Supabase client
     mock_supabase = MagicMock()
-    
+
     # Mock storage and table functions
     storage_mock = MagicMock()
     storage_mock.upload.return_value = None
     storage_mock.get_public_url.return_value = "https://example.com/test-report.pdf"
     mock_supabase.storage.from_.return_value = storage_mock
-    
+
     table_mock = MagicMock()
-    table_mock.insert.return_value.execute.return_value.data = [{"report_id": "test-report-id"}]
+    table_mock.insert.return_value.execute.return_value.data = [
+        {"report_id": "test-report-id"}
+    ]
     mock_supabase.table.return_value = table_mock
-    
+
     # Test data
     pdf_data = b"%PDF-1.4 test pdf content"
     company_name = "Test Company"
     start_date = datetime(2025, 4, 1)
     end_date = datetime(2025, 4, 30)
     user_id = "test-user-id"
-    
+
     # Call the function
     result = await save_report_to_storage(
-        mock_supabase,
-        pdf_data,
-        company_name,
-        start_date,
-        end_date,
-        user_id
+        mock_supabase, pdf_data, company_name, start_date, end_date, user_id
     )
-    
+
     # Verify the result
     assert isinstance(result, dict)
     assert "report_id" in result
     assert "file_url" in result
     assert "report_name" in result
     assert "created_at" in result
-    
+
     # Verify Supabase calls
     mock_supabase.storage.from_.assert_called_with("reports")
     storage_mock.upload.assert_called_once()
@@ -163,28 +159,23 @@ async def test_save_report_storage_error():
     """Test handling of storage errors"""
     # Mock Supabase with an error on upload
     mock_supabase = MagicMock()
-    
+
     storage_mock = MagicMock()
     storage_mock.upload.side_effect = Exception("Storage upload failed")
     mock_supabase.storage.from_.return_value = storage_mock
-    
+
     # Test data
     pdf_data = b"%PDF-1.4 test pdf content"
     company_name = "Test Company"
     start_date = datetime(2025, 4, 1)
     end_date = datetime(2025, 4, 30)
     user_id = "test-user-id"
-    
+
     # Call the function and expect exception
     with pytest.raises(Exception) as excinfo:
         await save_report_to_storage(
-            mock_supabase,
-            pdf_data,
-            company_name,
-            start_date,
-            end_date,
-            user_id
+            mock_supabase, pdf_data, company_name, start_date, end_date, user_id
         )
-    
+
     # Verify the error message
     assert "Failed to upload report to storage" in str(excinfo.value)

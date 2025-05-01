@@ -14,6 +14,7 @@ from app.services.company_service import get_company_id
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
+
 class AnalysisResponse(BaseModel):
     success: bool
     conversation_id: str
