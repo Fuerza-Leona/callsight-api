@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from supabase import Client
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
@@ -6,6 +7,9 @@ from enum import Enum
 
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
+
+import jwt
+import time
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -136,10 +140,8 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
         )
         user_data = user_response.data[0] if user_response.data else {}
 
-        # Return the session information and user data
-        return {
-            "access_token": auth_response.session.access_token,
-            "refresh_token": auth_response.session.refresh_token,
+        # Create response data
+        user_data_response = {
             "user": {
                 "user_id": user_id,
                 "username": user_data.get("username"),
@@ -148,14 +150,48 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
                 "department": user_data.get("department"),
             },
         }
+
+        # Create response object with the JSON content
+        response = JSONResponse(content=user_data_response)
+
+        # Set cookies on the response
+        response.set_cookie(
+            key="access_token",
+            value=auth_response.session.access_token,
+            httponly=True,
+            secure=False,
+            samesite="none",
+            max_age=3600,
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=auth_response.session.refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="none",
+            max_age=7 * 24 * 3600,
+        )
+
+        return response
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid credentials: {str(e)}")
 
 
 @router.post("/logout")
-async def logout(supabase: Client = Depends(get_supabase)):
+async def logout(
+    request: Request,
+    supabase: Client = Depends(get_supabase),
+):
     try:
-        supabase.auth.sign_out()
+        access_token = request.cookies.get("access_token")
+        if not access_token:
+            raise HTTPException(
+                status_code=400, detail="Access token not found in cookies"
+            )
+
+        supabase.auth.admin.sign_out(jwt=access_token)
+
         return {"message": "Logged out successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -163,19 +199,49 @@ async def logout(supabase: Client = Depends(get_supabase)):
 
 @router.post("/refresh")
 async def refresh_access_token(
-    request: RefreshTokenRequest, supabase: Client = Depends(get_supabase)
+    request: Request, supabase: Client = Depends(get_supabase)
 ):
-    """
-    Use a refresh token to get a new access token without re-authenticating
-    """
-    try:
-        # Use Supabase's built-in refresh token functionality
-        response = supabase.auth.refresh_session(request.refresh_token)
+    response = Response()
 
-        return {
-            "access_token": response.session.access_token,
-            "refresh_token": response.session.refresh_token,  # Supabase may also refresh the refresh token
-        }
+    try:
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            raise HTTPException(status_code=401, detail="Refresh token not found")
+
+        # Parse the JWT to check its creation time
+        # This is a simplified example - you'd need to decode and verify the JWT properly
+        token_data = jwt.decode(refresh_token, options={"verify_signature": False})
+
+        # Calculate how long since original login (in seconds)
+        time_since_login = time.time() - token_data["iat"]  # iat = issued at time
+
+        # Force logout after 30 days regardless of refreshes
+        if time_since_login > 30 * 24 * 3600:  # 30 days in seconds
+            raise HTTPException(
+                status_code=401, detail="Session expired. Please login again"
+            )
+
+        auth_response = supabase.auth.refresh_session(refresh_token)
+
+        response.set_cookie(
+            key="access_token",
+            value=auth_response.session.access_token,
+            httponly=True,
+            secure=False,  # TODO: CHANGE TO TRUE IN PRODUCTION
+            samesite="none",
+            max_age=3600,
+        )
+
+        response.set_cookie(
+            key="refresh_token",
+            value=auth_response.session.refresh_token,
+            httponly=True,
+            secure=False,  # TODO: CHANGE TO TRUE IN PRODUCTION
+            samesite="none",
+            max_age=7 * 24 * 3600,
+        )
+
+        return {"status": "success", "message": "Tokens refreshed successfully"}
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid refresh token: {str(e)}")
 
