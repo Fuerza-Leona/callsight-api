@@ -9,7 +9,6 @@ from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-
 class UserRole(str, Enum):
     ADMIN = "admin"
     AGENT = "agent"
@@ -269,7 +268,7 @@ async def update_user(
 ):
     """Update user data - admin only endpoint"""
     # Create dict with only the fields that were provided
-    update_data = {k: v for k, v in user_data.dict().items() if v is not None}
+    update_data = {k: v for k, v in user_data.model_dump().items() if v is not None}
 
     if not update_data:
         return {"message": "No fields to update"}
