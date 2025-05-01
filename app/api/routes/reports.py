@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime, date
+from datetime import datetime
 import calendar
 from dateutil.relativedelta import relativedelta
 
@@ -56,11 +56,13 @@ async def generate_monthly_report(
 
         # Validate month
         if month < 1 or month > 12:
-            raise HTTPException(status_code=400, detail="Invalid month. Must be between 1 and 12")
+            raise HTTPException(
+                status_code=400, detail="Invalid month. Must be between 1 and 12"
+            )
 
         # Create date range for the report
         start_date = datetime(year, month, 1)
-        
+
         # Last day of the month
         _, last_day = calendar.monthrange(year, month)
         end_date = datetime(year, month, last_day, 23, 59, 59)
@@ -80,7 +82,7 @@ async def generate_monthly_report(
             if not company_response.data:
                 raise HTTPException(status_code=404, detail="Company not found")
             company_name = company_response.data[0]["name"]
-            
+
             # Filter parameters for all data calls
             filter_params = {
                 "clients": [],
@@ -88,7 +90,7 @@ async def generate_monthly_report(
                 "startDate": start_date_str,
                 "endDate": end_date_str,
             }
-            
+
             # Add company_id to clients if specified
             if request.company_id:
                 # Get users for this company
@@ -99,11 +101,13 @@ async def generate_monthly_report(
                     .execute()
                 )
                 if users_response.data:
-                    filter_params["clients"] = [user["user_id"] for user in users_response.data]
+                    filter_params["clients"] = [
+                        user["user_id"] for user in users_response.data
+                    ]
         else:
             # If no company specified, use a generic name
             company_name = "All Companies"
-            
+
             # Filter parameters for all data calls
             filter_params = {
                 "clients": [],
@@ -121,11 +125,15 @@ async def generate_monthly_report(
                 "end_date": end_date_str,
                 "user_role": role,
                 "id": current_user.id,
-                "clients": filter_params["clients"] if filter_params["clients"] else None,
-                "categories": filter_params["categories"] if filter_params["categories"] else None,
+                "clients": filter_params["clients"]
+                if filter_params["clients"]
+                else None,
+                "categories": filter_params["categories"]
+                if filter_params["categories"]
+                else None,
             },
         ).execute()
-        
+
         summary_data = summary_response.data[0] if summary_response.data else {}
 
         # 2. Get topics data
@@ -136,12 +144,16 @@ async def generate_monthly_report(
                 "end_date": end_date_str,
                 "user_role": role,
                 "id": current_user.id,
-                "clients": filter_params["clients"] if filter_params["clients"] else None,
-                "categories": filter_params["categories"] if filter_params["categories"] else None,
+                "clients": filter_params["clients"]
+                if filter_params["clients"]
+                else None,
+                "categories": filter_params["categories"]
+                if filter_params["categories"]
+                else None,
                 "limit_count": 10,  # Get top 10 topics
             },
         ).execute()
-        
+
         topics_data = topics_response.data if topics_response.data else []
 
         # 3. Get categories data
@@ -152,11 +164,15 @@ async def generate_monthly_report(
                 "end_date": end_date_str,
                 "user_role": role,
                 "id": current_user.id,
-                "clients": filter_params["clients"] if filter_params["clients"] else None,
-                "categories": filter_params["categories"] if filter_params["categories"] else None,
+                "clients": filter_params["clients"]
+                if filter_params["clients"]
+                else None,
+                "categories": filter_params["categories"]
+                if filter_params["categories"]
+                else None,
             },
         ).execute()
-        
+
         categories_data = categories_response.data if categories_response.data else []
 
         # 4. Get ratings data
@@ -167,11 +183,15 @@ async def generate_monthly_report(
                 "end_date": end_date_str,
                 "user_role": role,
                 "id": current_user.id,
-                "clients": filter_params["clients"] if filter_params["clients"] else None,
-                "categories": filter_params["categories"] if filter_params["categories"] else None,
+                "clients": filter_params["clients"]
+                if filter_params["clients"]
+                else None,
+                "categories": filter_params["categories"]
+                if filter_params["categories"]
+                else None,
             },
         ).execute()
-        
+
         ratings_data = ratings_response.data if ratings_response.data else []
 
         # 5. Get emotions data
@@ -182,11 +202,15 @@ async def generate_monthly_report(
                 "end_date": end_date_str,
                 "user_role": role,
                 "id": current_user.id,
-                "clients": filter_params["clients"] if filter_params["clients"] else None,
-                "categories": filter_params["categories"] if filter_params["categories"] else None,
+                "clients": filter_params["clients"]
+                if filter_params["clients"]
+                else None,
+                "categories": filter_params["categories"]
+                if filter_params["categories"]
+                else None,
             },
         ).execute()
-        
+
         emotions_data = {}
         if emotions_response.data and len(emotions_response.data) > 0:
             row = emotions_response.data[0]
@@ -207,17 +231,12 @@ async def generate_monthly_report(
             topics_data,
             categories_data,
             ratings_data,
-            emotions_data
+            emotions_data,
         )
 
         # Save the report to storage and database
         report_info = await save_report_to_storage(
-            supabase,
-            pdf_data,
-            company_name,
-            start_date,
-            end_date,
-            current_user.id
+            supabase, pdf_data, company_name, start_date, end_date, current_user.id
         )
 
         return {
@@ -228,11 +247,13 @@ async def generate_monthly_report(
                 "year": year,
                 "start_date": start_date.isoformat(),
                 "end_date": end_date.isoformat(),
-            }
+            },
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate report: {str(e)}"
+        )
 
 
 @router.get("/")
@@ -256,4 +277,6 @@ async def list_reports(
 
         return {"reports": response.data}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch reports: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch reports: {str(e)}"
+        )

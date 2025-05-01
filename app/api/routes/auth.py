@@ -12,6 +12,7 @@ from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+
 class UserRole(str, Enum):
     ADMIN = "admin"
     AGENT = "agent"
