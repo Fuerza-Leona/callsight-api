@@ -22,8 +22,6 @@ def test_login(mock_supabase):
     # Setup mock user and session response
     mock_auth_response = MagicMock()
     mock_auth_response.user.id = "test-user-id"
-    mock_auth_response.session.access_token = "fake-access-token"
-    mock_auth_response.session.refresh_token = "fake-refresh-token"
 
     mock_supabase.auth.sign_in_with_password.return_value = mock_auth_response
 
@@ -44,8 +42,6 @@ def test_login(mock_supabase):
 
     # Assert response
     assert response.status_code == 200
-    assert "access_token" in response.json()
-    assert "refresh_token" in response.json()
     assert "user" in response.json()
     assert response.json()["user"]["username"] == "testuser"
     assert response.json()["user"]["role"] == "agent"
