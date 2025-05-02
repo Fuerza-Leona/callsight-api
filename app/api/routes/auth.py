@@ -10,9 +10,6 @@ from app.db.session import get_supabase
 from app.api.deps import get_current_user
 
 
-import jwt
-import time
-
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -212,26 +209,17 @@ async def logout(
 
 @router.post("/refresh")
 async def refresh_access_token(
-    request: Request, supabase: Client = Depends(get_supabase), response=Response()
+    request: Request, supabase: Client = Depends(get_supabase)
 ):
     try:
         refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
             raise HTTPException(status_code=401, detail="Refresh token not found")
 
-        # Parse the JWT to check its creation time
-        # This is a simplified example - you'd need to decode and verify the JWT properly
-        token_data = jwt.decode(refresh_token, options={"verify_signature": False})
+        # Create a response object
+        response = Response()
 
-        # Calculate how long since original login (in seconds)
-        time_since_login = time.time() - token_data["iat"]  # iat = issued at time
-
-        # Force logout after 30 days regardless of refreshes
-        if time_since_login > 30 * 24 * 3600:  # 30 days in seconds
-            raise HTTPException(
-                status_code=401, detail="Session expired. Please login again"
-            )
-
+        # Refresh the session with Supabase
         auth_response = supabase.auth.refresh_session(refresh_token)
 
         node_env = settings.NODE_ENV
@@ -266,7 +254,7 @@ async def refresh_access_token(
 
         return response
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid refresh token: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"Token refresh failed: {str(e)}")
 
 
 @router.get("/me")
