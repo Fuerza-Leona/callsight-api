@@ -4,9 +4,11 @@ from supabase import Client
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from enum import Enum
+from app.core.config import settings
 
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
+
 
 import jwt
 import time
@@ -154,24 +156,35 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
         # Create response object with the JSON content
         response = JSONResponse(content=user_data_response)
 
-        # Set cookies on the response
-        response.set_cookie(
-            key="access_token",
-            value=auth_response.session.access_token,
-            httponly=True,
-            secure=False,
-            samesite="none",
-            max_age=3600,
-        )
+        node_env = settings.NODE_ENV
 
-        response.set_cookie(
-            key="refresh_token",
-            value=auth_response.session.refresh_token,
-            httponly=True,
-            secure=False,
-            samesite="none",
-            max_age=7 * 24 * 3600,
-        )
+        cookie_params = {
+            "key": "access_token",
+            "value": auth_response.session.access_token,
+            "httponly": True,
+            "secure": True,
+            "samesite": "none",
+            "max_age": 3600,
+        }
+
+        if node_env != "development":
+            cookie_params["domain"] = ".staging.callsight.tech"
+
+        response.set_cookie(**cookie_params)
+
+        refresh_cookie_params = {
+            "key": "refresh_token",
+            "value": auth_response.session.refresh_token,
+            "httponly": True,
+            "secure": True,
+            "samesite": "none",
+            "max_age": 7 * 24 * 3600,
+        }
+
+        if node_env != "development":
+            refresh_cookie_params["domain"] = ".staging.callsight.tech"
+
+        response.set_cookie(**refresh_cookie_params)
 
         return response
     except Exception as e:
@@ -199,10 +212,8 @@ async def logout(
 
 @router.post("/refresh")
 async def refresh_access_token(
-    request: Request, supabase: Client = Depends(get_supabase)
+    request: Request, supabase: Client = Depends(get_supabase), response=Response()
 ):
-    response = Response()
-
     try:
         refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
@@ -223,25 +234,37 @@ async def refresh_access_token(
 
         auth_response = supabase.auth.refresh_session(refresh_token)
 
-        response.set_cookie(
-            key="access_token",
-            value=auth_response.session.access_token,
-            httponly=True,
-            secure=False,  # TODO: CHANGE TO TRUE IN PRODUCTION
-            samesite="none",
-            max_age=3600,
-        )
+        node_env = settings.NODE_ENV
 
-        response.set_cookie(
-            key="refresh_token",
-            value=auth_response.session.refresh_token,
-            httponly=True,
-            secure=False,  # TODO: CHANGE TO TRUE IN PRODUCTION
-            samesite="none",
-            max_age=7 * 24 * 3600,
-        )
+        cookie_params = {
+            "key": "access_token",
+            "value": auth_response.session.access_token,
+            "httponly": True,
+            "secure": True,
+            "samesite": "none",
+            "max_age": 3600,
+        }
 
-        return {"status": "success", "message": "Tokens refreshed successfully"}
+        if node_env != "development":
+            cookie_params["domain"] = ".staging.callsight.tech"
+
+        response.set_cookie(**cookie_params)
+
+        refresh_cookie_params = {
+            "key": "refresh_token",
+            "value": auth_response.session.refresh_token,
+            "httponly": True,
+            "secure": True,
+            "samesite": "none",
+            "max_age": 7 * 24 * 3600,
+        }
+
+        if node_env != "development":
+            refresh_cookie_params["domain"] = ".staging.callsight.tech"
+
+        response.set_cookie(**refresh_cookie_params)
+
+        return response
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid refresh token: {str(e)}")
 

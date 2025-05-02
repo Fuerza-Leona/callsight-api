@@ -54,6 +54,8 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 
+    NODE_ENV: str = os.getenv("NODE_ENV", "development")
+
     class Config:
         env_file = ".env"
 
