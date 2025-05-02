@@ -220,7 +220,8 @@ async def get_chat_history(
 
         if not valid_chat.data:
             raise HTTPException(
-                status_code=404, detail="No chatbot history matching this conversation_id for this use"
+                status_code=404,
+                detail="No chatbot history matching this conversation_id for this use",
             )
 
         response = (
