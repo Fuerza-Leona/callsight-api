@@ -27,7 +27,7 @@ app = FastAPI(
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Add your frontend URL
+    allow_origins=["http://localhost:3000", "https://staging.callsight.tech"],
     allow_credentials=True,  # Important for cookies/authentication
     allow_methods=["*"],
     allow_headers=["*"],
