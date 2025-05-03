@@ -63,6 +63,18 @@ async def test_store_conversation_data(sample_analysis_result):
     duration = 120
     company_id = "test-company-id"
     participant_list = ["user1-id", "user2-id"]
+    embeddings_results = [
+        {
+            "chunk_index": 0,
+            "content": "Speaker A: Buenos días, ¿en qué puedo ayudarle?",
+            "vector": [0.1, 0.2, 0.3],
+        },
+        {
+            "chunk_index": 1,
+            "content": "Speaker B: Hola, tengo un problema con mi servicio de internet.",
+            "vector": [0.4, 0.5, 0.6],
+        },
+    ]
 
     # Mock the sub-functions to isolate the main function
     with (
@@ -90,6 +102,7 @@ async def test_store_conversation_data(sample_analysis_result):
             company_id,
             sample_analysis_result,
             participant_list,
+            embeddings_results,
         )
 
         # Basic assertions

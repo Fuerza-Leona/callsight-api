@@ -150,7 +150,7 @@ async def test_transcription_service():
         ]
 
         # Call the function
-        result = get_transcription(file_url)
+        result, embeddings_results = get_transcription(file_url)
 
         # Assertions
         assert result["confidence"] == 0.95
@@ -220,7 +220,10 @@ async def test_alternative_analysis_endpoint(
                 },
             ],
         }
-        mock_get_transcription.return_value = mock_transcript_result
+        mock_get_transcription.return_value = (mock_transcript_result, [
+            {"chunk_index": 0, "content": "Speaker A: Hello, how can I help you today?", "vector": [0.1, 0.2, 0.3]},
+            {"chunk_index": 1, "content": "Speaker B: I'm having an issue with my account.", "vector": [0.4, 0.5, 0.6]},
+        ])
 
         mock_analysis_result = {
             "phrases": mock_transcript_result["phrases"],
