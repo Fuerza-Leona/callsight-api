@@ -220,10 +220,21 @@ async def test_alternative_analysis_endpoint(
                 },
             ],
         }
-        mock_get_transcription.return_value = (mock_transcript_result, [
-            {"chunk_index": 0, "content": "Speaker A: Hello, how can I help you today?", "vector": [0.1, 0.2, 0.3]},
-            {"chunk_index": 1, "content": "Speaker B: I'm having an issue with my account.", "vector": [0.4, 0.5, 0.6]},
-        ])
+        mock_get_transcription.return_value = (
+            mock_transcript_result,
+            [
+                {
+                    "chunk_index": 0,
+                    "content": "Speaker A: Hello, how can I help you today?",
+                    "vector": [0.1, 0.2, 0.3],
+                },
+                {
+                    "chunk_index": 1,
+                    "content": "Speaker B: I'm having an issue with my account.",
+                    "vector": [0.4, 0.5, 0.6],
+                },
+            ],
+        )
 
         mock_analysis_result = {
             "phrases": mock_transcript_result["phrases"],

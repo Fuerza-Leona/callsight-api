@@ -95,9 +95,8 @@ async def store_conversation_data(
         await process_transcripts(supabase, transcript, conversation_id)
 
         # Step 6.1: Add the conversation_id to the embeddings
-        rows = []
-        for e in embeddings_results:
-            e["conversation_id"] = conversation_id
+        for embedding in embeddings_results:
+            embedding["conversation_id"] = conversation_id
 
         # Step 6.2 Insert the embeddings
         embeddings_query = (

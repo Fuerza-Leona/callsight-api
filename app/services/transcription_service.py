@@ -4,9 +4,10 @@ import assemblyai as aai
 from openai import OpenAI
 import tiktoken
 
-#for the embeddings
+# for the embeddings
 GPT_MODEL = "gpt-4o-mini"
 MAX_TOKENS = 1000
+
 
 def convert_to_chunks(transcript) -> list[str]:
     """Turn utterances into labeled lines for chunks"""
@@ -14,10 +15,12 @@ def convert_to_chunks(transcript) -> list[str]:
     joined = "\n".join(lines)
     return split_strings_from_transcript(joined, MAX_TOKENS, GPT_MODEL)
 
+
 def tokenize(text: str, model: str = GPT_MODEL) -> int:
     """Return the number of tokens in a string."""
     encoding = tiktoken.encoding_for_model(model)
     return len(encoding.encode(text))
+
 
 def halved_by_delimiter(text: str, delimiter: str = "\n") -> list[str]:
     """Split a text in two, on a delimiter, trying to balance tokens on each side."""
@@ -41,6 +44,7 @@ def halved_by_delimiter(text: str, delimiter: str = "\n") -> list[str]:
         right = delimiter.join(parts[best_idx:])
         return [left, right]
 
+
 def truncated_string(
     string: str,
     model: str,
@@ -52,8 +56,11 @@ def truncated_string(
     encoded_string = encoding.encode(string)
     truncated_string = encoding.decode(encoded_string[:max_tokens])
     if print_warning and len(encoded_string) > max_tokens:
-        print(f"Warning: Truncated string from {len(encoded_string)} tokens to {max_tokens} tokens.")
+        print(
+            f"Warning: Truncated string from {len(encoded_string)} tokens to {max_tokens} tokens."
+        )
     return truncated_string
+
 
 def split_strings_from_transcript(
     text: str,
@@ -70,7 +77,7 @@ def split_strings_from_transcript(
 
     Returns a list of strings, each safe to embed or send to a model constrained by `max_tokens`.
     """
-    
+
     # if length is fine, return text
     if tokenize(text, model) <= max_tokens:
         return [text]
@@ -94,9 +101,8 @@ def split_strings_from_transcript(
                     results.extend(half_strings)
                 return results
     # otherwise no split was found, so just truncate (should be very rare)
-    #fallback
+    # fallback
     return [truncated_string(text, model=model, max_tokens=max_tokens)]
-
 
 
 def get_transcription(file_url: str):
@@ -112,7 +118,7 @@ def get_transcription(file_url: str):
     transcriber = aai.Transcriber()
     transcript = transcriber.transcribe(file_url, config=config)
 
-    #For the embeddings, convert the transcript into separate chunks
+    # For the embeddings, convert the transcript into separate chunks
     chunks = convert_to_chunks(transcript)
     """ for i, chunk in enumerate(chunks):
         print(f"\n--- Chunk {i+1} ---\n{chunk}") """
@@ -129,18 +135,20 @@ def get_transcription(file_url: str):
         for i, e in enumerate(response.data):
             assert i == e.index
             global_index = batch_start + i
-            embeddings.append({
-                "chunk_index": global_index,
-                "content": batch[i],
-                "vector": e.embedding,
-            })
+            embeddings.append(
+                {
+                    "chunk_index": global_index,
+                    "content": batch[i],
+                    "vector": e.embedding,
+                }
+            )
         """ for i, be in enumerate(response.data):
             assert i == be.index  # double check embeddings are in same order as input
         batch_embeddings = [e.embedding for e in response.data]
         embeddings.extend(batch_embeddings) """
 
     """ df = pd.DataFrame({"text": chunks, "embedding": embeddings}) """
-    #return embeddings works already here
+    # return embeddings works already here
     """ for embedding in embeddings:
         print(embedding) """
 
