@@ -115,7 +115,7 @@ async def test_transcription_service():
         patch("app.services.transcription_service.OpenAI") as mock_openai_class,
         patch("app.services.transcription_service.convert_to_chunks") as mock_chunks,
     ):
-         # mock OpenAI client patch
+        # mock OpenAI client patch
         mock_openai_instance = MagicMock()
         mock_openai_class.return_value = mock_openai_instance
 
@@ -132,7 +132,7 @@ async def test_transcription_service():
             ]
         )
         mock_openai_instance.embeddings = mock_embeddings
-        
+
         # Set up mock transcriber
         mock_transcriber = MagicMock()
         mock_transcriber_class.return_value = mock_transcriber
