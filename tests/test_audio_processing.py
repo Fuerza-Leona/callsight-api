@@ -112,7 +112,27 @@ async def test_transcription_service():
             "app.services.transcription_service.classify_speakers_with_gpt"
         ) as mock_classify,
         patch("app.services.transcription_service.analyze_sentiment") as mock_sentiment,
+        patch("app.services.transcription_service.OpenAI") as mock_openai_class,
+        patch("app.services.transcription_service.convert_to_chunks") as mock_chunks,
     ):
+         # mock OpenAI client patch
+        mock_openai_instance = MagicMock()
+        mock_openai_class.return_value = mock_openai_instance
+
+        mock_chunks.return_value = [
+            "Speaker A: Hello, how can I help you today?",
+            "Speaker B: I'm having an issue with my account.",
+        ]
+
+        mock_embeddings = MagicMock()
+        mock_embeddings.create.return_value = MagicMock(
+            data=[
+                MagicMock(index=0, embedding=[0.1, 0.2, 0.3]),
+                MagicMock(index=1, embedding=[0.4, 0.5, 0.6]),
+            ]
+        )
+        mock_openai_instance.embeddings = mock_embeddings
+        
         # Set up mock transcriber
         mock_transcriber = MagicMock()
         mock_transcriber_class.return_value = mock_transcriber
