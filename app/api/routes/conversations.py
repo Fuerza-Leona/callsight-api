@@ -65,7 +65,8 @@ async def get_conversations(supabase: Client = Depends(get_supabase)):
 
 class ConversationsFilteringParameters(BaseModel):
     clients: List[str] = []
-    categories: List[str] = []
+    agents: List[str] = []
+    companies: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
     endDate: Optional[str] = (
         datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
@@ -84,7 +85,8 @@ async def get_mine(
 ):
     """Get conversations for the currently authorized user"""
     clients = request.clients
-    categories = request.categories
+    agents = request.agents
+    companies = request.companies
     startDate = request.startDate
     endDate = request.endDate
     conversation_id = request.conversation_id
@@ -99,12 +101,10 @@ async def get_mine(
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
 
     role = await check_user_role(current_user, supabase)
-    if role not in ["admin", "agent"]:
-        raise HTTPException(status_code=403, detail="Access denied")
 
     try:
         response = supabase.rpc(
-            "build_get_my_conversations_query",
+            "new_build_get_my_conversations_query",
             {
                 "start_date": startDate,
                 "end_date": endDate,
@@ -112,7 +112,8 @@ async def get_mine(
                 "id": user_id,
                 "conv_id": conversation_id if conversation_id else None,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None,
+                "agents": agents if agents else None,
+                "companies": companies if companies else None,
             },
         ).execute()
         return {"conversations": response.data}
@@ -190,7 +191,8 @@ async def get_emotions(
     supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
-    categories = request.categories
+    agents = request.agents
+    companies = request.companies
     startDate = request.startDate
     endDate = request.endDate
     user_id = current_user.id
@@ -204,19 +206,18 @@ async def get_emotions(
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
 
     role = await check_user_role(current_user, supabase)
-    if role not in ["admin", "agent"]:
-        raise HTTPException(status_code=403, detail="Access denied")
 
     try:
         response = supabase.rpc(
-            "build_client_emotions_query",
+            "new_build_client_emotions_query",
             {
                 "start_date": startDate,
                 "end_date": endDate,
                 "user_role": role,
                 "id": user_id,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None,
+                "agents": agents if agents else None,
+                "companies": companies if companies else None,
             },
         ).execute()
 
@@ -440,6 +441,15 @@ async def get_info_pertaining_call(
             .execute()
         )
 
+        company_response = (
+            supabase.table("company_client")
+            .select("name, logo")
+            .eq("company_id", conversation[0]["company_id"])
+            .execute()
+        )
+
+        company = company_response.data[0] if company_response.data else {}
+
         participants = participants_response.data or []
 
         if not conversation:
@@ -460,6 +470,7 @@ async def get_info_pertaining_call(
             "summary": summary,
             "messages": messages,
             "participants": participants,
+            "company": company,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -472,7 +483,8 @@ async def get_conversation_summary(
     supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
-    categories = request.categories
+    companies = request.companies
+    agents = request.agents
     startDate = request.startDate
     endDate = request.endDate
     user_id = current_user.id
@@ -493,14 +505,15 @@ async def get_conversation_summary(
 
     try:
         result = supabase.rpc(
-            "build_conversations_summary",
+            "new_build_conversations_summary",
             {
                 "start_date": startDate,
                 "end_date": endDate,
                 "user_role": role,
                 "id": user_id,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None,
+                "agents": agents if agents else None,
+                "companies": companies if companies else None,
             },
         ).execute()
         return {"summary": result.data[0]}
@@ -558,7 +571,8 @@ async def get_conversations_ratings(
     supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
-    categories = request.categories
+    agents = request.agents
+    companies = request.companies
     startDate = request.startDate
     endDate = request.endDate
     user_id = current_user.id
@@ -579,14 +593,15 @@ async def get_conversations_ratings(
 
     try:
         result = supabase.rpc(
-            "build_conversations_ratings_query",
+            "new_build_conversations_ratings_query",
             {
                 "start_date": startDate,
                 "end_date": endDate,
                 "user_role": role,
                 "id": user_id,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None,
+                "agents": agents if agents else None,
+                "companies": companies if companies else None,
             },
         ).execute()
         return {"ratings": result.data}
