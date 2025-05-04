@@ -30,6 +30,8 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
         storage_path = f"{audio_id}.{file_ext}" if file_ext else audio_id
 
         # Get file content from UploadFile
+        if file.size and file.size > 5_000_000:
+            raise HTTPException(status_code=413, detail="Audio file too large. Compress it first.")
         file_content = await file.read()
 
         # Upload to Supabase
