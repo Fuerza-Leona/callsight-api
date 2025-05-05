@@ -4,6 +4,20 @@ from fastapi import HTTPException
 from app.services.input_service import parse_inputs
 
 
+@pytest.fixture
+def mock_datetime_now(monkeypatch):
+    """Fixture to mock datetime.now() for consistent test results."""
+    fixed_now = datetime(2025, 5, 5, 0, 23, 49, 216244)
+
+    class MockDateTime(datetime):
+        @classmethod
+        def now(cls):
+            return fixed_now
+
+    monkeypatch.setattr("datetime.datetime", MockDateTime)
+    return fixed_now
+
+
 @pytest.mark.parametrize(
     "date_string, participants, expected_date, expected_participants",
     [
@@ -16,19 +30,19 @@ from app.services.input_service import parse_inputs
                 "00000000-0000-0000-0000-000000000002",
             ],
         ),
-        ("", "", datetime.now(), []),
+        ("", "", None, []),  # Expected date will be handled by the fixture
         ("2023-10-01 15:30", "", datetime(2023, 10, 1, 15, 30), []),
         ("2023-10-01 15:30", "   ", datetime(2023, 10, 1, 15, 30), []),
     ],
 )
 def test_parse_inputs_valid(
-    date_string, participants, expected_date, expected_participants
+    date_string, participants, expected_date, expected_participants, mock_datetime_now
 ):
     parsed_date, parsed_participants = parse_inputs(date_string, participants)
 
     # Allow a small margin for datetime.now() default
     if date_string == "":
-        assert abs((parsed_date - expected_date).total_seconds()) < 1
+        assert parsed_date == mock_datetime_now
     else:
         assert parsed_date == expected_date
 
