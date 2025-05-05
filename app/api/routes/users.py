@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 
+from app.api.deps import get_current_user
 from app.db.session import get_supabase
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -26,6 +27,18 @@ async def get_employees(supabase: Client = Depends(get_supabase)):
         )
         users = [i["username"] for i in response.data]
         return {"data": response.data, "users": users}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/me")
+async def get_client(
+    supabase: Client = Depends(get_supabase), current_user=Depends(get_current_user)
+):
+    id = current_user.id
+    try:
+        response = supabase.table("users").select("*").eq("user_id", id).execute()
+        return {"user": response.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

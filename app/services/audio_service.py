@@ -3,7 +3,7 @@ from supabase import Client
 import uuid
 import librosa
 import io
-from app.services.convert_audio import convert_audio
+from app.services.convert_audio_service import convert_audio
 import os
 
 

@@ -8,6 +8,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    env:
+      NODE_ENV: production
 
     steps:
       - name: Deploy to production
