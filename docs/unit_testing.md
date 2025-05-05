@@ -68,4 +68,3 @@ async def test_my_async_function():
         result = await my_async_function(MagicMock())
         assert result == "processed data"
 ```
-
