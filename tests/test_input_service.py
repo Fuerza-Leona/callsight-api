@@ -14,7 +14,7 @@ def mock_datetime_now(monkeypatch):
         def now(cls, tz=None):
             return fixed_now
 
-    monkeypatch.setattr("datetime", MockDateTime)
+    monkeypatch.setattr("app.services.input_service.datetime", MockDateTime)
     return fixed_now
 
 
