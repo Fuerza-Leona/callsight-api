@@ -1,34 +1,37 @@
 import pytest
-from starlette.datastructures import UploadFile as StarletteUploadFile  # Updated import
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from app.services.convert_audio_service import convert_audio
 import io
 
 
 @pytest.fixture
 def mock_wav_file():
-    return StarletteUploadFile(  # Updated to use StarletteUploadFile
+    file = StarletteUploadFile(
         filename="test.wav",
         file=io.BytesIO(b"RIFF....WAVEfmt "),  # Minimal WAV header
-        content_type="audio/wav",
     )
+    file.content_type = "audio/wav"  # Set content_type explicitly
+    return file
 
 
 @pytest.fixture
 def mock_mp3_file():
-    return StarletteUploadFile(  # Updated to use StarletteUploadFile
+    file = StarletteUploadFile(
         filename="test.mp3",
         file=io.BytesIO(b"ID3"),  # Minimal MP3 header
-        content_type="audio/mpeg",
     )
+    file.content_type = "audio/mpeg"  # Set content_type explicitly
+    return file
 
 
 @pytest.fixture
 def mock_invalid_file():
-    return StarletteUploadFile(  # Updated to use StarletteUploadFile
+    file = StarletteUploadFile(
         filename="test.txt",
         file=io.BytesIO(b"Invalid content"),
-        content_type="text/plain",
     )
+    file.content_type = "text/plain"  # Set content_type explicitly
+    return file
 
 
 def test_convert_audio_to_wav(mock_wav_file):
