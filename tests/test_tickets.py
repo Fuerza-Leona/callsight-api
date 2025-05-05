@@ -232,7 +232,7 @@ def test_client_cannot_create_ticket_for_other_company(mock_supabase):
         "status": "open",
     }
 
-    # Mock the API to return 403 for this scenario
+    # Mock the API to simulate a 403 Forbidden response
     mock_supabase.table.return_value.insert.return_value.execute.side_effect = (
         Exception("Forbidden")
     )
