@@ -111,9 +111,9 @@ async def get_mine(
                 "user_role": role,
                 "id": user_id,
                 "conv_id": conversation_id if conversation_id else None,
-                "clients": clients if clients else None,
-                "agents": agents if agents else None,
-                "companies": companies if companies else None,
+                "clients": clients if role != "client" and clients else None,
+                "agents": agents if role == "admin" and agents else None,
+                "companies": companies if role != "client" and companies else None,
             },
         ).execute()
         return {"conversations": response.data}
