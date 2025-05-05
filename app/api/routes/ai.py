@@ -114,7 +114,7 @@ async def alternative_analysis(
 
     # Transcription and Analysis
     try:
-        transcript_result = get_transcription(file_url)
+        transcript_result, embeddings_results = get_transcription(file_url)
         analysis_result = analyze_conversation(transcript_result["phrases"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
@@ -129,6 +129,7 @@ async def alternative_analysis(
             company_id,
             analysis_result,
             participant_list,
+            embeddings_results,
         )
     except Exception as e:
         raise HTTPException(

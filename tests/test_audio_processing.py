@@ -112,7 +112,27 @@ async def test_transcription_service():
             "app.services.transcription_service.classify_speakers_with_gpt"
         ) as mock_classify,
         patch("app.services.transcription_service.analyze_sentiment") as mock_sentiment,
+        patch("app.services.transcription_service.OpenAI") as mock_openai_class,
+        patch("app.services.transcription_service.convert_to_chunks") as mock_chunks,
     ):
+        # mock OpenAI client patch
+        mock_openai_instance = MagicMock()
+        mock_openai_class.return_value = mock_openai_instance
+
+        mock_chunks.return_value = [
+            "Speaker A: Hello, how can I help you today?",
+            "Speaker B: I'm having an issue with my account.",
+        ]
+
+        mock_embeddings = MagicMock()
+        mock_embeddings.create.return_value = MagicMock(
+            data=[
+                MagicMock(index=0, embedding=[0.1, 0.2, 0.3]),
+                MagicMock(index=1, embedding=[0.4, 0.5, 0.6]),
+            ]
+        )
+        mock_openai_instance.embeddings = mock_embeddings
+
         # Set up mock transcriber
         mock_transcriber = MagicMock()
         mock_transcriber_class.return_value = mock_transcriber
@@ -150,7 +170,7 @@ async def test_transcription_service():
         ]
 
         # Call the function
-        result = get_transcription(file_url)
+        result, embeddings_results = get_transcription(file_url)
 
         # Assertions
         assert result["confidence"] == 0.95
@@ -220,7 +240,21 @@ async def test_alternative_analysis_endpoint(
                 },
             ],
         }
-        mock_get_transcription.return_value = mock_transcript_result
+        mock_get_transcription.return_value = (
+            mock_transcript_result,
+            [
+                {
+                    "chunk_index": 0,
+                    "content": "Speaker A: Hello, how can I help you today?",
+                    "vector": [0.1, 0.2, 0.3],
+                },
+                {
+                    "chunk_index": 1,
+                    "content": "Speaker B: I'm having an issue with my account.",
+                    "vector": [0.4, 0.5, 0.6],
+                },
+            ],
+        )
 
         mock_analysis_result = {
             "phrases": mock_transcript_result["phrases"],

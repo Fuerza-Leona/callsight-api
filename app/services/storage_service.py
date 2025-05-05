@@ -13,6 +13,7 @@ async def store_conversation_data(
     company_id: str,
     analysis_result: Dict[str, Any],
     participant_list: List[str],
+    embeddings_results: List[Dict],
 ) -> str:
     """
     Stores all conversation data in the database including:
@@ -92,6 +93,18 @@ async def store_conversation_data(
 
         # Step 5: Insert transcript messages
         await process_transcripts(supabase, transcript, conversation_id)
+
+        # Step 6.1: Add the conversation_id to the embeddings
+        for embedding in embeddings_results:
+            embedding["conversation_id"] = conversation_id
+
+        # Step 6.2 Insert the embeddings
+        embeddings_query = (
+            supabase.table("conversation_chunks").insert(embeddings_results).execute()
+        )
+
+        if not embeddings_query.data:
+            print("Warning: Embeddings insertion may have failed")
 
         return conversation_id
 
