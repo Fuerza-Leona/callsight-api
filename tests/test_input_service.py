@@ -11,10 +11,10 @@ def mock_datetime_now(monkeypatch):
 
     class MockDateTime(datetime):
         @classmethod
-        def now(cls):
+        def now(cls, tz=None):
             return fixed_now
 
-    monkeypatch.setattr("datetime.datetime", MockDateTime)
+    monkeypatch.setattr("datetime", MockDateTime)
     return fixed_now
 
 
@@ -40,7 +40,7 @@ def test_parse_inputs_valid(
 ):
     parsed_date, parsed_participants = parse_inputs(date_string, participants)
 
-    # Allow a small margin for datetime.now() default
+    # Ensure the mocked datetime is used for empty date_string
     if date_string == "":
         assert parsed_date == mock_datetime_now
     else:
