@@ -126,30 +126,52 @@ async def get_mine_number(
     supabase: Client = Depends(get_supabase),
 ):
     try:
-        response = supabase.table("participants").select("*").eq("user_id", current_user.id).execute()
+        response = (
+            supabase.table("participants")
+            .select("*")
+            .eq("user_id", current_user.id)
+            .execute()
+        )
         return {"number": len(response.data)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
+
 @router.get("/mineratings")
-async def get_mine_ratings (
+async def get_mine_ratings(
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
     try:
-        response = supabase.table("participants").select("conversations(ratings(rating))").eq("user_id", current_user.id).execute()
-        ratings = [i["conversations"]["ratings"]["rating"] if i["conversations"]["ratings"] else 0 for i in response.data]
+        response = (
+            supabase.table("participants")
+            .select("conversations(ratings(rating))")
+            .eq("user_id", current_user.id)
+            .execute()
+        )
+        ratings = [
+            i["conversations"]["ratings"]["rating"]
+            if i["conversations"]["ratings"]
+            else 0
+            for i in response.data
+        ]
         return {"rating": sum(ratings) / len(ratings) if ratings else 0}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
-    
+
+
 @router.get("/myDuration")
 async def get_mine_duration(
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
     try:
-        response = supabase.table("participants").select("conversations(start_time, end_time)").eq("user_id", current_user.id).execute()
+        response = (
+            supabase.table("participants")
+            .select("conversations(start_time, end_time)")
+            .eq("user_id", current_user.id)
+            .execute()
+        )
         durations = []
         for i in response.data:
             start_time = datetime.fromisoformat(i["conversations"]["start_time"])
@@ -159,6 +181,7 @@ async def get_mine_duration(
         return {"duration": round(sum(durations) / len(durations)) if durations else 0}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+
 
 @router.post("/myClientEmotions")
 async def get_emotions(
