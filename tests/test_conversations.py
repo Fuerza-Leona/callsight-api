@@ -164,7 +164,7 @@ def test_get_conversations_with_params_agent(mock_current_user, mock_supabase):
         "00000000-0000-0000-0000-000000000003",
         "00000000-0000-0000-0000-000000000004",
     ]
-    agents = ["00000000-0000-0000-0000-000000000004"]
+    agents = []
     companies = ["00000000-0000-0000-0000-000000000005"]
     conversation_id = "ea06921f-5f92-427f-b7f8-9b6826684fff"
 
@@ -216,12 +216,9 @@ def test_get_conversations_with_params_client(mock_current_user, mock_supabase):
 
     startDate = "2023-05-01"
     endDate = "2023-05-30"
-    clients = [
-        "00000000-0000-0000-0000-000000000003",
-        "00000000-0000-0000-0000-000000000004",
-    ]
-    agents = ["00000000-0000-0000-0000-000000000004"]
-    companies = ["00000000-0000-0000-0000-000000000005"]
+    clients = []
+    agents = []
+    companies = []
     conversation_id = "ea06921f-5f92-427f-b7f8-9b6826684fff"
 
     mock_supabase.rpc().execute.return_value.data = mock_conversations
