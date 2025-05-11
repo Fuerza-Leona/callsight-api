@@ -17,6 +17,7 @@ MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
 
+
 @router.post("/")
 async def get_insights(
     company_id: str,
