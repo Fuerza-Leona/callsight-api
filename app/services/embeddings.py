@@ -157,10 +157,10 @@ async def suggestions_with_context(
 ):
     message = (
         "The following are pieces of a transcript or from multiple transcripts from calls between a call center and a client company. This might be a complete or uncomplete transcript, or may also contain chunks from multiple transcripts. "
-        "Use this information to generate 3 prompt suggestions or follow up questions that a user could ask you, in json format. "
+        "Use this information to generate 3 prompt suggestions or follow up questions that a user could ask. "
         "Don't mention your source, only give the suggestions. "
-        "If the context seems vague, or unhelpful, IGNORE it completely and give 3 suggestionsan agent could ask ChatGPt so as to improve at their job or get additional data from their peers. "
-        "If you can't get reasonably inferred questions, ignore all context and answer as you would if you only got the prompt and no additional data."
+        "If the context seems vague, or unhelpful, IGNORE it completely and give 3 suggestions an agent could ask ChatGPT so as to enhance their performance or gain insights from similar cases or colleagues. "
+        "If you can't get reasonably inferred questions, ignore all context and answer as you would if you had received only the prompt with no additional information."
     )
     for transcript_chunk in (chunk["content"] for chunk in response_data):
         next_chunk = f'\n\nTranscript chunk:\n"""\n{transcript_chunk}\n"""'
