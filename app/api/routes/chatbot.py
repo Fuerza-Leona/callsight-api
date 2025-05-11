@@ -134,7 +134,7 @@ async def post_chat(
 
         user_message, chatbot_message = create_messages_for_supabase(
             conversation_id,
-            message,
+            request.prompt,
             response.id,
             response.output_text,
             response.created_at,
