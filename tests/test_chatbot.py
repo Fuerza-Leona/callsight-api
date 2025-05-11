@@ -21,7 +21,8 @@ def make_openai_side_effect():
     title = MagicMock(
         id="title_" + uuid4().hex, output_text='"Test title"', created_at=now
     )
-    return [assistant, title]
+    judgment = MagicMock(output_text="no context")
+    return [judgment, assistant, title]
 
 
 @pytest.fixture
