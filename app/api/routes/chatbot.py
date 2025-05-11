@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
+from app.services.embeddings import (
+    chat_with_context,
+    suggestions_with_context,
+    get_last_embeddings,
+)
 from app.core.config import settings
+import os
 
 import json
 from uuid import uuid4
@@ -15,9 +21,68 @@ router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
+GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4o-mini")
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
+
 
 class ChatRequest(BaseModel):
     prompt: str
+
+
+def needs_context(prompt: str, previous_response_id: str = None):
+    judgment = client.responses.create(
+        model=GPT_MODEL,
+        previous_response_id=previous_response_id,
+        input=[
+            {
+                "role": "system",
+                "content": "You're an assistant helping decide whether a user's question "
+                "requires searching previous customer service transcripts. "
+                "If the question is about a person, event, or conversation that may have occurred "
+                "in a past interaction, reply with 'needs context'. If it's a general question "
+                "that can be answered without having to retrieve any more past data, reply with 'no context'. "
+                "Only reply with one of these two phrases.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+    )
+    if "needs context" in judgment.output_text.lower():
+        use_context = True
+    else:
+        use_context = False
+    return use_context
+
+
+def create_messages_for_supabase(
+    conversation_id: str,
+    prompt: str,
+    response_id: str,
+    response_output_text: str,
+    response_created_at: str,
+    prev_response_id: str = None,
+):
+    created_at = datetime.fromtimestamp(response_created_at)
+    user_created_at = (created_at - timedelta(seconds=1)).isoformat()
+    created_at = created_at.isoformat()
+    user_message = {
+        "chatbot_message_id": str(uuid4()),
+        "chatbot_conversation_id": conversation_id,
+        "role": "user",
+        "content": prompt,
+        "created_at": user_created_at,
+        "previous_response_id": prev_response_id,
+    }
+    chatbot_message = {
+        "chatbot_message_id": response_id,
+        "chatbot_conversation_id": conversation_id,
+        "role": "assistant",
+        "content": response_output_text,
+        "created_at": created_at,
+        "previous_response_id": prev_response_id,
+    }
+    return user_message, chatbot_message
 
 
 @router.post("/chat")
@@ -25,16 +90,31 @@ async def post_chat(
     request: ChatRequest,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
+    token_budget: int = 4096 - 500,
 ):
     """Create a new chat"""
     try:
         conversation_id = str(uuid4())
-        gpt_model = "gpt-3.5-turbo"
+        gpt_model = GPT_MODEL
+        # if the question needs previous context, start a new chat with added embeddings
+        if needs_context(request.prompt):
+            message = await chat_with_context(
+                current_user=current_user,
+                supabase=supabase,
+                query=request.prompt,
+                token_budget=token_budget,
+            )
+        else:
+            message = request.prompt
+
         response = client.responses.create(
-            model=gpt_model,
+            model=GPT_MODEL,
             input=[
-                {"role": "system", "content": "Eres un ayudante para un call center."},
-                {"role": "user", "content": request.prompt},
+                {
+                    "role": "system",
+                    "content": "You answer questions for agents of a call center working with multiple companies.",
+                },
+                {"role": "user", "content": message},
             ],
         )
         title = client.responses.create(
@@ -44,9 +124,6 @@ async def post_chat(
                 {"role": "user", "content": "Crea un titulo para esta conversación"},
             ],
         )
-        created_at = datetime.fromtimestamp(response.created_at)
-        user_created_at = (created_at - timedelta(seconds=1)).isoformat()
-        created_at = created_at.isoformat()
         chatbot_conversation = {
             "chatbot_conversation_id": conversation_id,
             "user_id": current_user.id,
@@ -54,28 +131,19 @@ async def post_chat(
             "last_response_id": response.id,
             "model": gpt_model,
         }
-        user_message = {
-            "chatbot_message_id": str(uuid4()),
-            "chatbot_conversation_id": conversation_id,
-            "role": "user",
-            "content": request.prompt,
-            "created_at": user_created_at,
-            "previous_response_id": None,
-        }
-        chatbot_message = {
-            "chatbot_message_id": response.id,
-            "chatbot_conversation_id": conversation_id,
-            "role": "assistant",
-            "content": response.output_text,
-            "created_at": created_at,
-            "previous_response_id": None,
-        }
+
+        user_message, chatbot_message = create_messages_for_supabase(
+            conversation_id,
+            message,
+            response.id,
+            response.output_text,
+            response.created_at,
+        )
 
         supabase.table("chatbot_conversations").insert(chatbot_conversation).execute()
         supabase.table("chatbot_messages").insert(user_message).execute()
         supabase.table("chatbot_messages").insert(chatbot_message).execute()
 
-        # return {"response": response}
         return {
             "response": response.output_text,
             "title": title.output_text,
@@ -91,11 +159,10 @@ async def continue_chat(
     conversation_id: str,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
+    token_budget: int = 4096 - 500,
 ):
     """
     Continuar un chat existente
-
-    id format: 75c2f345-4c11-4679-bedb-636f403a0b39
     """
     try:
         # select last response from conversation where conversation = conversation_id
@@ -106,33 +173,36 @@ async def continue_chat(
             .execute()
         ).data[0]
         previous_response_id = previous_response_id["last_response_id"]
+
+        # if the question needs previous context, start use added embeddings
+        if needs_context(request.prompt, previous_response_id):
+            message = await chat_with_context(
+                current_user=current_user,
+                supabase=supabase,
+                query=request.prompt,
+                token_budget=token_budget,
+            )
+        else:
+            message = request.prompt
+
         response = client.responses.create(
-            model="gpt-3.5-turbo",
+            model=GPT_MODEL,
             previous_response_id=previous_response_id,
             input=[
                 {"role": "system", "content": "Eres un asistente para un call center."},
-                {"role": "user", "content": request.prompt},
+                {"role": "user", "content": message},
             ],
         )
-        created_at = datetime.fromtimestamp(response.created_at)
-        user_created_at = (created_at - timedelta(seconds=1)).isoformat()
-        created_at = created_at.isoformat()
-        user_message = {
-            "chatbot_message_id": str(uuid4()),
-            "chatbot_conversation_id": conversation_id,
-            "role": "user",
-            "content": request.prompt,
-            "created_at": user_created_at,
-            "previous_response_id": previous_response_id,
-        }
-        chatbot_message = {
-            "chatbot_message_id": response.id,
-            "chatbot_conversation_id": conversation_id,
-            "role": "assistant",
-            "content": response.output_text,
-            "created_at": created_at,
-            "previous_response_id": previous_response_id,
-        }
+
+        # use the obtained info to generate supabase appropiate objects
+        user_message, chatbot_message = create_messages_for_supabase(
+            conversation_id,
+            request.prompt,
+            response.id,
+            response.output_text,
+            response.created_at,
+            previous_response_id,
+        )
 
         # modify the table to change the last message
         supabase.table("chatbot_conversations").update(
@@ -150,30 +220,37 @@ async def continue_chat(
 
 @router.post("/suggestions")
 async def get_suggestions(
-    # TO DO: pass user context to generate the prompts
-    # request: ChatRequest,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
+        response = await get_last_embeddings(current_user, supabase)
+
+        if response is None or len(response) == 0:
+            message = "Dame 3 recomendaciones de prompts que te pueda preguntar, en formato json"
+            system_content = 'Eres un asistente útil para un agente de soporte a cliente de la empresa NEORIS. Tu tarea es dar 3 recomendaciones de prompts que este agente le puede preguntar a ChatGPT para mejorar su trabajo o resolver dudas. Solo respondes en JSON con el siguiente formato: { "recommendations": [ "Prompt1", "Prompt2", "Prompt3"] }, sin usar formato markdown. UNICAMENTE DEVUELVE EL JSON EN FORMATO SIMPLE. Las preguntas deben ser generales y útiles para cualquier agente de soporte en un centro de llamadas. Algunos ejemplos: [Cómo explicar una política de reembolsos, Frases para calmar a un cliente molesto, Cómo manejar una llamada difícil, Pasos para resolver un problema técnico, Mejores prácticas para comunicarse con claridad, Qué hacer si un cliente interrumpe mucho, Cómo empatizar sin comprometerse, Técnicas para escuchar activamente].'
+
+        else:
+            message = await suggestions_with_context(response_data=response)
+            system_content = 'Eres un asistente útil para un agente de soporte de NEORIS. Tu tarea es proponer 3 preguntas que el agente podría hacerle a ChatGPT, usando los siguientes fragmentos de transcripción. Las preguntas deben reflejar lo que está ocurriendo en las conversaciones — por ejemplo, preguntar si un problema fue resuelto, redactar planes de acción, o pedir seguimiento. Solo responde con JSON sin formato markdown. Usa este formato: { "recommendations": [ "Prompt1", "Prompt2", "Prompt3"] }. NO repitas el contenido. NO respondas con consejos'
+
+        response = client.responses.create(
+            model=GPT_MODEL,
+            input=[
                 {
                     "role": "system",
-                    "content": 'Eres un asistente útil para un agente de soporte a cliente de la empresa NEORIS. Tu tarea es dar 3 recomendaciones de prompts que este agente le puede preguntar a ChatGPT para mejorar su trabajo o resolver dudas. Solo respondes en JSON con el siguiente formato: { "recommendations": [ "Prompt1", "Prompt2", "Prompt3"] }. Las preguntas deben ser generales y útiles para cualquier agente de soporte en un centro de llamadas. Algunos ejemplos: [Cómo explicar una política de reembolsos, Frases para calmar a un cliente molesto, Cómo manejar una llamada difícil, Pasos para resolver un problema técnico, Mejores prácticas para comunicarse con claridad, Qué hacer si un cliente interrumpe mucho, Cómo empatizar sin comprometerse, Técnicas para escuchar activamente].',
+                    "content": system_content,
                 },
-                # {"role": "system", "content": "You are a helpful assistant for a call center from the company NEORIS that gives 3 reccomendations on helpful things to ask. You only answer in JSON in the following format { \"recommendations\": [ \"Prompt1\", \"Prompt2\", \"Prompt3\"]}. Your suggestions should be general things that are appropiate for every call center. Your response are like the following [Summarize the companys policy on refunds, Tips for dealing with an angry caller, How to stay calm during a stressful call, Best practices for active listening, What phrases build trust with customers, Checklist for starting a new customer call, How to make a customer feel heard, What to say to reassure a frustrated customer]"},
                 {
                     "role": "user",
-                    "content": "Dame 3 recomendaciones de prompts que te pueda preguntar, en formato json",
+                    "content": message,
                 },
             ],
         )
-        json_string = response.choices[0].message.content
+        json_string = response.output_text
         parsed = json.loads(json_string)
-        # return {"response": response.choices[0].message.content}
         return parsed
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
