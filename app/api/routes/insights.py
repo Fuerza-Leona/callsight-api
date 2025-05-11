@@ -4,12 +4,9 @@ from app.db.session import get_supabase
 from app.api.deps import get_current_user
 from app.services.embeddings import suggestions_with_context
 from app.core.config import settings
-import os
-
-import json
-
 from openai import OpenAI
-from pydantic import BaseModel
+import json
+import os
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -19,11 +16,6 @@ GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4o-mini")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
-
-
-class ChatRequest(BaseModel):
-    prompt: str
-
 
 @router.post("/")
 async def get_insights(
