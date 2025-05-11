@@ -13,9 +13,6 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4o-mini")
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
 
 
 @router.post("/")
@@ -49,10 +46,6 @@ async def get_insights(
                 },
             ],
         )
-        print("embeddings_response.data")
-        print(embeddings_response.data)
-        print("response")
-        print(response)
         json_string = response.output_text
         parsed = json.loads(json_string)
         return parsed
