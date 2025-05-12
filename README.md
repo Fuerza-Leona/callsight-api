@@ -15,6 +15,12 @@ A FastAPI application for audio call analysis and transcription.
 5. Run `./update-env.sh` to update environment variables
 6. Run the server: `uvicorn app.main:app --reload`
 
+## Start
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
 ## Testing
 
 Run tests with:
@@ -34,3 +40,11 @@ pytest --cov=app
 When the server is running, API documentation is available at:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
+
+
+```
+[build-system]
+requires = ["setuptools>=42.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+```
