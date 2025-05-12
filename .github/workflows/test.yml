@@ -17,15 +17,11 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install uv
+      - name: Install dependencies
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install dev dependencies
-        run: |
-          uv venv
-          uv sync --all-groups
+          python -m pip install --upgrade pip
+          pip install .
+          pip install pytest pytest-asyncio pytest-mock pytest-cov
 
       - name: Run tests
         run: |
