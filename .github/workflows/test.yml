@@ -24,6 +24,7 @@ jobs:
 
       - name: Install dev dependencies
         run: |
+          uv venv
           uv pip install --group dev
           # Alternative if you have a specific dev requirements file:
           # uv pip install -r requirements-dev.txt
