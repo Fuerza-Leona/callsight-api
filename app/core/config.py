@@ -55,12 +55,14 @@ class Settings(BaseSettings):
     )  # you can submit up to 2048 embedding inputs per request
 
     # CORS settings
-    BACKEND_CORS_ORIGINS: list = ["*"]
+    BACKEND_CORS_ORIGINS: list = ["https://callsight.vercel.app, http://localhost:3000"]
 
     ASSEMBLYAI_API_KEY: str = os.getenv("ASSEMBLYAI_API_KEY", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
+    NODE_ENV: str = os.getenv("NODE_ENV", "development")
 
     class Config:
         env_file = ".env"
