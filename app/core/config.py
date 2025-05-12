@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     AZURE_SEARCH_INDEX: str = os.getenv("AZURE_SEARCH_INDEX", "")
     AZURE_SEARCH_SEMANTIC_CONFIG: str = os.getenv("AZURE_SEARCH_SEMANTIC_CONFIG", "")
 
+    # OpenAI Embedding API
+    GPT_MODEL: str = os.getenv("GPT_MODEL", "gpt-4o-mini")
+    MAX_TOKENS: int = os.getenv("MAX_TOKENS", 1000)
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    BATCH_SIZE: int = os.getenv(
+        "BATCH_SIZE", 1000
+    )  # you can submit up to 2048 embedding inputs per request
+
     # CORS settings
     BACKEND_CORS_ORIGINS: list = ["https://callsight.vercel.app, http://localhost:3000"]
 

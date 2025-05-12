@@ -3,10 +3,12 @@ from app.services.analysis_service import analyze_sentiment
 import assemblyai as aai
 from openai import OpenAI
 import tiktoken
+import os
 
-# for the embeddings
-GPT_MODEL = "gpt-4o-mini"
-MAX_TOKENS = 1000
+GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4o-mini")
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 1000))
 
 
 def convert_to_chunks(transcript) -> list[str]:
@@ -122,9 +124,6 @@ def get_transcription(file_url: str):
     chunks = convert_to_chunks(transcript)
     """ for i, chunk in enumerate(chunks):
         print(f"\n--- Chunk {i+1} ---\n{chunk}") """
-
-    EMBEDDING_MODEL = "text-embedding-3-small"
-    BATCH_SIZE = 1000  # you can submit up to 2048 embedding inputs per request
 
     embeddings = []
     for batch_start in range(0, len(chunks), BATCH_SIZE):
