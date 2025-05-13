@@ -180,7 +180,7 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
         }
 
         if node_env != "development":
-            cookie_params["domain"] = ".callsight.tech"
+            refresh_cookie_params["domain"] = ".callsight.tech"
             refresh_cookie_params["secure"] = True
 
         response.set_cookie(**refresh_cookie_params)
@@ -251,7 +251,7 @@ async def refresh_access_token(
         }
 
         if node_env != "development":
-            cookie_params["domain"] = ".callsight.tech"
+            refresh_cookie_params["domain"] = ".callsight.tech"
             refresh_cookie_params["secure"] = True
 
         response.set_cookie(**refresh_cookie_params)
