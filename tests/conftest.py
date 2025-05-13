@@ -7,10 +7,20 @@ from dotenv import load_dotenv
 os.environ["TESTING"] = "True"
 
 
+
+
 @pytest.fixture(autouse=True)
 def test_env(monkeypatch):
     load_dotenv(dotenv_path=".env", override=True)
+
     monkeypatch.setenv("TESTING", "True")
+
+    # Pull from actual environment to avoid hardcoding
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_KEY", "")
+
+    monkeypatch.setenv("SUPABASE_URL", supabase_url)
+    monkeypatch.setenv("SUPABASE_KEY", supabase_key)
 
 
 # Override any settings for testing if needed
