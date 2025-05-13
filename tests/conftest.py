@@ -1,12 +1,11 @@
 import os
 import pytest
 import pytest_asyncio
-from dotenv import dotenv_values
 
 # Set test environment variables
 os.environ["TESTING"] = "True"
 os.environ["SUPABASE_URL"] = ""
-os.environ["SUPABASE_KEY"] = ("")
+os.environ["SUPABASE_KEY"] = ""
 
 
 # Override any settings for testing if needed
