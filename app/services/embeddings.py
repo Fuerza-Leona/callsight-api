@@ -136,19 +136,12 @@ async def get_last_embeddings(
     """
     Get last embeddings for a specific user
     """
-    try:
-        embeddings_response = supabase.rpc(
-            "get_latest_embeddings", params={"user_id": current_user.id}
-        ).execute()
 
-        if embeddings_response.data is None or len(embeddings_response.data) == 0:
-            raise HTTPException(status_code=404, detail="No embeddings found")
+    embeddings_response = supabase.rpc(
+        "get_latest_embeddings", params={"user_id": current_user.id}
+    ).execute()
 
-        return embeddings_response.data
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return embeddings_response.data
 
 
 async def suggestions_with_context(
