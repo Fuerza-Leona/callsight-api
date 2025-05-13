@@ -1,32 +1,30 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, Request, status
 from supabase import Client
 
 from app.db.session import get_supabase
 
-security = HTTPBearer()
-
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,  # Add the request parameter to access cookies
     supabase: Client = Depends(get_supabase),
 ):
     """
-    Validate access token and return user information.
+    Validate access token from cookie and return user information.
     Used as a dependency for protected routes.
     """
     try:
-        token = credentials.credentials
+        # Get token from the httpOnly cookie instead of Authorization header
+        token = request.cookies.get("access_token")
+
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication cookie not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         # Get the user from the current session
         response = supabase.auth.get_user(token)
-
-        """if not response or not response.user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )"""
 
         return response.user
     except Exception as e:

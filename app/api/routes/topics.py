@@ -13,7 +13,8 @@ router = APIRouter(prefix="/topics", tags=["topics"])
 
 class TopicsRequest(BaseModel):
     clients: List[str] = []
-    categories: List[str] = []
+    agents: List[str] = []
+    companies: List[str] = []
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
     endDate: Optional[str] = (
         datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
@@ -28,7 +29,8 @@ async def get_topics(
     supabase: Client = Depends(get_supabase),
 ):
     clients = request.clients
-    categories = request.categories
+    agents = request.agents
+    companies = request.companies
     startDate = request.startDate
     endDate = request.endDate
     limit = request.limit
@@ -49,14 +51,15 @@ async def get_topics(
 
     try:
         response = supabase.rpc(
-            "build_topics_query",
+            "new_build_topics_query",
             {
                 "start_date": startDate,
                 "end_date": endDate,
                 "user_role": role,
                 "id": user_id,
                 "clients": clients if clients else None,
-                "categories": categories if categories else None,
+                "agents": agents if agents else None,
+                "companies": companies if companies else None,
                 "limit_count": limit,
             },
         ).execute()

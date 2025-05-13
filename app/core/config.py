@@ -44,12 +44,14 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     BATCH_SIZE: int = 1000
 
-    BACKEND_CORS_ORIGINS: list[str] = ["*"]
+    BACKEND_CORS_ORIGINS: list = ["https://callsight.vercel.app, http://localhost:3000"]
 
     ASSEMBLYAI_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
     DATABASE_URL: str = ""
+
+    NODE_ENV: str = os.getenv("NODE_ENV", "development")
 
     class Config:
         env_file = ".env"

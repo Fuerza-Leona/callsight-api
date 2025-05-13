@@ -1,6 +1,37 @@
-[build-system]
-requires = ["setuptools>=42.0", "wheel"]
-build-backend = "setuptools.build_meta"
+[project]
+name = "callsight-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "assemblyai>=0.40.2",
+    "azure-ai-language-conversations>=1.1.0",
+    "azure-ai-textanalytics>=5.3.0",
+    "azure-core>=1.34.0",
+    "email-validator>=2.2.0",
+    "fastapi>=0.115.12",
+    "librosa>=0.11.0",
+    "openai>=1.78.1",
+    "pre-commit>=4.2.0",
+    "pydantic>=2.11.4",
+    "pydantic-core>=2.33.2",
+    "pydantic-settings>=2.9.1",
+    "python-multipart>=0.0.20",
+    "ruff>=0.11.9",
+    "supabase>=2.15.1",
+    "tiktoken>=0.9.0",
+    "typer>=0.15.3",
+    "uvicorn>=0.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "pytest-cov>=6.1.1",
+]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -12,3 +43,10 @@ asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::DeprecationWarning:pydantic.*:",
 ]
+
+[tool.coverage.run]
+branch = true
+source = ['app']
+
+[tool.scripts]
+mycli = "app/cli:app"
