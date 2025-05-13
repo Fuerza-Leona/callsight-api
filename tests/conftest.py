@@ -1,12 +1,14 @@
 import os
 import pytest
 import pytest_asyncio
+from dotenv import load_dotenv
 
 # Set test environment variables
 os.environ["TESTING"] = "True"
-def set_env(monkeypatch):
-    monkeypatch.setenv("SUPABASE_URL")
-    monkeypatch.setenv("SUPABASE_KEY")
+@pytest.fixture(autouse=True)
+def test_env(monkeypatch):
+    load_dotenv(dotenv_path=".env.test", override=True)
+    monkeypatch.setenv("TESTING", "True")
 
 # Override any settings for testing if needed
 # For example, you might want to use a test database
