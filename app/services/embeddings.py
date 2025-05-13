@@ -136,14 +136,12 @@ async def get_last_embeddings(
     """
     Get last embeddings for a specific user
     """
-    
+
     embeddings_response = supabase.rpc(
         "get_latest_embeddings", params={"user_id": current_user.id}
     ).execute()
 
-
     return embeddings_response.data
-
 
 
 async def suggestions_with_context(
