@@ -41,6 +41,9 @@ app.add_middleware(
         "Content-Type",
         "Authorization",
         "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Access-Control-Allow-Headers",
     ],  # List headers explicitly
 )
 
