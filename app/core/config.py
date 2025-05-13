@@ -1,6 +1,7 @@
 import os
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+from json import loads
 
 # Try to load load from .env file
 try:
@@ -54,15 +55,14 @@ class Settings(BaseSettings):
         "BATCH_SIZE", 1000
     )  # you can submit up to 2048 embedding inputs per request
 
-    # CORS settings
-    BACKEND_CORS_ORIGINS: list = ["https://callsight.vercel.app, http://localhost:3000"]
-
+    # AI analysis
     ASSEMBLYAI_API_KEY: str = os.getenv("ASSEMBLYAI_API_KEY", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
-
     NODE_ENV: str = os.getenv("NODE_ENV", "development")
+
+    # CORS settings
+    BACKEND_CORS_ORIGINS: list = loads(os.getenv("BACKEND_CORS_ORIGINS", '["*"]'))
 
     class Config:
         env_file = ".env"
