@@ -159,13 +159,14 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
             "key": "access_token",
             "value": auth_response.session.access_token,
             "httponly": True,
-            "secure": True,
-            "samesite": "none",
+            "domain": "localhost",
+            "samesite": "lax",
             "max_age": 3600,
         }
 
         if node_env != "development":
             cookie_params["domain"] = ".staging.callsight.tech"
+            cookie_params["secure"] = True
 
         response.set_cookie(**cookie_params)
 
@@ -173,13 +174,14 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
             "key": "refresh_token",
             "value": auth_response.session.refresh_token,
             "httponly": True,
-            "secure": True,
-            "samesite": "none",
+            "domain": "localhost",
+            "samesite": "lax",
             "max_age": 7 * 24 * 3600,
         }
 
         if node_env != "development":
-            refresh_cookie_params["domain"] = ".staging.callsight.tech"
+            cookie_params["domain"] = ".staging.callsight.tech"
+            refresh_cookie_params["secure"] = True
 
         response.set_cookie(**refresh_cookie_params)
 
