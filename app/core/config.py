@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     NODE_ENV: str = os.getenv("NODE_ENV", "development")
 
     # CORS settings
-    BACKEND_CORS_ORIGINS: list = loads(os.getenv("BACKEND_CORS_ORIGINS"), [])
+    BACKEND_CORS_ORIGINS: list = loads(os.getenv("BACKEND_CORS_ORIGINS", '["*"]'))
 
     class Config:
         env_file = ".env"
