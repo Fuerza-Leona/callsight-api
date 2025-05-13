@@ -1,7 +1,5 @@
-import os
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
-from json import loads
 
 # Try to load load from .env file
 try:
@@ -15,57 +13,57 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # Supabase connection
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
     # General Azure Config
-    AZURE_SUBSCRIPTION_ID: str = os.getenv("AZURE_SUBSCRIPTION_ID", "")
-    AZURE_RESOURCE_GROUP: str = os.getenv("AZURE_RESOURCE_GROUP", "")
-    AZURE_REGION: str = os.getenv("AZURE_REGION", "")
+    AZURE_SUBSCRIPTION_ID: str = ""
+    AZURE_RESOURCE_GROUP: str = ""
+    AZURE_REGION: str = ""
 
     # Azure AI Services
-    AZURE_AI_KEY: str = os.getenv("AZURE_AI_KEY", "")
-    AZURE_AI_SPEECH_ENDPOINT: str = os.getenv("AZURE_AI_SPEECH_ENDPOINT", "")
-    AZURE_AI_LANGUAGE_ENDPOINT: str = os.getenv("AZURE_AI_LANGUAGE_ENDPOINT", "")
+    AZURE_AI_KEY: str = ""
+    AZURE_AI_SPEECH_ENDPOINT: str = ""
+    AZURE_AI_LANGUAGE_ENDPOINT: str = ""
 
     # Azure Open AI Chat
-    AZURE_OPEN_AI_CHAT_KEY: str = os.getenv("AZURE_OPEN_AI_CHAT_KEY", "")
-    AZURE_OPEN_AI_CHAT_ENDPOINT: str = os.getenv("AZURE_OPEN_AI_CHAT_ENDPOINT", "")
-    AZURE_OPEN_AI_CHAT_VERSION: str = os.getenv("AZURE_OPEN_AI_CHAT_VERSION", "")
-    AZURE_OPEN_AI_CHAT_DEPLOYMENT: str = os.getenv("AZURE_OPEN_AI_CHAT_DEPLOYMENT", "")
+    AZURE_OPEN_AI_CHAT_KEY: str = ""
+    AZURE_OPEN_AI_CHAT_ENDPOINT: str = ""
+    AZURE_OPEN_AI_CHAT_VERSION: str = ""
+    AZURE_OPEN_AI_CHAT_DEPLOYMENT: str = ""
 
     # Azure AI Speech Transcription Config
-    LANGUAGE: str = os.getenv("LANGUAGE", "en")
-    LOCALE: str = os.getenv("LOCALE", "en-US")
-    OUTPUT_FILE: bool = os.getenv("OUTPUT_FILE", False)
-    USE_STEREO_AUDIO: bool = os.getenv("USE_STEREO_AUDIO", False)
-    TESTING: bool = os.getenv("TESTING", False)
+    LANGUAGE: str = "en"
+    LOCALE: str = "en-US"
+    OUTPUT_FILE: bool = False
+    USE_STEREO_AUDIO: bool = False
+    TESTING: bool = False
 
     # Azure AI Search
-    AZURE_SEARCH_ENDPOINT: str = os.getenv("AZURE_SEARCH_ENDPOINT", "")
-    AZURE_SEARCH_KEY: str = os.getenv("AZURE_SEARCH_KEY", "")
-    AZURE_SEARCH_INDEX: str = os.getenv("AZURE_SEARCH_INDEX", "")
-    AZURE_SEARCH_SEMANTIC_CONFIG: str = os.getenv("AZURE_SEARCH_SEMANTIC_CONFIG", "")
+    AZURE_SEARCH_ENDPOINT: str = ""
+    AZURE_SEARCH_KEY: str = ""
+    AZURE_SEARCH_INDEX: str = ""
+    AZURE_SEARCH_SEMANTIC_CONFIG: str = ""
 
     # OpenAI Embedding API
-    GPT_MODEL: str = os.getenv("GPT_MODEL", "gpt-4o-mini")
-    MAX_TOKENS: int = os.getenv("MAX_TOKENS", 1000)
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-    BATCH_SIZE: int = os.getenv(
-        "BATCH_SIZE", 1000
-    )  # you can submit up to 2048 embedding inputs per request
+    GPT_MODEL: str = "gpt-4o-mini"
+    MAX_TOKENS: int = 1000
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    BATCH_SIZE: int = 1000
 
     # AI analysis
-    ASSEMBLYAI_API_KEY: str = os.getenv("ASSEMBLYAI_API_KEY", "")
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
-    NODE_ENV: str = os.getenv("NODE_ENV", "development")
+    ASSEMBLYAI_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    DATABASE_URL: str = ""
+    NODE_ENV: str = ""
 
-    # CORS settings
-    BACKEND_CORS_ORIGINS: list = loads(os.getenv("BACKEND_CORS_ORIGINS", '["*"]'))
+    # CORS Settings
+    BACKEND_CORS_ORIGINS: list = ["*"]
 
     class Config:
         env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = True
 
 
 settings = Settings()
