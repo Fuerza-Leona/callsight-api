@@ -28,10 +28,24 @@ app = FastAPI(
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://staging.callsight.tech",
+        "https://callsight.vercel.app",
+    ],  # Add all domains you need
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS",
+    ],  # List methods explicitly
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+    ],  # List headers explicitly
 )
 
 
