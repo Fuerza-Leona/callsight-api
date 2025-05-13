@@ -5,10 +5,13 @@ from dotenv import load_dotenv
 
 # Set test environment variables
 os.environ["TESTING"] = "True"
+
+
 @pytest.fixture(autouse=True)
 def test_env(monkeypatch):
-    load_dotenv(dotenv_path=".env.test", override=True)
+    load_dotenv(dotenv_path=".env", override=True)
     monkeypatch.setenv("TESTING", "True")
+
 
 # Override any settings for testing if needed
 # For example, you might want to use a test database
