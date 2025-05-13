@@ -64,23 +64,27 @@ async def get_users_in_company(name: str, supabase: Client = Depends(get_supabas
     
 
 @router.post("/create")
-async def get_users_in_company(company: Company, supabase: Client = Depends(get_supabase)):
+async def create_company(company: Company, supabase: Client = Depends(get_supabase)):
     try:
-        responseCategory = supabase.table("category").select("category_id, name").execute()
+        responseCategory = supabase.table("category").select("category_id, name").eq("name", company.category).execute()
+        print(responseCategory.data[0])
+        print(responseCategory.data[0]["category_id"])
 
-        if not response.data:
+        if len(responseCategory.data) == 0:
             raise HTTPException(status_code=404, detail="Category not found")
         
-        category_id = responseCategory.data[0]["category_id"]
+        print(company.name)
+        
         company_data = {
             "name": company.name,
             "logo": company.logo,
-            "category_id": category_id,
+            "category_id": responseCategory.data[0]["category_id"],
         }
 
+        print(company_data)
+
         response = supabase.table("company_client").insert(company_data).execute()
-        if response.status_code != 201:
-            raise HTTPException(status_code=400, detail="Failed to create company")
         return {"message": "Company created successfully", "company": response.data}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))
