@@ -254,9 +254,6 @@ async def refresh_access_token(
             refresh_cookie_params["domain"] = ".callsight.tech"
             refresh_cookie_params["secure"] = True
 
-        if node_env != "development":
-            refresh_cookie_params["domain"] = ".staging.callsight.tech"
-
         response.set_cookie(**refresh_cookie_params)
 
         return response
