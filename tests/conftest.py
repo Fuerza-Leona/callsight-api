@@ -9,11 +9,12 @@ os.environ["TESTING"] = "True"
 
 @pytest.fixture(autouse=True)
 def test_env(monkeypatch):
-    env_values = dotenv_values(".env")
+    env_values = dotenv_values(".env") or {}
+
+    monkeypatch.setenv("SUPABASE_URL", env_values.get("SUPABASE_URL", os.getenv("SUPABASE_URL", "")))
+    monkeypatch.setenv("SUPABASE_KEY", env_values.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", "")))
 
     monkeypatch.setenv("TESTING", "True")
-    monkeypatch.setenv("SUPABASE_URL", env_values.get("SUPABASE_URL", ""))
-    monkeypatch.setenv("SUPABASE_KEY", env_values.get("SUPABASE_KEY", ""))
 
 
 # Override any settings for testing if needed
