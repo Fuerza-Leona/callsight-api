@@ -465,12 +465,28 @@ async def get_info_pertaining_call(
         summary["neutral"] = neutral / counter if counter else 0
         summary["negative"] = negative / counter if counter else 0
 
+        ratings = (
+            supabase.table("ratings")
+            .select("rating")
+            .eq("conversation_id", call_id)
+            .execute()
+        )
+        average = 0.0
+        length = len(ratings.data)
+        if ratings.data:
+            average = float(sum([i["rating"] for i in ratings.data]) / length)
+        rating = {
+            "average": average,
+            "count": length,
+        }
+
         return {
             "conversation": conversation,
             "summary": summary,
             "messages": messages,
             "participants": participants,
             "company": company,
+            "rating": rating,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
