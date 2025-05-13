@@ -4,6 +4,9 @@ import pytest_asyncio
 
 # Set test environment variables
 os.environ["TESTING"] = "True"
+os.environ["SUPABASE_URL"] = ""
+os.environ["SUPABASE_KEY"] = ""
+
 
 # Override any settings for testing if needed
 # For example, you might want to use a test database
