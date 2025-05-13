@@ -12,46 +12,53 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "CallSight API"
     API_V1_STR: str = "/api/v1"
 
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
+    # Supabase connection
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
 
+    # General Azure Config
     AZURE_SUBSCRIPTION_ID: str = ""
     AZURE_RESOURCE_GROUP: str = ""
     AZURE_REGION: str = ""
 
+    # Azure AI Services
     AZURE_AI_KEY: str = ""
     AZURE_AI_SPEECH_ENDPOINT: str = ""
     AZURE_AI_LANGUAGE_ENDPOINT: str = ""
 
+    # Azure Open AI Chat
     AZURE_OPEN_AI_CHAT_KEY: str = ""
     AZURE_OPEN_AI_CHAT_ENDPOINT: str = ""
     AZURE_OPEN_AI_CHAT_VERSION: str = ""
     AZURE_OPEN_AI_CHAT_DEPLOYMENT: str = ""
 
+    # Azure AI Speech Transcription Config
     LANGUAGE: str = "en"
     LOCALE: str = "en-US"
     OUTPUT_FILE: bool = False
     USE_STEREO_AUDIO: bool = False
     TESTING: bool = False
 
+    # Azure AI Search
     AZURE_SEARCH_ENDPOINT: str = ""
     AZURE_SEARCH_KEY: str = ""
     AZURE_SEARCH_INDEX: str = ""
     AZURE_SEARCH_SEMANTIC_CONFIG: str = ""
 
+    # OpenAI Embedding API
     GPT_MODEL: str = "gpt-4o-mini"
     MAX_TOKENS: int = 1000
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     BATCH_SIZE: int = 1000
 
-    BACKEND_CORS_ORIGINS: list = ["https://callsight.vercel.app, http://localhost:3000"]
-
+    # AI analysis
     ASSEMBLYAI_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
-
     DATABASE_URL: str = ""
-
     NODE_ENV: str = ""
+
+    # CORS Settings
+    BACKEND_CORS_ORIGINS: list = ["*"]
 
     class Config:
         env_file = ".env"
