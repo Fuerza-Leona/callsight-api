@@ -129,7 +129,6 @@ def get_transcription(file_url: str):
     for batch_start in range(0, len(chunks), BATCH_SIZE):
         batch_end = batch_start + BATCH_SIZE
         batch = chunks[batch_start:batch_end]
-        """ print(f"Batch {batch_start} to {batch_end-1}") """
         response = client.embeddings.create(model=EMBEDDING_MODEL, input=batch)
         for i, e in enumerate(response.data):
             assert i == e.index
