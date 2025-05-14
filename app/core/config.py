@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     NODE_ENV: str = ""
 
     # CORS Settings
-    BACKEND_CORS_ORIGINS: list = ["*"]
+    BACKEND_CORS_ORIGINS: list[str] = []
 
     class Config:
         env_file = ".env"

@@ -28,7 +28,11 @@ app = FastAPI(
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://staging.callsight.tech",
+        "https://callsight.tech",
+    ],
     allow_credentials=True,
     allow_methods=[
         "GET",
@@ -41,6 +45,9 @@ app.add_middleware(
         "Content-Type",
         "Authorization",
         "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Access-Control-Allow-Headers",
     ],  # List headers explicitly
 )
 
