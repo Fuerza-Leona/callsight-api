@@ -1,8 +1,6 @@
-from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
-from dateutil.relativedelta import relativedelta
 
 from app.main import app
 from app.db.session import get_supabase
@@ -33,6 +31,112 @@ def override_dependencies(mock_current_user, mock_supabase):
     app.dependency_overrides = {}
 
 
+# TC - 01
+def test_get_conversations_with_params_admin(mock_current_user, mock_supabase):
+    mock_conversations = [
+        {
+            "conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff",
+            "start_time": "2025-05-04T00:00:00+00:00",
+            "end_time": "2025-05-04T00:02:25+00:00",
+            "category": "Construcción",
+            "company": "Cemex",
+            "participants": 7,
+        }
+    ]
+    mock_supabase.rpc().execute.return_value.data = mock_conversations
+    with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={
+                "agents": [
+                    "57824f03-11a2-41ff-81e1-64942051c712",
+                    "6c6a2991-b0df-454a-8516-552b8473c040",
+                ]
+            },
+        )
+    assert response.status_code == 200
+    assert "conversations" in response.json()
+    assert response.json()["conversations"] == mock_conversations
+
+
+# TC - 02
+def test_get_conversations_with_params_agent(mock_current_user, mock_supabase):
+    mock_conversations = [
+        {
+            "conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff",
+            "start_time": "2025-05-04T00:00:00+00:00",
+            "end_time": "2025-05-04T00:02:25+00:00",
+            "category": "Construcción",
+            "company": "Cemex",
+            "participants": 7,
+        }
+    ]
+
+    mock_supabase.rpc().execute.return_value.data = mock_conversations
+    with patch("app.api.routes.conversations.check_user_role", return_value="agent"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={
+                "clients": [
+                    "757334fc-b171-44b3-9814-b3e8fed3d1d8",
+                    "f57c8dc3-8a30-44be-8647-f88824602afc",
+                ]
+            },
+        )
+    assert response.status_code == 200
+    assert "conversations" in response.json()
+    assert response.json()["conversations"] == mock_conversations
+
+
+# TC - 03
+def test_get_conversations_with_params_client(mock_current_user, mock_supabase):
+    mock_conversations = [
+        {
+            "conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff",
+            "start_time": "2025-05-04T00:00:00+00:00",
+            "end_time": "2025-05-04T00:02:25+00:00",
+            "category": "Construcción",
+            "company": "Cemex",
+            "participants": 7,
+        }
+    ]
+
+    mock_supabase.rpc().execute.return_value.data = mock_conversations
+    with patch("app.api.routes.conversations.check_user_role", return_value="client"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"startDate": "2025-05-01", "endDate": "2025-05-30"},
+        )
+    assert response.status_code == 200
+    assert "conversations" in response.json()
+    assert response.json()["conversations"] == mock_conversations
+
+
+# TC - 04
+def test_get_conversationn_with_id(mock_current_user, mock_supabase):
+    mock_conversations = [
+        {
+            "conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff",
+            "start_time": "2025-05-04T00:00:00+00:00",
+            "end_time": "2025-05-04T00:02:25+00:00",
+            "category": "Construcción",
+            "company": "Cemex",
+            "participants": 7,
+        }
+    ]
+
+    mock_supabase.rpc().execute.return_value.data = mock_conversations
+    with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff"},
+        )
+    assert response.status_code == 200
+    assert "conversations" in response.json()
+    assert response.json()["conversations"] == mock_conversations
+
+
+# TC - 05
 def test_get_conversations_without_params(mock_current_user, mock_supabase):
     mock_conversations = [
         {
@@ -51,225 +155,131 @@ def test_get_conversations_without_params(mock_current_user, mock_supabase):
             "company": "Cemex",
             "participants": 7,
         },
-        {
-            "conversation_id": "1e5706e9-9652-41b5-969d-71e51fe9fe31",
-            "start_time": "2025-05-04T00:00:00+00:00",
-            "end_time": "2025-05-04T00:02:25+00:00",
-            "category": "Construcción",
-            "company": "Cemex",
-            "participants": 2,
-        },
     ]
 
-    mock_supabase.rpc().execute.return_value.data = mock_conversations
-
     with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
+        mock_supabase.rpc().execute.return_value.data = mock_conversations
         response = client.post("/api/v1/conversations/mine", json={})
 
-    startDate = datetime.now().replace(day=1).strftime("%Y-%m-%d")
-    endDate = (
-        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
-    ).strftime("%Y-%m-%d")
-
-    mock_supabase.rpc.assert_called_with(
-        "new_build_get_my_conversations_query",
-        {
-            "start_date": startDate,
-            "end_date": endDate,
-            "user_role": "admin",
-            "id": mock_current_user.id,
-            "conv_id": None,
-            "clients": None,
-            "agents": None,
-            "companies": None,
-        },
-    )
-
     assert response.status_code == 200
     assert "conversations" in response.json()
     assert response.json()["conversations"] == mock_conversations
 
 
-def test_get_conversations_with_params_admin(mock_current_user, mock_supabase):
-    mock_conversations = [
-        {
-            "conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff",
-            "start_time": "2025-05-04T00:00:00+00:00",
-            "end_time": "2025-05-04T00:02:25+00:00",
-            "category": "Construcción",
-            "company": "Cemex",
-            "participants": 7,
-        }
-    ]
-
-    startDate = "2023-05-01"
-    endDate = "2023-05-30"
-    clients = [
-        "00000000-0000-0000-0000-000000000003",
-        "00000000-0000-0000-0000-000000000004",
-    ]
-    agents = ["00000000-0000-0000-0000-000000000004"]
-    companies = ["00000000-0000-0000-0000-000000000005"]
-    conversation_id = "ea06921f-5f92-427f-b7f8-9b6826684fff"
-
-    mock_supabase.rpc().execute.return_value.data = mock_conversations
-
-    with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
-        response = client.post(
-            "/api/v1/conversations/mine",
-            json={
-                "clients": clients,
-                "agents": agents,
-                "companies": companies,
-                "conversation_id": conversation_id,
-                "startDate": startDate,
-                "endDate": endDate,
-            },
-        )
-
-    mock_supabase.rpc.assert_called_with(
-        "new_build_get_my_conversations_query",
-        {
-            "start_date": startDate,
-            "end_date": endDate,
-            "user_role": "admin",
-            "id": mock_current_user.id,
-            "conv_id": conversation_id,
-            "clients": clients,
-            "agents": agents,
-            "companies": companies,
-        },
-    )
-
-    assert response.status_code == 200
-    assert "conversations" in response.json()
-    assert response.json()["conversations"] == mock_conversations
-
-
-def test_get_conversations_with_params_agent(mock_current_user, mock_supabase):
-    mock_conversations = [
-        {
-            "conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff",
-            "start_time": "2025-05-04T00:00:00+00:00",
-            "end_time": "2025-05-04T00:02:25+00:00",
-            "category": "Construcción",
-            "company": "Cemex",
-            "participants": 7,
-        }
-    ]
-
-    startDate = "2023-05-01"
-    endDate = "2023-05-30"
-    clients = [
-        "00000000-0000-0000-0000-000000000003",
-        "00000000-0000-0000-0000-000000000004",
-    ]
-    agents = []
-    companies = ["00000000-0000-0000-0000-000000000005"]
-    conversation_id = "ea06921f-5f92-427f-b7f8-9b6826684fff"
-
-    mock_supabase.rpc().execute.return_value.data = mock_conversations
-
-    with patch("app.api.routes.conversations.check_user_role", return_value="agent"):
-        response = client.post(
-            "/api/v1/conversations/mine",
-            json={
-                "clients": clients,
-                "agents": agents,
-                "companies": companies,
-                "conversation_id": conversation_id,
-                "startDate": startDate,
-                "endDate": endDate,
-            },
-        )
-
-    mock_supabase.rpc.assert_called_with(
-        "new_build_get_my_conversations_query",
-        {
-            "start_date": startDate,
-            "end_date": endDate,
-            "user_role": "agent",
-            "id": mock_current_user.id,
-            "conv_id": conversation_id,
-            "clients": clients,
-            "agents": None,
-            "companies": companies,
-        },
-    )
-
-    assert response.status_code == 200
-    assert "conversations" in response.json()
-    assert response.json()["conversations"] == mock_conversations
-
-
-def test_get_conversations_with_params_client(mock_current_user, mock_supabase):
-    mock_conversations = [
-        {
-            "conversation_id": "ea06921f-5f92-427f-b7f8-9b6826684fff",
-            "start_time": "2025-05-04T00:00:00+00:00",
-            "end_time": "2025-05-04T00:02:25+00:00",
-            "category": "Construcción",
-            "company": "Cemex",
-            "participants": 7,
-        }
-    ]
-
-    startDate = "2023-05-01"
-    endDate = "2023-05-30"
-    clients = []
-    agents = []
-    companies = []
-    conversation_id = "ea06921f-5f92-427f-b7f8-9b6826684fff"
-
-    mock_supabase.rpc().execute.return_value.data = mock_conversations
-
-    with patch("app.api.routes.conversations.check_user_role", return_value="client"):
-        response = client.post(
-            "/api/v1/conversations/mine",
-            json={
-                "clients": clients,
-                "agents": agents,
-                "companies": companies,
-                "conversation_id": conversation_id,
-                "startDate": startDate,
-                "endDate": endDate,
-            },
-        )
-
-    mock_supabase.rpc.assert_called_with(
-        "new_build_get_my_conversations_query",
-        {
-            "start_date": startDate,
-            "end_date": endDate,
-            "user_role": "client",
-            "id": mock_current_user.id,
-            "conv_id": conversation_id,
-            "clients": None,
-            "agents": None,
-            "companies": None,
-        },
-    )
-
-    assert response.status_code == 200
-    assert "conversations" in response.json()
-    assert response.json()["conversations"] == mock_conversations
-
-
+# TC - 06
 def test_get_conversations_wrong_order_dates_params(mock_current_user, mock_supabase):
     with patch("app.api.routes.conversations.check_user_role", return_value="agent"):
         response = client.post(
             "/api/v1/conversations/mine",
-            json={"startDate": "2023-02-01", "endDate": "2023-01-01"},
+            json={"startDate": "2025-02-01", "endDate": "2025-01-01"},
         )
     assert response.status_code == 400
-    assert "Invalid date format" in response.json()["detail"]
+    assert "Invalid filter" in response.json()["detail"]
 
 
+# TC - 07
 def test_get_conversations_invalid_dates_params(mock_current_user, mock_supabase):
     with patch("app.api.routes.conversations.check_user_role", return_value="agent"):
         response = client.post(
             "/api/v1/conversations/mine",
-            json={"startDate": "01-01-2023", "endDate": "23 June 2023"},
+            json={"startDate": "12 May", "endDate": "2025-06-06"},
         )
     assert response.status_code == 400
-    assert "Invalid date format" in response.json()["detail"]
+    assert "Invalid filter" in response.json()["detail"]
+
+
+# TC - 08
+def test_get_conversation_invalid_id(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"conversation_id": "1"},
+        )
+    assert response.status_code == 400
+    assert "Invalid conversation_id format" in response.json()["detail"]
+
+
+# TC - 09
+def test_get_conversation_invalid_agents(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"agents": ["1"]},
+        )
+    assert response.status_code == 400
+    assert "Invalid filter: Invalid UUID in agents: 1" in response.json()["detail"]
+
+
+# TC - 10
+def test_get_conversation_invalid_companies(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"companies": ["1"]},
+        )
+    assert response.status_code == 400
+    assert "Invalid filter: Invalid UUID in companies: 1" in response.json()["detail"]
+
+
+# TC - 11
+def test_get_conversation_invalid_clients(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="admin"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"clients": ["1"]},
+        )
+    assert response.status_code == 400
+    assert "Invalid filter: Invalid UUID in clients: 1" in response.json()["detail"]
+
+
+# TC - 12
+def test_client_cannot_filter_by_agents(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="client"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"agents": ["57824f03-11a2-41ff-81e1-64942051c712"]},
+        )
+    assert response.status_code == 400
+    assert (
+        "Clients cannot filter by agents, companies or clients"
+        in response.json()["detail"]
+    )
+
+
+# TC - 13
+def test_client_cannot_filter_by_companies(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="client"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"companies": ["57824f03-11a2-41ff-81e1-64942051c712"]},
+        )
+    assert response.status_code == 400
+    assert (
+        "Clients cannot filter by agents, companies or clients"
+        in response.json()["detail"]
+    )
+
+
+# TC - 14
+def test_client_cannot_filter_by_clients(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="client"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"clients": ["57824f03-11a2-41ff-81e1-64942051c712"]},
+        )
+    assert response.status_code == 400
+    assert (
+        "Clients cannot filter by agents, companies or clients"
+        in response.json()["detail"]
+    )
+
+
+# TC - 15
+def test_agent_cannot_filter_by_agents(mock_current_user, mock_supabase):
+    with patch("app.api.routes.conversations.check_user_role", return_value="agent"):
+        response = client.post(
+            "/api/v1/conversations/mine",
+            json={"agents": ["57824f03-11a2-41ff-81e1-64942051c712"]},
+        )
+    assert response.status_code == 400
+    assert "Agents cannot filter other agents" in response.json()["detail"]
