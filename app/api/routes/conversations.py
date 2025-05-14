@@ -129,12 +129,15 @@ async def get_mine(
     try:
         role = await check_user_role(current_user, supabase)
 
-        if role != "admin":
-            agents = None  # only admin can see all agents coversations
+        if role == "client" and (agents or companies):
+            raise HTTPException(
+                status_code=403, detail="Clients cannot filter by agents or companies"
+            )
 
-        if role == "client":
-            clients = None  # clients can't see other clients conversations'
-            companies = None  # clients can't see other companies conversations'
+        if role == "agent" and agents:
+            raise HTTPException(
+                status_code=403, detail="Agents cannot filter by other agents"
+            )
 
         params = {
             "start_date": startDate,
