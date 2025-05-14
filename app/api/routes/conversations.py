@@ -1,9 +1,10 @@
 from typing import List, Optional
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from pydantic import BaseModel
 from datetime import datetime
-import uuid
+from uuid import UUID
 
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
@@ -64,9 +65,9 @@ async def get_conversations(supabase: Client = Depends(get_supabase)):
 
 
 class ConversationsFilteringParameters(BaseModel):
-    clients: List[str] = []
-    agents: List[str] = []
-    companies: List[str] = []
+    clients: Optional[List[str]] = None
+    agents: Optional[List[str]] = None
+    companies: Optional[List[str]] = None
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
     endDate: Optional[str] = (
         datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
@@ -83,7 +84,6 @@ async def get_mine(
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
-    """Get conversations for the currently authorized user"""
     clients = request.clients
     agents = request.agents
     companies = request.companies
@@ -92,31 +92,67 @@ async def get_mine(
     conversation_id = request.conversation_id
     user_id = current_user.id
 
-    try:
-        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
-        if start_date > end_date:
-            raise ValueError("Start date cannot be after end date")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
-
     role = await check_user_role(current_user, supabase)
 
+    if role == "client" and (agents or companies or clients):
+        raise HTTPException(
+            status_code=400,
+            detail="Clients cannot filter by agents, companies or clients",
+        )
+
+    if role == "agent" and agents:
+        raise HTTPException(status_code=400, detail="Agents cannot filter other agents")
+
+    if conversation_id:
+        clients = None
+        agents = None
+        companies = None
+        startDate = None
+        endDate = None
+        try:
+            UUID(conversation_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Invalid conversation_id format"
+            )
+    else:
+        try:
+            start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
+            end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+            if start_date > end_date:
+                raise ValueError("Start date cannot be after end date")
+
+            def validate_uuids(items, name):
+                if items:
+                    for item in items:
+                        try:
+                            UUID(item)
+                        except ValueError:
+                            raise ValueError(f"Invalid UUID in {name}: {item}")
+
+            validate_uuids(clients, "clients")
+            validate_uuids(agents, "agents")
+            validate_uuids(companies, "companies")
+
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid filter: {str(e)}")
+
     try:
+        params = {
+            "start_date": startDate,
+            "end_date": endDate,
+            "user_role": role,
+            "id": user_id,
+            "conv_id": conversation_id,
+            "clients": clients,
+            "agents": agents,
+            "companies": companies,
+        }
         response = supabase.rpc(
-            "new_build_get_my_conversations_query",
-            {
-                "start_date": startDate,
-                "end_date": endDate,
-                "user_role": role,
-                "id": user_id,
-                "conv_id": conversation_id if conversation_id else None,
-                "clients": clients if role != "client" and clients else None,
-                "agents": agents if role == "admin" and agents else None,
-                "companies": companies if role != "client" and companies else None,
-            },
+            "new_build_get_my_conversations_query", params
         ).execute()
         return {"conversations": response.data}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
