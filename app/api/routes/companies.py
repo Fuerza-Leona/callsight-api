@@ -21,7 +21,7 @@ async def get_all_companies(supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
+#Returns the company name and number of users of each company
 @router.get("/companySize")
 async def get_company_size(supabase: Client = Depends(get_supabase)):
     try:
@@ -38,7 +38,7 @@ async def get_company_size(supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
+#Returns the users of a given company
 @router.get("/{name}/list")
 async def get_users_in_company(name: str, supabase: Client = Depends(get_supabase)):
     try:
