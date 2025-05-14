@@ -5,10 +5,20 @@ app = typer.Typer()
 
 
 @app.command()
-def serve(host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
+def serve(
+    host: str = "0.0.0.0",
+    port: int = 8000,
+    reload: bool = False,
+    dev: bool = typer.Option(
+        False, "--dev", is_flag=True, help="Enable development mode (auto-reload)"
+    ),
+):
     """
     Start the CallSight API server using uvicorn.
     """
+    if dev:
+        reload = True
+
     cmd = ["uvicorn", "app.main:app", f"--host={host}", f"--port={port}"]
 
     if reload:
