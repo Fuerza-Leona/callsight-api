@@ -92,6 +92,17 @@ async def get_mine(
     conversation_id = request.conversation_id
     user_id = current_user.id
 
+    role = await check_user_role(current_user, supabase)
+
+    if role == "client" and (agents or companies or clients):
+        raise HTTPException(
+            status_code=400,
+            detail="Clients cannot filter by agents, companies or clients",
+        )
+
+    if role == "agent" and agents:
+        raise HTTPException(status_code=400, detail="Agents cannot filter other agents")
+
     if conversation_id:
         clients = None
         agents = None
@@ -127,18 +138,6 @@ async def get_mine(
             raise HTTPException(status_code=400, detail=f"Invalid filter: {str(e)}")
 
     try:
-        role = await check_user_role(current_user, supabase)
-
-        if role == "client" and (agents or companies):
-            raise HTTPException(
-                status_code=403, detail="Clients cannot filter by agents or companies"
-            )
-
-        if role == "agent" and agents:
-            raise HTTPException(
-                status_code=403, detail="Agents cannot filter by other agents"
-            )
-
         params = {
             "start_date": startDate,
             "end_date": endDate,
