@@ -60,6 +60,7 @@ def mock_audio_file():
     return io.BytesIO(file_content)
 
 
+# Test audio upload and processing
 @pytest.mark.asyncio
 async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     # Create a mock FastAPI UploadFile
@@ -79,11 +80,7 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
 
     # Mock Azure Blob Storage
     with (
-        patch("app.services.audio_service.BlobServiceClient"),
-        patch(
-            "app.services.audio_service.BlobServiceClient.from_connection_string",
-            return_value=MagicMock(),
-        ) as mock_from_connection_string,
+        patch("app.services.audio_service.BlobServiceClient") as mock_blob_client,
         patch("app.services.audio_service.ContentSettings") as mock_content_settings,
         patch("librosa.load") as mock_load,
         patch("librosa.get_duration") as mock_duration,
@@ -98,7 +95,7 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
         mock_content_settings.return_value = content_settings_instance
 
         # Set up blob client chain
-        mock_from_connection_string.return_value = mock_blob_client_instance
+        mock_blob_client.return_value = mock_blob_client_instance
         mock_blob_client_instance.get_container_client.return_value = (
             mock_container_client
         )
@@ -123,9 +120,7 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     assert audio_id is not None
 
     # Verify mock calls
-    assert (
-        mock_from_connection_string.called
-    )  # Check this instead of mock_blob_client.called
+    assert mock_blob_client.called
     assert mock_supabase.table.called
     assert mock_container_client.get_blob_client.called
     assert mock_blob_instance.upload_blob.called
