@@ -60,7 +60,9 @@ def mock_audio_file():
     return io.BytesIO(file_content)
 
 
-# Test audio upload and processing
+# ...existing code...
+
+
 @pytest.mark.asyncio
 async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     # Create a mock FastAPI UploadFile
@@ -78,18 +80,18 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     storage_mock.get_public_url.return_value = "https://example.com/test-audio.mp3"
     mock_supabase.storage.from_.return_value = storage_mock
 
-    # Mock Azure Blob Storage using chainlit's client
+    # Patch boto3.client instead of AwsS3StorageClient
     with (
-        patch("app.services.audio_service.AzureBlobStorageClient") as mock_blob_client,
+        patch("boto3.client") as mock_boto_client,
         patch("librosa.load") as mock_load,
         patch("librosa.get_duration") as mock_duration,
     ):
-        # Set up the blob client mock
-        mock_blob_client_instance = MagicMock()
-        mock_blob_client.return_value = mock_blob_client_instance
+        # Set up the S3 client mock
+        mock_s3_client_instance = MagicMock()
+        mock_boto_client.return_value = mock_s3_client_instance
 
-        # Mock the upload_file method as AsyncMock
-        mock_blob_client_instance.upload_file = AsyncMock()
+        # Mock the put_object method
+        mock_s3_client_instance.put_object.return_value = None
 
         # Configure library mocks
         mock_load.return_value = (None, None)  # y, sr values
@@ -107,16 +109,18 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     assert audio_id is not None
 
     # Verify mock calls
-    assert mock_blob_client.called
+    assert mock_boto_client.called
     assert mock_supabase.table.called
-    assert mock_blob_client_instance.upload_file.called
+    assert mock_s3_client_instance.put_object.called
 
-    # Verify AzureBlobStorageClient was called correctly
-    # Check specific arguments here based on your actual implementation
+    # Verify put_object was called with correct ContentType
     assert (
-        mock_blob_client_instance.upload_file.call_args[1]["mime"]
+        mock_s3_client_instance.put_object.call_args[1]["ContentType"]
         == mock_file.content_type
     )
+
+
+# ...existing code...
 
 
 # Test transcription service
