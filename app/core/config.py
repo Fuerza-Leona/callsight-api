@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     # CORS Settings
     BACKEND_CORS_ORIGINS: list[str] = []
 
+    AZURE_STORAGE_CONNECTION_STRING: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

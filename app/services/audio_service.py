@@ -37,9 +37,10 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
         # Upload to Azure Blob Storage
         try:
             # Create a blob service client
-            blob_service_client = BlobServiceClient(
-                account_url=f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
-                credential=settings.AZURE_STORAGE_ACCOUNT_KEY,
+
+            connection_string = settings.AZURE_STORAGE_CONNECTION_STRING
+            blob_service_client = BlobServiceClient.from_connection_string(
+                connection_string
             )
 
             # Get container client
