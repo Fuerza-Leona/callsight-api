@@ -4,7 +4,7 @@ import uuid
 import librosa
 import io
 import os
-from azure.storage.blob import BlobServiceClient, ContentSettings
+from chainlit.data.storage_clients.azure_blob import AzureBlobStorageClient
 from app.services.convert_audio_service import convert_audio
 from app.core.config import settings
 
@@ -35,24 +35,25 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
         file_content = await file.read()
 
         # Upload to Azure Blob Storage
+
+        container = settings.AZURE_STORAGE_CONTAINER_NAME
+        azure_storage_account = settings.AZURE_STORAGE_ACCOUNT_NAME
+        azure_storage_key = settings.AZURE_STORAGE_ACCOUNT_KEY
         try:
-            # Create a blob service client
-            blob_service_client = BlobServiceClient(
-                account_url=f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
-                credential=settings.AZURE_STORAGE_ACCOUNT_KEY,
+            # Create a blob service client using Chainlit
+            blob_service_client = AzureBlobStorageClient(
+                container_name=container,
+                storage_account=azure_storage_account,
+                storage_key=azure_storage_key,
             )
 
-            # Get container client
-            container_client = blob_service_client.get_container_client(
-                settings.AZURE_STORAGE_CONTAINER_NAME
-            )
-
-            # Upload the file
-            blob_client = container_client.get_blob_client(storage_path)
-            blob_client.upload_blob(
-                file_content,
+            # Upload the file using Chainlit's client
+            blob_name = storage_path
+            await blob_service_client.upload_file(
+                object_key=blob_name,
+                data=file_content,
+                mime=file.content_type,
                 overwrite=True,
-                content_settings=ContentSettings(content_type=file.content_type),
             )
 
             # Get the blob URL
