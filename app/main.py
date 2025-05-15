@@ -29,6 +29,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://localhost:8000/docs",
         "http://localhost:3000",
         "https://staging.callsight.tech",
         "https://callsight.tech",
