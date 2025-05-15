@@ -7,6 +7,7 @@ from app.db.session import get_supabase
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+
 class User(BaseModel):
     username: str
     email: str
@@ -23,7 +24,6 @@ async def get_all(supabase: Client = Depends(get_supabase)):
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @router.get("/employees")
@@ -76,25 +76,30 @@ async def get_companies(company_id: str, supabase: Client = Depends(get_supabase
         return {"companies": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 @router.post("/create")
 async def create_company(user: User, supabase: Client = Depends(get_supabase)):
     try:
-        responseCategory = supabase.table("company_client").select("company_id, name").eq("name", user.company).execute()
+        responseCategory = (
+            supabase.table("company_client")
+            .select("company_id, name")
+            .eq("name", user.company)
+            .execute()
+        )
         print(responseCategory.data[0])
         print(responseCategory.data[0]["company_id"])
 
         if len(responseCategory.data) == 0:
             raise HTTPException(status_code=404, detail="Category not found")
-        
+
         response = supabase.auth.sign_up(
             {
-                "email": user.email, 
+                "email": user.email,
                 "password": user.password,
             }
         )
-        
+
         user_data = {
             "username": user.username,
             "email": user.email,

@@ -7,6 +7,7 @@ from app.api.routes.auth import check_admin_role
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
+
 class Company(BaseModel):
     name: str
     logo: str
@@ -21,7 +22,8 @@ async def get_all_companies(supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-#Returns the company name and number of users of each company
+
+# Returns the company name and number of users of each company
 @router.get("/companySize")
 async def get_company_size(supabase: Client = Depends(get_supabase)):
     try:
@@ -38,7 +40,8 @@ async def get_company_size(supabase: Client = Depends(get_supabase)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-#Returns the users of a given company
+
+# Returns the users of a given company
 @router.get("/{name}/list")
 async def get_users_in_company(name: str, supabase: Client = Depends(get_supabase)):
     try:
@@ -61,20 +64,25 @@ async def get_users_in_company(name: str, supabase: Client = Depends(get_supabas
         return {"participants": users_response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 @router.post("/create")
 async def create_company(company: Company, supabase: Client = Depends(get_supabase)):
     try:
-        responseCategory = supabase.table("category").select("category_id, name").eq("name", company.category).execute()
+        responseCategory = (
+            supabase.table("category")
+            .select("category_id, name")
+            .eq("name", company.category)
+            .execute()
+        )
         print(responseCategory.data[0])
         print(responseCategory.data[0]["category_id"])
 
         if len(responseCategory.data) == 0:
             raise HTTPException(status_code=404, detail="Category not found")
-        
+
         print(company.name)
-        
+
         company_data = {
             "name": company.name,
             "logo": company.logo,
