@@ -4,13 +4,14 @@ import uuid
 import librosa
 import io
 import os
-from chainlit.data.storage_clients.azure_blob import AzureBlobStorageClient
+import boto3
+from botocore.exceptions import ClientError
 from app.services.convert_audio_service import convert_audio
 from app.core.config import settings
 
 
 async def process_audio(file: UploadFile, supabase: Client, current_user):
-    """Uploads an audio file to Azure Blob Storage and returns the file URL"""
+    """Uploads an audio file to AWS S3 and returns the file URL"""
     try:
         source = "local"
         audio_id = str(uuid.uuid4())
@@ -34,35 +35,38 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
         # Get file content from UploadFile
         file_content = await file.read()
 
-        # Upload to Azure Blob Storage
+        # Upload to AWS S3
+        bucket_name = settings.AWS_S3_BUCKET_NAME
+        aws_access_key = settings.AWS_ACCESS_KEY_ID
+        aws_secret_key = settings.AWS_SECRET_ACCESS_KEY
+        aws_region = settings.AWS_REGION
 
-        container = settings.AZURE_STORAGE_CONTAINER_NAME
-        azure_storage_account = settings.AZURE_STORAGE_ACCOUNT_NAME
-        azure_storage_key = settings.AZURE_STORAGE_ACCOUNT_KEY
         try:
-            # Create a blob service client using Chainlit
-            blob_service_client = AzureBlobStorageClient(
-                container_name=container,
-                storage_account=azure_storage_account,
-                storage_key=azure_storage_key,
+            # Create an S3 client
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=aws_access_key,
+                aws_secret_access_key=aws_secret_key,
+                region_name=aws_region,
             )
 
-            # Upload the file using Chainlit's client
-            blob_name = storage_path
-            await blob_service_client.upload_file(
-                object_key=blob_name,
-                data=file_content,
-                mime=file.content_type,
-                overwrite=True,
+            # Upload the file to S3
+            s3_client.put_object(
+                Bucket=bucket_name,
+                Key=storage_path,
+                Body=file_content,
+                ContentType=file.content_type,
             )
 
-            # Get the blob URL
-            file_url = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{settings.AZURE_STORAGE_CONTAINER_NAME}/{storage_path}"
+            # Get the S3 file URL
+            file_url = (
+                f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{storage_path}"
+            )
 
-        except Exception as upload_error:
+        except ClientError as upload_error:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to upload file to Azure storage: {str(upload_error)}",
+                detail=f"Failed to upload file to AWS S3: {str(upload_error)}",
             )
 
         # Calculate duration
