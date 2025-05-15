@@ -3,12 +3,14 @@ from supabase import Client
 import uuid
 import librosa
 import io
-from app.services.convert_audio_service import convert_audio
 import os
+from azure.storage.blob import BlobServiceClient, ContentSettings
+from app.services.convert_audio_service import convert_audio
+from app.core.config import settings
 
 
 async def process_audio(file: UploadFile, supabase: Client, current_user):
-    """Uploads an audio file to Supabase storage and returns the file URL"""
+    """Uploads an audio file to Azure Blob Storage and returns the file URL"""
     try:
         source = "local"
         audio_id = str(uuid.uuid4())
@@ -32,21 +34,35 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
         # Get file content from UploadFile
         file_content = await file.read()
 
-        # Upload to Supabase
+        # Upload to Azure Blob Storage
         try:
-            supabase.storage.from_("audios").upload(
-                storage_path,
-                file_content,
-                file_options={"content_type": file.content_type},
+            # Create a blob service client
+            blob_service_client = BlobServiceClient(
+                account_url=f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net",
+                credential=settings.AZURE_STORAGE_ACCOUNT_KEY,
             )
+
+            # Get container client
+            container_client = blob_service_client.get_container_client(
+                settings.AZURE_STORAGE_CONTAINER_NAME
+            )
+
+            # Upload the file
+            blob_client = container_client.get_blob_client(storage_path)
+            blob_client.upload_blob(
+                file_content,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=file.content_type),
+            )
+
+            # Get the blob URL
+            file_url = f"https://{settings.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{settings.AZURE_STORAGE_CONTAINER_NAME}/{storage_path}"
+
         except Exception as upload_error:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to upload file to storage: {str(upload_error)}",
+                detail=f"Failed to upload file to Azure storage: {str(upload_error)}",
             )
-
-        # Get the public URL of the uploaded file
-        file_url = supabase.storage.from_("audios").get_public_url(storage_path)
 
         # Calculate duration
         duration = None

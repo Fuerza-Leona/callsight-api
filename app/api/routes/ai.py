@@ -114,6 +114,7 @@ async def alternative_analysis(
 
     # Transcription and Analysis
     try:
+        print(f"Transcribing audio from URL: {file_url}")
         transcript_result, embeddings_results = get_transcription(file_url)
         analysis_result = analyze_conversation(transcript_result["phrases"])
     except Exception as e:

@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     NODE_ENV: str = ""
 
+    AZURE_STORAGE_ACCOUNT_NAME: str = ""
+    AZURE_STORAGE_ACCOUNT_KEY: str = ""
+    AZURE_STORAGE_CONTAINER_NAME: str = ""
+
     # CORS Settings
     BACKEND_CORS_ORIGINS: list[str] = []
 
