@@ -78,32 +78,18 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     storage_mock.get_public_url.return_value = "https://example.com/test-audio.mp3"
     mock_supabase.storage.from_.return_value = storage_mock
 
-    # Mock Azure Blob Storage
+    # Mock Azure Blob Storage using chainlit's client
     with (
-        patch("app.services.audio_service.BlobServiceClient") as mock_blob_client,
-        patch("app.services.audio_service.ContentSettings") as mock_content_settings,
+        patch("app.services.audio_service.AzureBlobStorageClient") as mock_blob_client,
         patch("librosa.load") as mock_load,
         patch("librosa.get_duration") as mock_duration,
     ):
-        # Set up the blob client mock chain
-        mock_container_client = MagicMock()
+        # Set up the blob client mock
         mock_blob_client_instance = MagicMock()
-        mock_blob_instance = MagicMock()
-
-        # Configure ContentSettings mock
-        content_settings_instance = MagicMock()
-        mock_content_settings.return_value = content_settings_instance
-
-        # Set up blob client chain
         mock_blob_client.return_value = mock_blob_client_instance
-        mock_blob_client_instance.get_container_client.return_value = (
-            mock_container_client
-        )
-        mock_container_client.get_blob_client.return_value = mock_blob_instance
 
-        # Mock file URL
-        test_url = "https://example.com/test-audio.mp3"
-        mock_blob_client_instance.url = test_url
+        # Mock the upload_file method as AsyncMock
+        mock_blob_client_instance.upload_file = AsyncMock()
 
         # Configure library mocks
         mock_load.return_value = (None, None)  # y, sr values
@@ -115,6 +101,7 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
         )
 
     # Assertions
+    assert file_url.startswith("https://")
     assert file_url.endswith(".mp3")  # Check that URL format is correct
     assert duration == 60
     assert audio_id is not None
@@ -122,11 +109,14 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     # Verify mock calls
     assert mock_blob_client.called
     assert mock_supabase.table.called
-    assert mock_container_client.get_blob_client.called
-    assert mock_blob_instance.upload_blob.called
+    assert mock_blob_client_instance.upload_file.called
 
-    # Verify ContentSettings was called with correct content type
-    mock_content_settings.assert_called_once_with(content_type=mock_file.content_type)
+    # Verify AzureBlobStorageClient was called correctly
+    # Check specific arguments here based on your actual implementation
+    assert (
+        mock_blob_client_instance.upload_file.call_args[1]["mime"]
+        == mock_file.content_type
+    )
 
 
 # Test transcription service
