@@ -7,11 +7,11 @@ LOCAL_ENV_PATH=".env"      # Where to put it in your project
 
 # Require branch parameter
 if [ -z "$1" ]; then
-  echo "Usage: ./scripts/update-env.sh <branch-name>"
+  echo "Usage: ./update-env.sh <branch-name>"
   echo "Examples:"
-  echo "  ./scripts/update-env.sh main"
-  echo "  ./scripts/update-env.sh staging"
-  echo "  ./scripts/update-env.sh feature/my-custom-branch"
+  echo "  ./update-env.sh main"
+  echo "  ./update-env.sh staging"
+  echo "  ./update-env.sh feature/my-custom-branch"
   exit 1
 fi
 BRANCH="$1"
