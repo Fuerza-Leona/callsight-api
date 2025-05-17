@@ -147,6 +147,7 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
                 "email": user_data.get("email"),
                 "role": user_data.get("role"),
                 "department": user_data.get("department"),
+                "company_id": user_data.get("company_id"),
             },
         }
 
@@ -283,6 +284,7 @@ async def get_current_user_profile(
             "role": user_data["role"],
             "department": user_data["department"],
             "created_at": user_data["created_at"],
+            "company_id": user_data["company_id"],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

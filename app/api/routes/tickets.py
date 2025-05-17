@@ -50,32 +50,15 @@ async def get_user_companies(
     description="Returns tickets based on user's company_id instead of assigned_to or created_by.",
 )
 async def get_mine(
-    company_id: Optional[str] = None,
+    company_id: str,
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
     try:
-        role = await check_user_role(current_user, supabase)
-
-        # Determine the correct company_id
-        if role in [UserRole.ADMIN, UserRole.AGENT] and company_id:
-            resolved_company_id = company_id
-        else:
-            company_response = (
-                supabase.table("users")
-                .select("company_id,company_client(name), company_client(logo)")
-                .eq("user_id", current_user.id)
-                .execute()
-            )
-            if not company_response.data:
-                raise HTTPException(status_code=404, detail="Company not found")
-            resolved_company_id = company_response.data[0]["company_id"]
-
-        # Filter tickets by company_id and sort manually
         tickets_response = (
             supabase.table("support_tickets")
             .select("*")
-            .eq("company_id", resolved_company_id)
+            .eq("company_id", company_id)
             .execute()
         )
 
