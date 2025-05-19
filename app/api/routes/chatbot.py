@@ -270,7 +270,7 @@ async def get_all_chats(
         )
 
         if response.data is None or len(response.data) == 0:
-            raise HTTPException(status_code=404, detail="User profile not found")
+            raise HTTPException(status_code=404, detail="There are no conversations saved")
 
         return response.data
     except HTTPException:
