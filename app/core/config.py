@@ -64,6 +64,13 @@ class Settings(BaseSettings):
 
     # CORS Settings
     BACKEND_CORS_ORIGINS: list[str] = []
+    
+    # Microsoft Entra Credentials
+    ENTRA_AUTHORITY: str = ""
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    MICROSOFT_TENANT_ID: str = ""
+    MICROSOFT_REDIRECT_URI: str = ""
 
     class Config:
         env_file = ".env"
