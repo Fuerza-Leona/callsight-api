@@ -3,12 +3,15 @@ from supabase import Client
 import uuid
 import librosa
 import io
-from app.services.convert_audio_service import convert_audio
 import os
+import boto3
+from botocore.exceptions import ClientError
+from app.services.convert_audio_service import convert_audio
+from app.core.config import settings
 
 
 async def process_audio(file: UploadFile, supabase: Client, current_user):
-    """Uploads an audio file to Supabase storage and returns the file URL"""
+    """Uploads an audio file to AWS S3 and returns the file URL"""
     try:
         source = "local"
         audio_id = str(uuid.uuid4())
@@ -32,21 +35,39 @@ async def process_audio(file: UploadFile, supabase: Client, current_user):
         # Get file content from UploadFile
         file_content = await file.read()
 
-        # Upload to Supabase
+        # Upload to AWS S3
+        bucket_name = settings.AWS_S3_BUCKET_NAME
+        aws_access_key = settings.AWS_ACCESS_KEY_ID
+        aws_secret_key = settings.AWS_SECRET_ACCESS_KEY
+        aws_region = settings.AWS_REGION
+
         try:
-            supabase.storage.from_("audios").upload(
-                storage_path,
-                file_content,
-                file_options={"content_type": file.content_type},
-            )
-        except Exception as upload_error:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to upload file to storage: {str(upload_error)}",
+            # Create an S3 client
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=aws_access_key,
+                aws_secret_access_key=aws_secret_key,
+                region_name=aws_region,
             )
 
-        # Get the public URL of the uploaded file
-        file_url = supabase.storage.from_("audios").get_public_url(storage_path)
+            # Upload the file to S3
+            s3_client.put_object(
+                Bucket=bucket_name,
+                Key=storage_path,
+                Body=file_content,
+                ContentType=file.content_type,
+            )
+
+            # Get the S3 file URL
+            file_url = (
+                f"https://{bucket_name}.s3.{aws_region}.amazonaws.com/{storage_path}"
+            )
+
+        except ClientError as upload_error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to upload file to AWS S3: {str(upload_error)}",
+            )
 
         # Calculate duration
         duration = None

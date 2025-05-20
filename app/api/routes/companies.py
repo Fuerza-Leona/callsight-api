@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from supabase import Client
 
 from app.db.session import get_supabase
-from app.api.routes.auth import check_admin_role
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -14,7 +13,7 @@ class Company(BaseModel):
     category: str
 
 
-@router.get("/", dependencies=[Depends(check_admin_role)])
+@router.get("/")
 async def get_all_companies(supabase: Client = Depends(get_supabase)):
     try:
         response = supabase.table("company_client").select("*").execute()

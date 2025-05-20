@@ -41,9 +41,10 @@ def needs_context(prompt: str, previous_response_id: str = None):
                 "content": "You're an assistant helping decide whether a user's question "
                 "requires searching previous customer service transcripts. "
                 "If the question is about a person, event, or conversation that may have occurred "
-                "in a past interaction, reply with 'needs context'. If it's a general question "
+                "in a past interaction you do not have access to, reply with 'needs context'. If it's a general question "
                 "that can be answered without having to retrieve any more past data, reply with 'no context'. "
-                "Only reply with one of these two phrases.",
+                "Only reply with one of these two phrases."
+                "Before replying, consider also the context you already have on this conversation from previous responses.",
             },
             {"role": "user", "content": prompt},
         ],
@@ -269,7 +270,9 @@ async def get_all_chats(
         )
 
         if response.data is None or len(response.data) == 0:
-            raise HTTPException(status_code=404, detail="User profile not found")
+            raise HTTPException(
+                status_code=404, detail="There are no conversations saved"
+            )
 
         return response.data
     except HTTPException:
