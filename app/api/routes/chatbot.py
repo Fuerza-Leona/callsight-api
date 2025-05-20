@@ -44,7 +44,9 @@ def needs_context(prompt: str, previous_response_id: str = None):
                 "in a past interaction you do not have access to, reply with 'needs context'. If it's a general question "
                 "that can be answered without having to retrieve any more past data, reply with 'no context'. "
                 "Only reply with one of these two phrases."
-                "Before replying, consider also the context you already have on this conversation from previous responses.",
+                "Before replying, consider also the context you already have on this conversation from previous responses."
+                "If the user asked you a question before, and then asks a follow question which can be contested with the context you have as of now, reply 'no context'."
+                "If using the previous response id you see that the user previously asked a question, regardless of wether it needed context, reply 'no context' if you can answer this new question using the information you already had in this chatbot conversation.",
             },
             {"role": "user", "content": prompt},
         ],
@@ -203,37 +205,18 @@ async def continue_chat(
         else:
             message = request.prompt
 
-        response = client.responses.create(
-            model=GPT_MODEL,
-            previous_response_id=previous_response_id,
-            input=[
-                {"role": "system", "content": "Eres un asistente para un call center."},
-                {"role": "user", "content": message},
-            ],
-        )
-
-        # use the obtained info to generate supabase appropiate objects
-        user_message, chatbot_message = create_messages_for_supabase(
-            conversation_id,
-            request.prompt,
-            response.id,
-            response.output_text,
-            response.created_at,
-            previous_response_id,
-        )
+        system_message = "Eres un asistente para un call center."
+        response = await send_to_responses_api(conversation_id, GPT_MODEL, system_message, message, previous_response_id)
 
         # modify the table to change the last message
-        supabase.table("chatbot_conversations").update(
-            {"last_response_id": response.id}
-        ).eq(
-            "chatbot_conversation_id", conversation_id
-        ).execute()  # modify the table to change the last message
+        supabase.table("chatbot_conversations").update({"last_response_id": response.id}).eq("chatbot_conversation_id", conversation_id).execute()  
 
-        supabase.table("chatbot_messages").insert(user_message).execute()
-        supabase.table("chatbot_messages").insert(chatbot_message).execute()
+        await save_messages_to_supabase(conversation_id, message, response.id, response.output_text, response.created_at, supabase)
+
         return {"response": response.output_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.post("/suggestions")
