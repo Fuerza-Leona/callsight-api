@@ -76,11 +76,12 @@ async def get_companies(company_id: str, supabase: Client = Depends(get_supabase
         return {"companies": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.get("/{user_id}")
 async def get_user(user_id: str, supabase: Client = Depends(get_supabase)):
     try:
-        response = (supabase.table("users").select("*").eq("user_id", user_id).execute())
+        response = supabase.table("users").select("*").eq("user_id", user_id).execute()
         return {"user": response.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
