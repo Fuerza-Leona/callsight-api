@@ -87,24 +87,37 @@ def create_messages_for_supabase(
     }
     return user_message, chatbot_message
 
-async def send_to_responses_api(conversation_id: str, gpt_model: str, system_message: str, user_message: str, previous_response_id: str = None):
+
+async def send_to_responses_api(
+    conversation_id: str,
+    gpt_model: str,
+    system_message: str,
+    user_message: str,
+    previous_response_id: str = None,
+):
     if system_message is None or len(system_message) == 0:
-            input_messages=[{"role": "user", "content": user_message}]
+        input_messages = [{"role": "user", "content": user_message}]
     else:
-        input_messages=[
-            {"role": "system","content": system_message},
+        input_messages = [
+            {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
         ]
 
     response = client.responses.create(
-        model=gpt_model,
-        previous_response_id=previous_response_id,
-        input=input_messages
+        model=gpt_model, previous_response_id=previous_response_id, input=input_messages
     )
 
-    return response  
+    return response
 
-async def save_messages_to_supabase(conversation_id: str, user_message: str, response_id: str, response_output_text: str, response_created_at: str, supabase: Client = Depends(get_supabase)):
+
+async def save_messages_to_supabase(
+    conversation_id: str,
+    user_message: str,
+    response_id: str,
+    response_output_text: str,
+    response_created_at: str,
+    supabase: Client = Depends(get_supabase),
+):
     user_message, chatbot_message = create_messages_for_supabase(
         conversation_id,
         user_message,
@@ -115,6 +128,7 @@ async def save_messages_to_supabase(conversation_id: str, user_message: str, res
     supabase.table("chatbot_messages").insert(user_message).execute()
     supabase.table("chatbot_messages").insert(chatbot_message).execute()
 
+
 async def generate_title(gpt_model: str, response_id: str):
     title = client.responses.create(
         model=gpt_model,
@@ -124,6 +138,7 @@ async def generate_title(gpt_model: str, response_id: str):
         ],
     )
     return title
+
 
 @router.post("/chat")
 async def post_chat(
@@ -148,7 +163,9 @@ async def post_chat(
             message = request.prompt
 
         system_message = "You answer questions for agents of a call center working with multiple companies."
-        response = await send_to_responses_api(conversation_id, gpt_model, system_message, message)
+        response = await send_to_responses_api(
+            conversation_id, gpt_model, system_message, message
+        )
 
         title = await generate_title(gpt_model, response.id)
 
@@ -162,7 +179,14 @@ async def post_chat(
         }
         supabase.table("chatbot_conversations").insert(chatbot_conversation).execute()
 
-        await save_messages_to_supabase(conversation_id, message, response.id, response.output_text, response.created_at, supabase)
+        await save_messages_to_supabase(
+            conversation_id,
+            message,
+            response.id,
+            response.output_text,
+            response.created_at,
+            supabase,
+        )
 
         return {
             "response": response.output_text,
@@ -206,17 +230,27 @@ async def continue_chat(
             message = request.prompt
 
         system_message = "Eres un asistente para un call center."
-        response = await send_to_responses_api(conversation_id, GPT_MODEL, system_message, message, previous_response_id)
+        response = await send_to_responses_api(
+            conversation_id, GPT_MODEL, system_message, message, previous_response_id
+        )
 
         # modify the table to change the last message
-        supabase.table("chatbot_conversations").update({"last_response_id": response.id}).eq("chatbot_conversation_id", conversation_id).execute()  
+        supabase.table("chatbot_conversations").update(
+            {"last_response_id": response.id}
+        ).eq("chatbot_conversation_id", conversation_id).execute()
 
-        await save_messages_to_supabase(conversation_id, message, response.id, response.output_text, response.created_at, supabase)
+        await save_messages_to_supabase(
+            conversation_id,
+            message,
+            response.id,
+            response.output_text,
+            response.created_at,
+            supabase,
+        )
 
         return {"response": response.output_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @router.post("/suggestions")
