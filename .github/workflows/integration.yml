@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --dev
-          pre-commit install
+          uv run pre-commit install
 
       - name: Run pre-commit hooks
-        run: pre-commit run --all-files
+        run: uv run pre-commit run --all-files
