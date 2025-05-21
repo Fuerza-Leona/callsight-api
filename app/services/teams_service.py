@@ -1,6 +1,8 @@
 from app.core.config import settings
 from msal import ConfidentialClientApplication
 import httpx
+import json
+import time
 
 class TeamsService:
     def __init__(self, tenant_id=None):
@@ -13,19 +15,20 @@ class TeamsService:
             authority=f"https://login.microsoftonline.com/{self.tenant_id}"
         )
     
-    def get_auth_url(self, redirect_uri, scopes=None):
+    def get_auth_url(self, redirect_uri, scopes=None, state=None):
         """Generate authorization URL for Microsoft OAuth"""
+        print(f"Generated callback URI: {redirect_uri}")
         if scopes is None:
             scopes = [
-                "https://graph.microsoft.com/OnlineMeetings.Read.All",
-                "https://graph.microsoft.com/OnlineMeetingRecording.Read.All",
-                "https://graph.microsoft.com/OnlineMeetingTranscript.Read.All",
-                "offline_access"  # This gives you refresh tokens
+                "User.Read",
+                "OnlineMeetings.Read",
+                # "OnlineMeetingTranscript.Read"
             ]
         return self.app.get_authorization_request_url(
             scopes=scopes,
             redirect_uri=redirect_uri,
-            state={"tenant_id": self.tenant_id}
+            state=state or json.dumps({"tenant_id": self.tenant_id}),
+            extra_scope_to_consent=["offline_access"]
         )
     
     async def get_token_from_code(self, code, redirect_uri):
@@ -35,27 +38,45 @@ class TeamsService:
             scopes=["https://graph.microsoft.com/.default"],
             redirect_uri=redirect_uri
         )
+        safe_result = {k: (v[:10] + "..." if k in ["access_token", "refresh_token"] else v) 
+                   for k, v in result.items()}
+        print(f"Token response (safe): {safe_result}")
         return result
     
     async def store_tokens(self, supabase, company_id, tokens):
         """Store Microsoft tokens in Supabase database"""
-        # First check if tokens already exist
-        existing = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+        expires_in = tokens.get('expires_in', 3600)  # Default to 1 hr
+        current_time = int(time.time())
+        expires_on = current_time + expires_in
         
         token_data = {
             "company_id": company_id,
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
-            "expires_on": tokens["expires_on"],
+            "access_token": tokens.get("access_token"),
+            "refresh_token": tokens.get("refresh_token"),
+            "expires_on": expires_on,
             "scope": tokens.get("scope", "")
         }
         
-        if existing.data and len(existing.data) > 0:
-            # Update existing record
-            supabase.table("microsoft_tokens").update(token_data).eq("company_id", company_id).execute()
-        else:
-            # Insert new record
-            supabase.table("microsoft_tokens").insert(token_data).execute()
+        if not token_data["access_token"] or not token_data["refresh_token"]:
+            raise ValueError("Missing required token fields")
+    
+        print(f"Storing token data for company_id: {company_id}")
+        print(f"Token expires in {expires_in} seconds (at {expires_on})")
+        
+        try:
+            existing = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+            
+            if existing.data and len(existing.data) > 0:
+                # Update existing record
+                result = supabase.table("microsoft_tokens").update(token_data).eq("company_id", company_id).execute()
+            else:
+                # Insert new record
+                result = supabase.table("microsoft_tokens").insert(token_data).execute()
+            
+            return True
+        except Exception as e:
+            print(f"Database error storing tokens: {str(e)}")
+            raise ValueError(f"Failed to store tokens: {str(e)}")
             
     async def refresh_token(self, supabase, company_id):
         """Refresh Microsoft access token if expired"""
@@ -172,11 +193,15 @@ class TeamsService:
             "Content-Type": "application/json"
         }
         
+        from datetime import datetime, timedelta
+        expiration_date = datetime.utcnow() + timedelta(minutes=expiration_minutes)
+        expiration_iso = expiration_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        
         subscription_data = {
             "changeType": "created,updated",
             "notificationUrl": notification_url,
             "resource": "/communications/onlineMeetings/recordings",
-            "expirationDateTime": f"P{expiration_minutes}M",
+            "expirationDateTime": expiration_iso,
             "clientState": "callsightSecretState"  # Verify in webhook
         }
         

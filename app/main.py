@@ -16,6 +16,7 @@ from app.api.routes import (
     chatbot,
     insights,
     reports,
+    teams
 )
 
 
@@ -68,6 +69,7 @@ app.include_router(tickets.router, prefix=settings.API_V1_STR)
 app.include_router(chatbot.router, prefix=settings.API_V1_STR)
 app.include_router(insights.router, prefix=settings.API_V1_STR)
 app.include_router(reports.router, prefix=settings.API_V1_STR)
+app.include_router(teams.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")
