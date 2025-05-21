@@ -116,6 +116,7 @@ async def chat_with_context(
         "If it can be reasonably inferred, explain your reasoning. "
         "If the context seems off-topic, vague, or unhelpful, IGNORE it completely and answer the question from general knowledge. "
         "If the answer cannot be found or reasonably inferred, ignore all context and answer as you would if you only got the question and no additional data"
+        "YOU NEVER USE BLOCKS OF CODE OR BLOCK CODES. You may or may not use markdown, but you never use blocks of code regardless."
     )
     question = f"\n\nQuestion: {query}"
     message = introduction + question
