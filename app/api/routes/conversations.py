@@ -5,6 +5,7 @@ from supabase import Client
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
+from dateutil import parser
 
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
@@ -186,13 +187,19 @@ async def get_mine_ratings(
             .eq("user_id", current_user.id)
             .execute()
         )
-        ratings = [
-            i["conversations"]["ratings"]["rating"]
-            if i["conversations"]["ratings"]
-            else 0
-            for i in response.data
-        ]
-        return {"rating": sum(ratings) / len(ratings) if ratings else 0}
+        ratings = []
+        for participant in response.data:
+            conversations = participant.get("conversations", [])
+            if not isinstance(conversations, list):
+                conversations = [conversations]
+            for conv in conversations:
+                conv_ratings = conv.get("ratings", [])
+                if not isinstance(conv_ratings, list):
+                    conv_ratings = [conv_ratings]
+                for rating in conv_ratings:
+                    if rating and "rating" in rating:
+                        ratings.append(rating["rating"])
+        return {"rating": round(sum(ratings) / len(ratings), 2) if ratings else 0}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
@@ -211,8 +218,8 @@ async def get_mine_duration(
         )
         durations = []
         for i in response.data:
-            start_time = datetime.fromisoformat(i["conversations"]["start_time"])
-            end_time = datetime.fromisoformat(i["conversations"]["end_time"])
+            start_time = parser.parse(i["conversations"]["start_time"])
+            end_time = parser.parse(i["conversations"]["end_time"])
             duration = (end_time - start_time).total_seconds() / 60
             durations.append(duration)
         return {"duration": round(sum(durations) / len(durations)) if durations else 0}
