@@ -113,7 +113,7 @@ async def post_chat(
             input=[
                 {
                     "role": "system",
-                    "content": "You answer questions for agents of a call center working with multiple companies.",
+                    "content": "You answer questions for agents of a call center working with multiple companies. YOU NEVER USE BLOCKS OF CODE OR BLOCK CODES. You may or may not use markdown, but you never use blocks of code regardless",
                 },
                 {"role": "user", "content": message},
             ],
@@ -190,7 +190,10 @@ async def continue_chat(
             model=GPT_MODEL,
             previous_response_id=previous_response_id,
             input=[
-                {"role": "system", "content": "Eres un asistente para un call center."},
+                {
+                    "role": "system",
+                    "content": "Eres un asistente para un call center. YOU NEVER USE BLOCKS OF CODE OR BLOCK CODES. You may or may not use markdown, but you never use blocks of code regardless",
+                },
                 {"role": "user", "content": message},
             ],
         )
