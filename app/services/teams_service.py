@@ -108,11 +108,22 @@ class TeamsService:
             "Content-Type": "application/json"
         }
         
-        # First get all online meetings
+        if not start_date:
+            from datetime import datetime, timedelta, timezone
+            start_date = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
+        if not end_date:
+            from datetime import datetime, timedelta
+            end_date = datetime.now(timezone.utc)
+            
+        # Filtering
+        filter_param = f"startDateTime ge {start_date}T00:00:00Z and endDateTime le {end_date}T23:59:59Z"
+        
+        # Fetch meetings
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 "https://graph.microsoft.com/v1.0/me/onlineMeetings",
-                headers=headers
+                headers=headers,
+                params={"$filter": filter_param}
             )
             
             if response.status_code != 200:
