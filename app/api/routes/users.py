@@ -85,6 +85,21 @@ async def get_user_specific(user_id: str, supabase: Client = Depends(get_supabas
         return {"user": response.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.update("/{user_id}/{role}")
+async def update_user_role(
+    user_id: str, role: str, supabase: Client = Depends(get_supabase)
+):
+    try:
+        response = (
+            supabase.table("users")
+            .update({"role": role})
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return {"message": "User role updated successfully", "user": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/create")
