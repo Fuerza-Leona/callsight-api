@@ -92,15 +92,17 @@ async def teams_callback(
         await teams_service.store_tokens(supabase, company_id, token_result)
         
         # Set up webhook for notifications
-        notification_url = f"{base_url}{settings.API_V1_STR}/teams/notifications"
-        try:
-            await teams_service.setup_notification_subscription(
-                token_result["access_token"],
-                notification_url
-            )
-        except Exception as e:
-            # Don't fail whole auth process
-            print(f"Warning: Failed to set up notification subscription: {str(e)}")
+        if base_url.startswith("http://"):
+            print("Skipping webhook setup in non-secure environment...")
+        else:
+            notification_url = f"{base_url}{settings.API_V1_STR}/teams/notifications"
+            try:
+                await teams_service.setup_notification_subscription(
+                    token_result["access_token"],
+                    notification_url
+                )
+            except Exception as e:
+                print(f"Warning: Failed to set up notification subscription: {str(e)}")
         
         # Success and redirect
         devenv = settings.NODE_ENV
@@ -113,6 +115,8 @@ async def teams_callback(
 
 @router.get("/recordings")
 async def list_recordings(
+    start_date: str = None,     # Format: YYYY-MM-DD
+    end_date: str = None,       # Format: YYYY-MM-DD
     current_user=Depends(get_current_user),
     supabase=Depends(get_supabase)
 ):
@@ -137,7 +141,7 @@ async def list_recordings(
         access_token = await teams_service.refresh_token(supabase, company_id)
         
         # Fetch recordings
-        recordings = await teams_service.get_meetings_with_recordings(access_token)
+        recordings = await teams_service.get_meetings_with_recordings(access_token, start_date, end_date)
         
         return {"recordings": recordings}
     except Exception as e:
