@@ -79,7 +79,7 @@ async def get_companies(company_id: str, supabase: Client = Depends(get_supabase
 
 
 @router.get("/{user_id}")
-async def get_user(user_id: str, supabase: Client = Depends(get_supabase)):
+async def get_user_specific(user_id: str, supabase: Client = Depends(get_supabase)):
     try:
         response = supabase.table("users").select("*").eq("user_id", user_id).execute()
         return {"user": response.data[0]}
