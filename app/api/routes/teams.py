@@ -147,6 +147,49 @@ async def list_recordings(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch recordings: {str(e)}")
     
+router.get("/all-recordings")
+async def get_all_recordings(
+    chunks: int = 10,
+    chunk_size: int = 90,
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase)
+):
+    """Fetch all available recordings by chunking requests over time"""
+    from datetime import datetime, timedelta, timezone
+    
+    # Get tokens
+    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
+    company_id = user_response.data[0]["company_id"]
+    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+    if not tokens_response.data:
+        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up for this company")
+    
+    teams_service = TeamsService()
+    access_token = await teams_service.refresh_token(supabase, company_id)
+    
+    # Calculate date chunks working backward from today
+    end_date = datetime.now(timezone.utc)
+    all_recordings = []
+    
+    for i in range(chunks):
+        chunk_end = end_date - timedelta(days=i * chunk_size)
+        chunk_start = chunk_end - timedelta(days=chunk_size)
+        
+        start_str = chunk_start.strftime("%Y-%m-%d")
+        end_str = chunk_end.strftime("%Y-%m-%d")
+        
+        try:
+            print(f"Fetching chunk {i+1}/{chunks}: {start_str} to {end_str}")
+            recordings = await teams_service.get_meetings_with_recordings(
+                access_token, start_str, end_str
+            )
+            all_recordings.extend(recordings)
+        except Exception as e:
+            print(f"Error fetching chunk {i+1}: {str(e)}")
+            # Continue with next
+    
+    return {"recordings": all_recordings, "total": len(all_recordings)}
+    
 @router.get("/transcripts")
 async def list_transcripts(
     meeting_id: str,
