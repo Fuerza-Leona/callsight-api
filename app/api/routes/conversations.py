@@ -666,3 +666,104 @@ async def get_conversations_ratings(
         return {"ratings": result.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+
+
+@router.get("/call/{call_id}/rating")
+async def get_call_rating(
+    call_id: str = None,
+    supabase: Client = Depends(get_supabase),
+    current_user=Depends(get_current_user),
+):
+    try:
+        id = current_user.id
+
+        participant_response = (
+            supabase.table("participants")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        if not participant_response.data:
+            raise HTTPException(status_code=400, detail="User is not a participant")
+
+        role = await check_user_role(current_user, supabase)
+
+        if role != "client":
+            raise HTTPException(
+                status_code=400, detail="Only clients can give a review"
+            )
+
+        rating = (
+            supabase.table("ratings")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        rating = rating.data[0].get("rating", 0) if rating.data else 0
+
+        return {"rating": rating}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RatingRequest(BaseModel):
+    rating: int
+    conversation_id: str
+
+
+@router.post("/call/rating")
+async def post_call_rating(
+    request: RatingRequest,
+    supabase: Client = Depends(get_supabase),
+    current_user=Depends(get_current_user),
+):
+    try:
+        id = current_user.id
+        call_id = request.conversation_id
+        user_rating = request.rating
+
+        if user_rating < 1 or user_rating > 5:
+            raise HTTPException(
+                status_code=400, detail="Rating must be between 1 and 5"
+            )
+
+        participant_response = (
+            supabase.table("participants")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        if not participant_response.data:
+            raise HTTPException(status_code=400, detail="User is not a participant")
+
+        role = await check_user_role(current_user, supabase)
+
+        if role != "client":
+            raise HTTPException(
+                status_code=400, detail="Only clients can give a review"
+            )
+
+        existing_rating = (
+            supabase.table("ratings")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        if existing_rating.data:
+            raise HTTPException(status_code=400, detail="Cannot give a review twice")
+
+        supabase.table("ratings").insert(
+            {"rating": user_rating, "conversation_id": call_id, "user_id": id}
+        ).execute()
+
+        return {"message": "Rating added successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
