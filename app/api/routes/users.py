@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from supabase import Client
 
 from app.api.deps import get_current_user
+from app.api.routes.auth import check_admin_role
 from app.db.session import get_supabase
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -86,7 +87,7 @@ async def get_user_specific(user_id: str, supabase: Client = Depends(get_supabas
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.update("/{user_id}/{role}")
+@router.post("/{user_id}/{role}", dependencies=[Depends(check_admin_role)])
 async def update_user_role(
     user_id: str, role: str, supabase: Client = Depends(get_supabase)
 ):
