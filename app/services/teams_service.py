@@ -22,7 +22,7 @@ class TeamsService:
             scopes = [
                 "User.Read",
                 "OnlineMeetings.Read",
-                # "OnlineMeetingTranscript.Read"
+                "OnlineMeetingTranscript.Read.All"
             ]
         return self.app.get_authorization_request_url(
             scopes=scopes,
@@ -110,20 +110,19 @@ class TeamsService:
         
         if not start_date:
             from datetime import datetime, timedelta, timezone
-            start_date = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%d")
+            start_date = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%dT00:00:00Z")
         if not end_date:
             from datetime import datetime, timedelta
-            end_date = datetime.now(timezone.utc)
+            end_date = datetime.now(timezone.utc).strftime("%Y-%m-%dT23:59:59Z")
             
         # Filtering
-        filter_param = f"startDateTime ge {start_date}T00:00:00Z and endDateTime le {end_date}T23:59:59Z"
+        filter_param = f"startDateTime ge {start_date} and endDateTime le {end_date}"
         
         # Fetch meetings
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "https://graph.microsoft.com/v1.0/me/onlineMeetings",
+                "https://graph.microsoft.com/v1.0/me/onlineMeetings/",
                 headers=headers,
-                params={"$filter": filter_param}
             )
             
             if response.status_code != 200:
@@ -195,6 +194,45 @@ class TeamsService:
                     transcript["content"] = content_response.json()
             
             return transcripts
+        
+    async def get_transcripts(self, access_token):
+        """get all transcripts by iterating over user’s online meetings"""
+        headers = {
+            "authorization": f"bearer {access_token}",
+            "content-type": "application/json"
+        }
+        
+        result = []
+        async with httpx.AsyncClient() as client:
+            try:
+                # Get all online meetings
+                meetings_url = "https://graph.microsoft.com/v1.0/me/onlineMeetings"
+                meetings_response = await client.get(meetings_url, headers=headers)
+                meetings_response.raise_for_status()
+                meetings = meetings_response.json().get("value", [])
+                
+                print("meetings length: ", len(meetings))
+                
+                # Iterate through meetings to get transcripts
+                for meeting in meetings:
+                    meeting_id = meeting.get("id")
+                    transcripts_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts"
+                    transcripts_response = await client.get(transcripts_url, headers=headers)
+                    
+                    if transcripts_response.status_code == 200:
+                        transcripts = transcripts_response.json().get("value", [])
+                        for transcript in transcripts:
+                            content_url = transcript.get("transcriptContentUrl")
+                            if content_url:
+                                content_response = await client.get(content_url + "?$format=text/vtt", headers=headers)
+                                transcript["content"] = content_response.text if content_response.status_code == 200 else None
+                            result.append(transcript)
+            except httpx.HTTPStatusError as e:
+                return {"error": f"http error: {e.response.status_code}, {e.response.text}"}
+            except Exception as e:
+                return {"error": f"failed to fetch transcripts: {str(e)}"}
+        
+        return result
     
     async def setup_notification_subscription(self, access_token, notification_url, expiration_minutes=43200):
         """Set up webhook for notifications when new recordings are available"""

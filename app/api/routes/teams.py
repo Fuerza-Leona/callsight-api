@@ -192,7 +192,6 @@ async def get_all_recordings(
     
 @router.get("/transcripts")
 async def list_transcripts(
-    meeting_id: str,
     current_user=Depends(get_current_user),
     supabase=Depends(get_supabase)
 ):
@@ -217,7 +216,7 @@ async def list_transcripts(
         access_token = await teams_service.refresh_token(supabase, company_id)
         
         # Fetch recordings
-        transcripts = await teams_service.get_meeting_transcripts(access_token, meeting_id)
+        transcripts = await teams_service.get_transcripts(access_token)
         
         return {"transcripts": transcripts}
     except Exception as e:
