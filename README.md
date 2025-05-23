@@ -1,24 +1,18 @@
 # CallSight API
 
-![Tests](https://github.com/Fuerza-Leona/callsight-api/actions/workflows/tests.yml/badge.svg)
-
 A FastAPI application for audio call analysis and transcription.
 
 ## Setup
 
 1. Clone the repository
-2. Create a virtual environment: `python -m venv venv`
-3. Activate the virtual environment:
-   - Windows: `venv\Scripts\activate`
-   - MacOS/Linux: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Run `./update-env.sh` to update environment variables
-6. Run the server: `uvicorn app.main:app --reload`
+2. Install uv: `brew install uv`
+3. Install packages and initialize virtual env: `uv sync`
+4. Update environment variables: `./update-env.sh [main, staging, custom...]`
 
 ## Start
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+uv run app/cli.py [--dev]
 ```
 
 ## Testing
@@ -35,16 +29,16 @@ Or with coverage:
 pytest --cov=app
 ```
 
+## Committing
+
+Run file formatter with: 
+
+```bash
+pre-commit run --all-files
+```
+
 ## API Documentation
 
 When the server is running, API documentation is available at:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
-
-
-```
-[build-system]
-requires = ["setuptools>=42.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-```
