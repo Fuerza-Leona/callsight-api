@@ -34,7 +34,7 @@ pytest --cov=app
 Run file formatter with: 
 
 ```bash
-pre-commit run all-files
+pre-commit run --all-files
 ```
 
 ## API Documentation
