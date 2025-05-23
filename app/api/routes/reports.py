@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 import calendar
 from dateutil.relativedelta import relativedelta
@@ -9,10 +9,66 @@ from dateutil.relativedelta import relativedelta
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
 from app.api.routes.auth import check_user_role
-from app.services.report_service import create_monthly_report, save_report_to_storage
+from app.services.report_service import (
+    create_monthly_report,
+    save_report_to_storage,
+    create_file_name,
+)
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+async def find_existing_report(
+    supabase: Client, report_name: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Find existing report for the same company and period.
+    Returns the existing report record if found, None otherwise.
+    """
+    try:
+        # Search for existing reports with same name
+        response = (
+            supabase.table("reports")
+            .select("*")
+            .eq("name", report_name)
+            .limit(1)
+            .execute()
+        )
+
+        return response.data[0] if response.data else None
+
+    except Exception:
+        # No existing report
+        return None
+
+
+async def cleanup_old_report(supabase: Client, old_report: Dict[str, Any]) -> None:
+    """
+    Clean up old report files and database records.
+    """
+    try:
+        # Extract storage path from file_path URL
+        file_url = old_report.get("file_path", "")
+        if file_url:
+            if "/reports/" in file_url:
+                storage_path = file_url.split("/reports/", 1)[1]
+
+                # Delete from storage
+                try:
+                    supabase.storage.from_("reports").remove(
+                        [f"reports/{storage_path}"]
+                    )
+                except Exception:
+                    pass
+
+        # Delete database record
+        supabase.table("reports").delete().eq(
+            "report_id", old_report["report_id"]
+        ).execute()
+
+    except Exception:
+        pass
 
 
 class MonthlyReportRequest(BaseModel):
@@ -115,6 +171,13 @@ async def generate_monthly_report(
                 "startDate": start_date_str,
                 "endDate": end_date_str,
             }
+
+        existing_filename = create_file_name(company_name, start_date)
+        existing_report = await find_existing_report(supabase, existing_filename)
+
+        if existing_report:
+            print("Existing report found! Cleaning up old report...")
+            await cleanup_old_report(supabase, existing_report)
 
         # Gather all required data
         # 1. Get summary data
