@@ -29,6 +29,14 @@ Or with coverage:
 pytest --cov=app
 ```
 
+## Committing
+
+Run file formatter with: 
+
+```bash
+pre-commit run all-files
+```
+
 ## API Documentation
 
 When the server is running, API documentation is available at:
