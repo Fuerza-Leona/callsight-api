@@ -12,6 +12,7 @@ azure-ai-language-conversations==1.1.0
 azure-ai-textanalytics==5.3.0
 azure-common==1.1.28
 azure-core==1.32.0
+Callsight_API @ file:///Users/harroyo/src/callsight-api
 certifi==2025.1.31
 cffi==1.17.1
 cfgv==3.4.0
@@ -19,6 +20,7 @@ chardet==5.2.0
 charset-normalizer==3.4.1
 click==8.1.8
 coverage==7.8.0
+cryptography==44.0.3
 decorator==5.2.1
 deprecation==2.1.0
 distlib==0.3.9
@@ -46,6 +48,7 @@ librosa==0.11.0
 llvmlite==0.44.0
 Mako==1.3.9
 MarkupSafe==3.0.2
+msal==1.32.3
 msgpack==1.1.0
 multidict==6.2.0
 nodeenv==1.9.1
