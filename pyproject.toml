@@ -21,6 +21,7 @@ dependencies = [
     "pydantic-core>=2.33.2",
     "pydantic-settings>=2.9.1",
     "python-multipart>=0.0.18",
+    "reportlab>=4.4.1",
     "ruff>=0.11.9",
     "supabase>=2.15.1",
     "tiktoken>=0.9.0",
