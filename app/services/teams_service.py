@@ -22,7 +22,8 @@ class TeamsService:
             scopes = [
                 "User.Read",
                 "OnlineMeetings.Read",
-                "OnlineMeetingTranscript.Read.All"
+                "OnlineMeetingTranscript.Read.All",
+                "Calendars.Read"
             ]
         return self.app.get_authorization_request_url(
             scopes=scopes,
@@ -198,8 +199,8 @@ class TeamsService:
     async def get_transcripts(self, access_token):
         """get all transcripts by iterating over user’s online meetings"""
         headers = {
-            "authorization": f"bearer {access_token}",
-            "content-type": "application/json"
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
         }
         
         result = []
@@ -227,6 +228,31 @@ class TeamsService:
                                 content_response = await client.get(content_url + "?$format=text/vtt", headers=headers)
                                 transcript["content"] = content_response.text if content_response.status_code == 200 else None
                             result.append(transcript)
+            except httpx.HTTPStatusError as e:
+                return {"error": f"http error: {e.response.status_code}, {e.response.text}"}
+            except Exception as e:
+                return {"error": f"failed to fetch transcripts: {str(e)}"}
+        
+        return result
+    
+    async def get_calendar_events(self, access_token):
+        """get all transcripts by iterating over user’s online meetings"""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        result = []
+        async with httpx.AsyncClient() as client:
+            try:
+                # Get events
+                meetings_url = "https://graph.microsoft.com/v1.0/me/events"
+                meetings_response = await client.get(meetings_url, headers=headers)
+                meetings_response.raise_for_status()
+                meetings = meetings_response.json().get("value", [])
+                
+                result = meetings
+                
             except httpx.HTTPStatusError as e:
                 return {"error": f"http error: {e.response.status_code}, {e.response.text}"}
             except Exception as e:

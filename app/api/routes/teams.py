@@ -221,6 +221,38 @@ async def list_transcripts(
         return {"transcripts": transcripts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch recordings: {str(e)}")
+    
+@router.get("/events")
+async def list_events(
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase)
+):
+    """List available transcripts from Teams"""
+    # Get user's company ID
+    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
+    if not user_response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    company_id = user_response.data[0]["company_id"]
+    
+    # Get Microsoft tokens from database
+    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+    if not tokens_response.data:
+        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up for this company")
+    
+    # Initialize Teams service
+    teams_service = TeamsService()
+    
+    try:
+        # Refresh token if needed
+        access_token = await teams_service.refresh_token(supabase, company_id)
+        
+        # Fetch recordings
+        events = await teams_service.get_calendar_events(access_token)
+        
+        return {"events": events}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch recordings: {str(e)}")
 
 @router.post("/notifications")
 async def handle_notifications(
