@@ -1,23 +1,908 @@
 import io
 import uuid
 from datetime import datetime
-from typing import Dict, Any, List
-
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
+from enum import Enum
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import seaborn as sns
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, cm
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
     Spacer,
     Table,
     TableStyle,
+    Image,
+    PageBreak,
 )
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
 
-def format_date(date_obj: datetime) -> str:
-    """Format a date in a human-readable format."""
-    return date_obj.strftime("%B %Y")
+class ReportTheme(Enum):
+    """Report theme configurations"""
+
+    CORPORATE = "corporate"
+    MODERN = "modern"
+    MINIMAL = "minimal"
+
+
+@dataclass
+class ReportConfig:
+    theme: ReportTheme = ReportTheme.CORPORATE
+    include_charts: bool = True
+    include_insights: bool = True
+    include_recommendations: bool = True
+    chart_style: str = "seaborn-v0_8"
+    color_palette: List[str] = None
+    logo_path: Optional[str] = None
+
+    def __post_init__(self):
+        if self.color_palette is None:
+            self.color_palette = ["#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#6A994E"]
+
+
+class SpanishTexts:
+    """Spanish text constants"""
+
+    MONTHLY_REPORT = "Reporte Mensual de Análisis"
+    FOR_COMPANY = "Para"
+    PERIOD = "Periodo"
+    SUMMARY = "Resumen Ejecutivo"
+    KEY_METRICS = "Métricas Clave"
+    TOTAL_CALLS = "Llamadas Totales"
+    AVG_DURATION = "Duración Promedio"
+    SATISFACTION = "Satisfacción del Cliente"
+    MAIN_TOPICS = "Temas Principales"
+    SENTIMENT_ANALYSIS = "Análisis de Sentimiento"
+    RATING_DISTRIBUTION = "Distribución de Calificaciones"
+    INSIGHTS = "Insights Clave"
+    RECOMMENDATIONS = "Recomendaciones"
+    TRENDS = "Tendencias del Período"
+    PERFORMANCE_INDICATORS = "Indicadores de Rendimiento"
+
+    # Sentiments
+    POSITIVE = "Positivo"
+    NEUTRAL = "Neutral"
+    NEGATIVE = "Negativo"
+
+    # Table headers
+    METRIC = "Métrica"
+    VALUE = "Valor"
+    TOPIC = "Tema"
+    FREQUENCY = "Frecuencia"
+    SENTIMENT = "Sentimiento"
+    PERCENTAGE = "Porcentaje"
+    RATING = "Calificación"
+
+    # Units
+    MINUTES = "minutos"
+    CALLS = "llamadas"
+
+    # Insights hardcodeados
+    TOP_TOPIC_INSIGHT = "El tema más discutido fue '{topic}' con {count} menciones"
+    SATISFACTION_INSIGHT = "La satisfacción promedio fue del {percent:.1f}%"
+    SENTIMENT_INSIGHT = "El {percent:.1f}% de las interacciones fueron {sentiment}"
+    DURATION_INSIGHT = "La duración promedio de llamadas fue {duration:.1f} minutos"
+
+
+class ChartGenerator:
+    def __init__(self, config: ReportConfig):
+        self.config = config
+        plt.style.use("seaborn-v0_8-whitegrid")
+        sns.set_palette(config.color_palette)
+
+    def _setup_chart_style(self, fig, ax):
+        """Apply consistent styling to charts"""
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_color("#E0E0E0")
+        ax.spines["bottom"].set_color("#E0E0E0")
+        ax.grid(True, alpha=0.3)
+        fig.patch.set_facecolor("white")
+
+    def create_sentiment_donut_chart(self, emotions_data: Dict[str, float]) -> bytes:
+        """Create a modern donut chart for sentiment analysis"""
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        labels = [SpanishTexts.POSITIVE, SpanishTexts.NEUTRAL, SpanishTexts.NEGATIVE]
+        values = [
+            emotions_data.get("positive", 0) * 100,
+            emotions_data.get("neutral", 0) * 100,
+            emotions_data.get("negative", 0) * 100,
+        ]
+        colors = ["#6A994E", "#F18F01", "#C73E1D"]
+
+        # Create donut chart
+        wedges, texts, autotexts = ax.pie(
+            values,
+            labels=labels,
+            colors=colors,
+            autopct="%1.1f%%",
+            startangle=90,
+            pctdistance=0.85,
+            wedgeprops=dict(width=0.5, edgecolor="white", linewidth=2),
+        )
+
+        # Styling
+        for autotext in autotexts:
+            autotext.set_color("white")
+            autotext.set_fontweight("bold")
+            autotext.set_fontsize(12)
+
+        for text in texts:
+            text.set_fontsize(11)
+            text.set_fontweight("600")
+
+        ax.set_title("Análisis de Sentimiento", fontsize=16, fontweight="bold", pad=20)
+
+        # Add center text
+        centre_circle = plt.Circle((0, 0), 0.70, fc="white")
+        fig.gca().add_artist(centre_circle)
+
+        plt.tight_layout()
+
+        # Convert to bytes
+        buffer = io.BytesIO()
+        plt.savefig(
+            buffer,
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        buffer.seek(0)
+        chart_bytes = buffer.getvalue()
+        buffer.close()
+        plt.close()
+
+        return chart_bytes
+
+    def create_topics_bar_chart(self, topics_data: List[Dict[str, Any]]) -> bytes:
+        """Create a horizontal bar chart for topics"""
+        if not topics_data:
+            return self._create_no_data_chart("No hay datos de temas disponibles")
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Get top 8 topics
+        top_topics = topics_data[:8]
+        topics = [topic.get("topic", "N/A") for topic in reversed(top_topics)]
+        counts = [topic.get("count", 0) for topic in reversed(top_topics)]
+
+        # Create horizontal bar chart
+        bars = ax.barh(topics, counts, color=self.config.color_palette[0], alpha=0.8)
+
+        # Add value labels on bars
+        for i, (bar, count) in enumerate(zip(bars, counts)):
+            width = bar.get_width()
+            ax.text(
+                width + max(counts) * 0.01,
+                bar.get_y() + bar.get_height() / 2,
+                f"{count}",
+                ha="left",
+                va="center",
+                fontweight="bold",
+            )
+
+        ax.set_xlabel("Frecuencia de Menciones", fontsize=12, fontweight="600")
+        ax.set_title("Temas Más Discutidos", fontsize=16, fontweight="bold", pad=20)
+
+        self._setup_chart_style(fig, ax)
+        ax.set_xlim(0, max(counts) * 1.15)
+
+        plt.tight_layout()
+
+        buffer = io.BytesIO()
+        plt.savefig(
+            buffer,
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        buffer.seek(0)
+        chart_bytes = buffer.getvalue()
+        buffer.close()
+        plt.close()
+
+        return chart_bytes
+
+    def create_ratings_distribution_chart(
+        self, ratings_data: List[Dict[str, Any]]
+    ) -> bytes:
+        """Create a modern bar chart for ratings distribution"""
+        if not ratings_data:
+            return self._create_no_data_chart(
+                "No hay datos de calificaciones disponibles"
+            )
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+        ratings = [str(rating.get("rating", "")) for rating in ratings_data]
+        counts = [rating.get("count", 0) for rating in ratings_data]
+
+        # Color gradient based on rating
+        colors_map = {
+            "1": "#C73E1D",
+            "2": "#F18F01",
+            "3": "#F7B801",
+            "4": "#A7C957",
+            "5": "#6A994E",
+        }
+        bar_colors = [
+            colors_map.get(rating, self.config.color_palette[0]) for rating in ratings
+        ]
+
+        bars = ax.bar(
+            ratings, counts, color=bar_colors, alpha=0.8, edgecolor="white", linewidth=2
+        )
+
+        # Add value labels on top of bars
+        for bar, count in zip(bars, counts):
+            height = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                height + max(counts) * 0.01,
+                f"{count}",
+                ha="center",
+                va="bottom",
+                fontweight="bold",
+            )
+
+        ax.set_xlabel("Calificación", fontsize=12, fontweight="600")
+        ax.set_ylabel("Número de Llamadas", fontsize=12, fontweight="600")
+        ax.set_title(
+            "Distribución de Calificaciones", fontsize=16, fontweight="bold", pad=20
+        )
+
+        self._setup_chart_style(fig, ax)
+        ax.set_ylim(0, max(counts) * 1.15)
+
+        plt.tight_layout()
+
+        buffer = io.BytesIO()
+        plt.savefig(
+            buffer,
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        buffer.seek(0)
+        chart_bytes = buffer.getvalue()
+        buffer.close()
+        plt.close()
+
+        return chart_bytes
+
+    def create_kpi_dashboard(self, summary_data: Dict[str, Any]) -> bytes:
+        """Create a KPI dashboard visualization"""
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 12))
+        fig.suptitle(
+            "Dashboard de Métricas Clave", fontsize=18, fontweight="bold", y=0.95
+        )
+
+        # Total calls gauge
+        total_calls = summary_data.get("total_calls", 0)
+        self._create_kpi_box(
+            ax1, total_calls, "Llamadas\nTotales", self.config.color_palette[0]
+        )
+
+        # Average duration gauge
+        avg_duration = summary_data.get("avg_duration", 0)
+        self._create_kpi_box(
+            ax2,
+            f"{avg_duration:.1f}",
+            "Duración\nPromedio (min)",
+            self.config.color_palette[1],
+        )
+
+        # Satisfaction gauge
+        satisfaction = summary_data.get("avg_satisfaction", 0) * 100
+        self._create_kpi_box(
+            ax3,
+            f"{satisfaction:.1f}%",
+            "Satisfacción\nPromedio",
+            self.config.color_palette[2],
+        )
+
+        # Response time (mock data for example)
+        response_time = summary_data.get("avg_response_time", 45)
+        self._create_kpi_box(
+            ax4,
+            f"{response_time:.0f}s",
+            "Tiempo de\nRespuesta",
+            self.config.color_palette[3],
+        )
+
+        plt.tight_layout()
+
+        buffer = io.BytesIO()
+        plt.savefig(
+            buffer,
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        buffer.seek(0)
+        chart_bytes = buffer.getvalue()
+        buffer.close()
+        plt.close()
+
+        return chart_bytes
+
+    def _create_kpi_box(self, ax, value, label, color):
+        """Create a KPI box visualization"""
+        ax.text(
+            0.5,
+            0.7,
+            str(value),
+            ha="center",
+            va="center",
+            fontsize=24,
+            fontweight="bold",
+            color=color,
+            transform=ax.transAxes,
+        )
+        ax.text(
+            0.5,
+            0.3,
+            label,
+            ha="center",
+            va="center",
+            fontsize=12,
+            fontweight="600",
+            transform=ax.transAxes,
+        )
+
+        # Add border
+        rect = patches.Rectangle(
+            (0.1, 0.1),
+            0.8,
+            0.8,
+            linewidth=2,
+            edgecolor=color,
+            facecolor="none",
+            transform=ax.transAxes,
+        )
+        ax.add_patch(rect)
+
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axis("off")
+
+    def _create_no_data_chart(self, message: str) -> bytes:
+        """Create a placeholder chart for when no data is available"""
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.text(
+            0.5,
+            0.5,
+            message,
+            ha="center",
+            va="center",
+            fontsize=14,
+            transform=ax.transAxes,
+        )
+        ax.axis("off")
+
+        buffer = io.BytesIO()
+        plt.savefig(
+            buffer,
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+            facecolor="white",
+            edgecolor="none",
+        )
+        buffer.seek(0)
+        chart_bytes = buffer.getvalue()
+        buffer.close()
+        plt.close()
+
+        return chart_bytes
+
+
+class InsightsGenerator:
+    """Generate actionable insights from data"""
+
+    @staticmethod
+    def generate_insights(
+        summary_data: Dict[str, Any],
+        topics_data: List[Dict[str, Any]],
+        emotions_data: Dict[str, float],
+        ratings_data: List[Dict[str, Any]],
+    ) -> List[str]:
+        """Generate key insights from the data"""
+        insights = []
+
+        # Topic insights
+        if topics_data:
+            top_topic = topics_data[0]
+            insights.append(
+                SpanishTexts.TOP_TOPIC_INSIGHT.format(
+                    topic=top_topic.get("topic", "N/A"), count=top_topic.get("count", 0)
+                )
+            )
+
+        # Satisfaction insights
+        satisfaction = summary_data.get("avg_satisfaction", 0) * 100
+        insights.append(SpanishTexts.SATISFACTION_INSIGHT.format(percent=satisfaction))
+
+        # Sentiment insights
+        dominant_sentiment = max(emotions_data.items(), key=lambda x: x[1])
+        sentiment_name = {
+            "positive": SpanishTexts.POSITIVE.lower(),
+            "neutral": SpanishTexts.NEUTRAL.lower(),
+            "negative": SpanishTexts.NEGATIVE.lower(),
+        }.get(dominant_sentiment[0], dominant_sentiment[0])
+
+        insights.append(
+            SpanishTexts.SENTIMENT_INSIGHT.format(
+                percent=dominant_sentiment[1] * 100, sentiment=sentiment_name
+            )
+        )
+
+        # Duration insights
+        duration = summary_data.get("avg_duration", 0)
+        insights.append(SpanishTexts.DURATION_INSIGHT.format(duration=duration))
+
+        # Performance insights
+        if satisfaction > 80:
+            insights.append(
+                "El nivel de satisfacción del cliente está por encima del promedio de la industria"
+            )
+        elif satisfaction < 60:
+            insights.append("Se recomienda revisar los procesos de atención al cliente")
+
+        # Call volume insights
+        total_calls = summary_data.get("total_calls", 0)
+        if total_calls > 1000:
+            insights.append(
+                "Alto volumen de llamadas indica una demanda robusta del servicio"
+            )
+
+        return insights
+
+    @staticmethod
+    def generate_recommendations(
+        summary_data: Dict[str, Any],
+        emotions_data: Dict[str, float],
+        ratings_data: List[Dict[str, Any]],
+    ) -> List[str]:
+        """Generate actionable recommendations"""
+        recommendations = []
+
+        satisfaction = summary_data.get("avg_satisfaction", 0) * 100
+        negative_sentiment = emotions_data.get("negative", 0) * 100
+
+        # Satisfaction-based recommendations
+        if satisfaction < 70:
+            recommendations.append(
+                "Implementar programas de capacitación adicional para mejorar la satisfacción del cliente"
+            )
+
+        if negative_sentiment > 30:
+            recommendations.append(
+                "Revisar y optimizar los scripts de atención para reducir sentimientos negativos"
+            )
+
+        # Duration-based recommendations
+        avg_duration = summary_data.get("avg_duration", 0)
+        if avg_duration > 10:
+            recommendations.append(
+                "Considerar herramientas de automatización para reducir tiempo de resolución"
+            )
+        elif avg_duration < 3:
+            recommendations.append(
+                "Verificar que se está brindando suficiente atención a cada consulta"
+            )
+
+        # Rating-based recommendations
+        if ratings_data:
+            low_ratings = sum(
+                r.get("count", 0) for r in ratings_data if int(r.get("rating", 5)) <= 2
+            )
+            total_ratings = sum(r.get("count", 0) for r in ratings_data)
+
+            if low_ratings / max(total_ratings, 1) > 0.2:
+                recommendations.append(
+                    "Implementar un sistema de seguimiento para llamadas con calificaciones bajas"
+                )
+
+        # General recommendations
+        recommendations.extend(
+            [
+                "Establecer métricas de seguimiento mensual para identificar tendencias",
+                "Considerar la implementación de encuestas post-llamada para obtener feedback más detallado",
+                "Analizar los temas más frecuentes para crear recursos de autoservicio",
+            ]
+        )
+
+        return recommendations[:5]  # Limit to top 5 recommendations
+
+
+def format_date(date_obj: datetime, main: bool = True) -> str:
+    """Format a date in Spanish format."""
+    months = {
+        1: "Enero",
+        2: "Febrero",
+        3: "Marzo",
+        4: "Abril",
+        5: "Mayo",
+        6: "Junio",
+        7: "Julio",
+        8: "Agosto",
+        9: "Septiembre",
+        10: "Octubre",
+        11: "Noviembre",
+        12: "Diciembre",
+    }
+    return (
+        f"{months[date_obj.month]} {date_obj.year}"
+        if main
+        else f"{date_obj.day} de {months[date_obj.month]} del {date_obj.year}"
+    )
+
+
+class ReportGenerator:
+    """Enhanced report generator with modern styling and charts"""
+
+    def __init__(self, config: ReportConfig = None):
+        self.config = config or ReportConfig()
+        self.chart_generator = ChartGenerator(self.config)
+
+    def create_monthly_report(
+        self,
+        company_name: str,
+        start_date: datetime,
+        end_date: datetime,
+        summary_data: Dict[str, Any],
+        topics_data: List[Dict[str, Any]],
+        categories_data: List[Dict[str, Any]],
+        ratings_data: List[Dict[str, Any]],
+        emotions_data: Dict[str, float],
+    ) -> bytes:
+        """Create an enhanced PDF monthly report"""
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=2 * cm,
+            leftMargin=2 * cm,
+            topMargin=2.5 * cm,
+            bottomMargin=2 * cm,
+        )
+
+        # Enhanced styles
+        styles = self._create_enhanced_styles()
+        elements = []
+
+        # Title page
+        elements.extend(
+            self._create_title_page(company_name, start_date, end_date, styles)
+        )
+        elements.append(PageBreak())
+
+        # Executive summary with KPI dashboard
+        if self.config.include_charts:
+            elements.extend(self._create_executive_summary(summary_data, styles))
+            elements.append(PageBreak())
+
+        # Detailed metrics section
+        elements.extend(
+            self._create_detailed_metrics(
+                summary_data, topics_data, emotions_data, ratings_data, styles
+            )
+        )
+
+        # Insights and recommendations
+        if self.config.include_insights:
+            elements.append(PageBreak())
+            elements.extend(
+                self._create_insights_section(
+                    summary_data, topics_data, emotions_data, ratings_data, styles
+                )
+            )
+
+        # Build PDF
+        doc.build(elements)
+
+        pdf_data = buffer.getvalue()
+        buffer.close()
+
+        return pdf_data
+
+    def _create_enhanced_styles(self):
+        """Create enhanced styles for the report"""
+        styles = getSampleStyleSheet()
+
+        # Custom title style
+        styles.add(
+            ParagraphStyle(
+                name="CustomTitle",
+                parent=styles["Title"],
+                fontSize=28,
+                textColor=colors.HexColor("#2E86AB"),
+                spaceAfter=30,
+                alignment=TA_CENTER,
+                fontName="Helvetica-Bold",
+            )
+        )
+
+        # Enhanced heading styles
+        styles.add(
+            ParagraphStyle(
+                name="Heading1Enhanced",
+                parent=styles["Heading1"],
+                fontSize=18,
+                textColor=colors.HexColor("#2E86AB"),
+                spaceAfter=15,
+                spaceBefore=20,
+                fontName="Helvetica-Bold",
+                borderWidth=0,
+                borderColor=colors.HexColor("#2E86AB"),
+                borderPadding=5,
+            )
+        )
+
+        styles.add(
+            ParagraphStyle(
+                name="Heading2Enhanced",
+                parent=styles["Heading2"],
+                fontSize=14,
+                textColor=colors.HexColor("#A23B72"),
+                spaceAfter=10,
+                spaceBefore=15,
+                fontName="Helvetica-Bold",
+            )
+        )
+
+        # Enhanced normal style
+        styles.add(
+            ParagraphStyle(
+                name="NormalEnhanced",
+                parent=styles["Normal"],
+                fontSize=11,
+                textColor=colors.HexColor("#333333"),
+                spaceAfter=8,
+                alignment=TA_JUSTIFY,
+                fontName="Helvetica",
+            )
+        )
+
+        # Insight style
+        styles.add(
+            ParagraphStyle(
+                name="InsightStyle",
+                parent=styles["Normal"],
+                fontSize=11,
+                textColor=colors.HexColor("#2E86AB"),
+                spaceAfter=8,
+                leftIndent=20,
+                bulletIndent=10,
+                fontName="Helvetica",
+            )
+        )
+
+        return styles
+
+    def _create_title_page(
+        self, company_name: str, start_date: datetime, end_date: datetime, styles
+    ) -> List:
+        """Create an attractive title page"""
+        elements = []
+
+        # Main title
+        elements.append(Spacer(1, 2 * inch))
+        elements.append(Paragraph(SpanishTexts.MONTHLY_REPORT, styles["CustomTitle"]))
+        elements.append(Spacer(1, 0.5 * inch))
+
+        # Company info
+        elements.append(
+            Paragraph(
+                f"<b>{SpanishTexts.FOR_COMPANY}:</b> {company_name}",
+                styles["Heading1Enhanced"],
+            )
+        )
+        elements.append(
+            Paragraph(
+                f"<b>{SpanishTexts.PERIOD}:</b> {format_date(start_date)}",
+                styles["Heading2Enhanced"],
+            )
+        )
+
+        elements.append(Spacer(1, 1 * inch))
+
+        # Generated date
+        elements.append(
+            Paragraph(
+                f"Generado el: {format_date(datetime.now(), False)}",
+                styles["NormalEnhanced"],
+            )
+        )
+
+        return elements
+
+    def _create_executive_summary(self, summary_data: Dict[str, Any], styles) -> List:
+        """Create executive summary with KPI dashboard"""
+        elements = []
+
+        elements.append(Paragraph(SpanishTexts.SUMMARY, styles["Heading1Enhanced"]))
+        elements.append(Spacer(1, 12))
+
+        # KPI Dashboard chart
+        if self.config.include_charts:
+            kpi_chart = self.chart_generator.create_kpi_dashboard(summary_data)
+            kpi_image = Image(io.BytesIO(kpi_chart), width=6 * inch, height=4 * inch)
+            elements.append(kpi_image)
+            elements.append(Spacer(1, 20))
+
+        # Summary text
+        total_calls = summary_data.get("total_calls", 0)
+        avg_duration = summary_data.get("avg_duration", 0)
+        satisfaction = summary_data.get("avg_satisfaction", 0) * 100
+
+        summary_text = f"""
+        Durante el período analizado, se registraron <b>{total_calls:,}</b> llamadas con una 
+        duración promedio de <b>{avg_duration:.1f} minutos</b>. La satisfacción del cliente 
+        alcanzó un <b>{satisfaction:.1f}%</b>, lo que refleja la calidad del servicio brindado.
+        """
+
+        elements.append(Paragraph(summary_text, styles["NormalEnhanced"]))
+
+        return elements
+
+    def _create_detailed_metrics(
+        self,
+        summary_data: Dict[str, Any],
+        topics_data: List[Dict[str, Any]],
+        emotions_data: Dict[str, float],
+        ratings_data: List[Dict[str, Any]],
+        styles,
+    ) -> List:
+        """Create detailed metrics section with charts"""
+        elements = []
+
+        # Topics section
+        elements.append(Paragraph(SpanishTexts.MAIN_TOPICS, styles["Heading1Enhanced"]))
+
+        if self.config.include_charts and topics_data:
+            topics_chart = self.chart_generator.create_topics_bar_chart(topics_data)
+            topics_image = Image(
+                io.BytesIO(topics_chart), width=6 * inch, height=3.5 * inch
+            )
+            elements.append(topics_image)
+            elements.append(Spacer(1, 20))
+
+        # Topics table (top 5)
+        if topics_data:
+            topics_table_data = [[SpanishTexts.TOPIC, SpanishTexts.FREQUENCY]]
+            for topic in topics_data[:5]:
+                topics_table_data.append(
+                    [topic.get("topic", "N/A"), str(topic.get("count", 0))]
+                )
+
+            topics_table = Table(topics_table_data, colWidths=[4 * inch, 1.5 * inch])
+            topics_table.setStyle(self._get_enhanced_table_style())
+            elements.append(topics_table)
+
+        elements.append(Spacer(1, 30))
+
+        # Sentiment analysis section
+        elements.append(
+            Paragraph(SpanishTexts.SENTIMENT_ANALYSIS, styles["Heading1Enhanced"])
+        )
+
+        if self.config.include_charts:
+            sentiment_chart = self.chart_generator.create_sentiment_donut_chart(
+                emotions_data
+            )
+            sentiment_image = Image(
+                io.BytesIO(sentiment_chart), width=5 * inch, height=3.5 * inch
+            )
+            elements.append(sentiment_image)
+            elements.append(Spacer(1, 20))
+
+        # Ratings section
+        if ratings_data:
+            elements.append(
+                Paragraph(SpanishTexts.RATING_DISTRIBUTION, styles["Heading1Enhanced"])
+            )
+
+            if self.config.include_charts:
+                ratings_chart = self.chart_generator.create_ratings_distribution_chart(
+                    ratings_data
+                )
+                ratings_image = Image(
+                    io.BytesIO(ratings_chart), width=5 * inch, height=3.5 * inch
+                )
+                elements.append(ratings_image)
+                elements.append(Spacer(1, 20))
+
+        return elements
+
+    def _create_insights_section(
+        self,
+        summary_data: Dict[str, Any],
+        topics_data: List[Dict[str, Any]],
+        emotions_data: Dict[str, float],
+        ratings_data: List[Dict[str, Any]],
+        styles,
+    ) -> List:
+        """Create insights and recommendations section"""
+        elements = []
+
+        # Key insights
+        elements.append(Paragraph(SpanishTexts.INSIGHTS, styles["Heading1Enhanced"]))
+
+        insights = InsightsGenerator.generate_insights(
+            summary_data, topics_data, emotions_data, ratings_data
+        )
+
+        for i, insight in enumerate(insights, 1):
+            elements.append(Paragraph(f"• {insight}", styles["InsightStyle"]))
+
+        elements.append(Spacer(1, 30))
+
+        # Recommendations
+        if self.config.include_recommendations:
+            elements.append(
+                Paragraph(SpanishTexts.RECOMMENDATIONS, styles["Heading1Enhanced"])
+            )
+
+            recommendations = InsightsGenerator.generate_recommendations(
+                summary_data, emotions_data, ratings_data
+            )
+
+            for i, recommendation in enumerate(recommendations, 1):
+                elements.append(
+                    Paragraph(f"{i}. {recommendation}", styles["InsightStyle"])
+                )
+
+        return elements
+
+    def _get_enhanced_table_style(self) -> TableStyle:
+        """Get enhanced table styling"""
+        return TableStyle(
+            [
+                # Header styling
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2E86AB")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 12),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 15),
+                ("TOPPADDING", (0, 0), (-1, 0), 15),
+                # Data rows styling
+                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 1), (-1, -1), 10),
+                ("ALIGN", (0, 1), (-1, -1), "LEFT"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 1), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 10),
+                # Alternating row colors
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F8F9FA")],
+                ),
+                # Grid
+                ("GRID", (0, 0), (-1, -1), 1, colors.HexColor("#E0E0E0")),
+                ("LINEBELOW", (0, 0), (-1, 0), 2, colors.HexColor("#2E86AB")),
+            ]
+        )
 
 
 def create_monthly_report(
@@ -26,9 +911,10 @@ def create_monthly_report(
     end_date: datetime,
     summary_data: Dict[str, Any],
     topics_data: List[Dict[str, Any]],
-    categories_data: List[Dict[str, Any]],
-    ratings_data: List[Dict[str, Any]],
-    emotions_data: Dict[str, float],
+    categories_data: List[Dict[str, Any]] = None,
+    ratings_data: List[Dict[str, Any]] = None,
+    emotions_data: Dict[str, float] = None,
+    config: ReportConfig = None,
 ) -> bytes:
     """
     Create a PDF monthly report with the given data.
@@ -46,179 +932,25 @@ def create_monthly_report(
     Returns:
         The generated PDF as bytes
     """
-    # Create a buffer for the PDF
-    buffer = io.BytesIO()
+    if emotions_data is None:
+        emotions_data = {"positive": 0.0, "neutral": 0.0, "negative": 0.0}
+    if ratings_data is None:
+        ratings_data = []
+    if topics_data is None:
+        topics_data = []
 
-    # Create the PDF document
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=letter,
-        rightMargin=72,
-        leftMargin=72,
-        topMargin=72,
-        bottomMargin=72,
+    generator = ReportGenerator(config)
+
+    return generator.create_monthly_report(
+        company_name=company_name,
+        start_date=start_date,
+        end_date=end_date,
+        summary_data=summary_data,
+        topics_data=topics_data,
+        categories_data=categories_data,
+        ratings_data=ratings_data,
+        emotions_data=emotions_data,
     )
-
-    # Get styles
-    styles = getSampleStyleSheet()
-    title_style = styles["Title"]
-    heading1_style = styles["Heading1"]
-    normal_style = styles["Normal"]
-
-    # Create a custom style for the header
-    header_style = ParagraphStyle(
-        "HeaderStyle", parent=heading1_style, fontSize=16, spaceAfter=12
-    )
-
-    # Create a list to hold the PDF elements
-    elements = []
-
-    # Add title and header
-    elements.append(Paragraph("Reporte Mensual:", title_style))
-    elements.append(Spacer(1, 12))
-    elements.append(Paragraph(f"Para: {company_name}", header_style))
-    elements.append(
-        Paragraph(
-            f"Periodo {format_date(start_date)} - {format_date(end_date)}", header_style
-        )
-    )
-    elements.append(Spacer(1, 24))
-
-    # Add summary section
-    elements.append(Paragraph("Resumen", heading1_style))
-    elements.append(Spacer(1, 12))
-
-    # Create a table for summary data
-    summary_table_data = [
-        ["Metrica", "Valor"],
-        ["Llamadas totales", str(summary_data.get("total_calls", 0))],
-        ["Duracion promedio", f"{summary_data.get('avg_duration', 0):.1f} minutes"],
-        ["Satisfacción", f"{summary_data.get('avg_satisfaction', 0) * 100:.1f}%"],
-    ]
-
-    summary_table = Table(summary_table_data, colWidths=[250, 200])
-    summary_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (1, 0), colors.lightgrey),
-                ("TEXTCOLOR", (0, 0), (1, 0), colors.black),
-                ("ALIGN", (0, 0), (1, 0), "CENTER"),
-                ("FONTNAME", (0, 0), (1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (1, 0), 12),
-                ("BOTTOMPADDING", (0, 0), (1, 0), 12),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ]
-        )
-    )
-
-    elements.append(summary_table)
-    elements.append(Spacer(1, 24))
-
-    # Add topics section
-    elements.append(Paragraph("Temas principales", heading1_style))
-    elements.append(Spacer(1, 12))
-
-    if topics_data:
-        # Create a table for topics data
-        topics_table_data = [["Tema", "Frequencia"]]
-        for topic in topics_data[:5]:  # Show top 5 topics
-            topics_table_data.append(
-                [topic.get("topic", ""), str(topic.get("count", 0))]
-            )
-
-        topics_table = Table(topics_table_data, colWidths=[250, 200])
-        topics_table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (1, 0), colors.lightgrey),
-                    ("TEXTCOLOR", (0, 0), (1, 0), colors.black),
-                    ("ALIGN", (0, 0), (1, 0), "CENTER"),
-                    ("FONTNAME", (0, 0), (1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (1, 0), 12),
-                    ("BOTTOMPADDING", (0, 0), (1, 0), 12),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ]
-            )
-        )
-
-        elements.append(topics_table)
-    else:
-        elements.append(
-            Paragraph(
-                "No hay datos de temas disponibles para este periodo.", normal_style
-            )
-        )
-
-    elements.append(Spacer(1, 24))
-
-    # Add emotions section
-    elements.append(Paragraph("Analisis de sentimiento", heading1_style))
-    elements.append(Spacer(1, 12))
-
-    # Create a table for emotions data
-    emotions_table_data = [
-        ["Sentimiento", "Porcentaje"],
-        ["Postitivo", f"{emotions_data.get('positive', 0) * 100:.1f}%"],
-        ["Neutral", f"{emotions_data.get('neutral', 0) * 100:.1f}%"],
-        ["Negativo", f"{emotions_data.get('negative', 0) * 100:.1f}%"],
-    ]
-
-    emotions_table = Table(emotions_table_data, colWidths=[250, 200])
-    emotions_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (1, 0), colors.lightgrey),
-                ("TEXTCOLOR", (0, 0), (1, 0), colors.black),
-                ("ALIGN", (0, 0), (1, 0), "CENTER"),
-                ("FONTNAME", (0, 0), (1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (1, 0), 12),
-                ("BOTTOMPADDING", (0, 0), (1, 0), 12),
-                ("GRID", (0, 0), (-1, -1), 1, colors.black),
-            ]
-        )
-    )
-
-    elements.append(emotions_table)
-    elements.append(Spacer(1, 24))
-
-    # Add ratings section if available
-    if ratings_data:
-        elements.append(Paragraph("Distribucion de ratings", heading1_style))
-        elements.append(Spacer(1, 12))
-
-        # Create a table for ratings data
-        ratings_table_data = [["Rating", "Frequencia"]]
-        for rating in ratings_data:
-            ratings_table_data.append(
-                [str(rating.get("rating", "")), str(rating.get("count", 0))]
-            )
-
-        ratings_table = Table(ratings_table_data, colWidths=[250, 200])
-        ratings_table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (1, 0), colors.lightgrey),
-                    ("TEXTCOLOR", (0, 0), (1, 0), colors.black),
-                    ("ALIGN", (0, 0), (1, 0), "CENTER"),
-                    ("FONTNAME", (0, 0), (1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (1, 0), 12),
-                    ("BOTTOMPADDING", (0, 0), (1, 0), 12),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ]
-            )
-        )
-
-        elements.append(ratings_table)
-        elements.append(Spacer(1, 24))
-
-    # Build the PDF
-    doc.build(elements)
-
-    # Get the PDF data
-    pdf_data = buffer.getvalue()
-    buffer.close()
-
-    return pdf_data
 
 
 async def save_report_to_storage(
@@ -243,39 +975,87 @@ async def save_report_to_storage(
     Returns:
         Dictionary with the report information
     """
+    if not pdf_data:
+        raise ValueError("PDF data cannot be empty")
+
+    if not user_id:
+        raise ValueError("User ID is required")
+
     report_id = str(uuid.uuid4())
     formatted_date = start_date.strftime("%Y-%m")
-    file_name = f"{company_name.lower().replace(' ', '_')}_{formatted_date}.pdf"
+
+    file_name = create_file_name(company_name, start_date)
     storage_path = f"reports/{report_id}/{file_name}"
 
     # Upload to Supabase storage
     try:
-        supabase.storage.from_("reports").upload(
-            storage_path, pdf_data, file_options={"content_type": "application/pdf"}
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                supabase.storage.from_("reports").upload(
+                    storage_path,
+                    pdf_data,
+                    file_options={
+                        "content_type": "application/pdf",
+                        "cache_control": "3600",
+                        "upsert": False,
+                    },
+                )
+                break
+            except Exception as upload_error:
+                if attempt == max_retries - 1:
+                    raise Exception(
+                        f"Failed to upload report to storage: {str(upload_error)}"
+                    )
+                continue
+
+        # Get the public URL
+        file_url = supabase.storage.from_("reports").get_public_url(storage_path)
+
+        # Create a record in the reports table
+        report_data = {
+            "report_id": report_id,
+            "name": f"Reporte Mensual - {company_name} - {formatted_date}",
+            "created_by": user_id,
+            "type": "pdf",
+            "file_path": file_url,
+        }
+
+        try:
+            db_response = supabase.table("reports").insert(report_data).execute()
+
+            if not db_response.data:
+                try:  # if insert fails here we gotta remove from storage
+                    supabase.storage.from_("reports").remove([storage_path])
+                except Exception:
+                    pass
+                raise Exception("Failed to insert record into database")
+        except Exception as db_error:
+            try:  # try to remove it here too
+                supabase.storage.from_("reports").remove([storage_path])
+            except Exception:
+                pass
+            raise Exception(f"Database insertion failed: {str(db_error)}")
+
+        return {
+            "report_id": report_id,
+            "report_name": report_data["name"],
+            "file_url": file_url,
+            "created_at": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        error_msg = (
+            f"Report generation failed for {company_name} ({formatted_date}): {str(e)}"
         )
-    except Exception as upload_error:
-        raise Exception(f"Failed to upload report to storage: {str(upload_error)}")
+        raise Exception(error_msg)
 
-    # Get the public URL
-    file_url = supabase.storage.from_("reports").get_public_url(storage_path)
 
-    # Create a record in the reports table
-    report_data = {
-        "report_id": report_id,
-        "name": f"Monthly Report - {company_name} - {formatted_date}",
-        "created_by": user_id,
-        "type": "pdf",
-        "file_path": file_url,
-    }
+def create_file_name(company_name: str, start_date: datetime) -> str:
+    formatted_date = start_date.strftime("%Y-%m")
+    safe_company_name = "".join(
+        c for c in company_name if c.isalnum() or c in (" ", "-", "_")
+    ).rstrip()
+    safe_company_name = safe_company_name.lower().replace(" ", "_")
 
-    db_response = supabase.table("reports").insert(report_data).execute()
-
-    if not db_response.data:
-        raise Exception("Failed to insert record into database")
-
-    return {
-        "report_id": report_id,
-        "report_name": report_data["name"],
-        "file_url": file_url,
-        "created_at": datetime.now().isoformat(),
-    }
+    return f"{safe_company_name}_{formatted_date}.pdf"
