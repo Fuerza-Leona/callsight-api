@@ -958,8 +958,8 @@ async def save_report_to_storage(
     pdf_data: bytes,
     company_name: str,
     start_date: datetime,
-    end_date: datetime,
     user_id: str,
+    replace_existing: Optional[bool] = False
 ) -> Dict[str, Any]:
     """
     Save the report to Supabase storage and create a record in the reports table.
@@ -984,8 +984,45 @@ async def save_report_to_storage(
     report_id = str(uuid.uuid4())
     formatted_date = start_date.strftime("%Y-%m")
 
-    file_name = create_file_name(company_name, start_date)
-    storage_path = f"reports/{report_id}/{file_name}"
+    folder_name = create_folder_name(company_name, start_date)
+    storage_path = f"{folder_name}/{report_id}.pdf"
+    report_table_name = f"Reporte Mensual - {company_name} - {formatted_date}"
+    
+    report_exists = await check_report_exists(supabase, report_table_name)
+    
+    continue_operation = replace_existing or not report_exists
+    
+    if not continue_operation:
+        return
+    
+    if report_exists:
+        # Cleanup bucket files
+        try:
+            existing_bucket = (
+                supabase.storage
+                .from_("reports")
+                .list(folder_name)
+            )
+            
+            file_array = [f"{folder_name}/{bucket_file['name']}" for bucket_file in existing_bucket]
+            supabase.storage.from_("reports").remove(file_array)
+        except Exception as e:
+            raise Exception(
+                f"Failed to delete existing report file in {storage_path}"
+            )
+        # Cleanup database entries
+        try:
+            response = (
+                supabase.table("reports")
+                .delete()
+                .eq("name", report_table_name)
+                .execute()
+            )
+        except Exception as e:
+            raise Exception(
+                f"Failed to delete existing report entry: {report_table_name}"
+            )
+        print(f"Successfully deleted all reports and references in {folder_name}. Proceeding with upload...")
 
     # Upload to Supabase storage
     try:
@@ -1015,7 +1052,7 @@ async def save_report_to_storage(
         # Create a record in the reports table
         report_data = {
             "report_id": report_id,
-            "name": f"Reporte Mensual - {company_name} - {formatted_date}",
+            "name": report_table_name,
             "created_by": user_id,
             "type": "pdf",
             "file_path": file_url,
@@ -1051,11 +1088,17 @@ async def save_report_to_storage(
         raise Exception(error_msg)
 
 
-def create_file_name(company_name: str, start_date: datetime) -> str:
+def create_folder_name(company_name: str, start_date: datetime) -> str:
     formatted_date = start_date.strftime("%Y-%m")
     safe_company_name = "".join(
         c for c in company_name if c.isalnum() or c in (" ", "-", "_")
     ).rstrip()
     safe_company_name = safe_company_name.lower().replace(" ", "_")
 
-    return f"{safe_company_name}_{formatted_date}.pdf"
+    return f"{safe_company_name}_{formatted_date}"
+
+async def check_report_exists(supabase, report_name):
+    response = supabase.table("reports").select("*").eq("name", report_name).execute()
+    existing = response.data
+    
+    return len(existing) > 0
