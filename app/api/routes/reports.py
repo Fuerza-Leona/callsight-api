@@ -16,6 +16,8 @@ from app.services.report_service import (
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
 class MonthlyReportRequest(BaseModel):
     month: Optional[int] = None
     year: Optional[int] = None
@@ -73,7 +75,7 @@ async def generate_monthly_report(
         # Format dates for API calls
         start_date_str = start_date.strftime("%Y-%m-%d")
         end_date_str = end_date.strftime("%Y-%m-%d")
-        
+
         replace_existing = request.replace_existing
         json_only = request.json_only
 
@@ -227,7 +229,7 @@ async def generate_monthly_report(
             }
         else:
             emotions_data = {"positive": 0, "negative": 0, "neutral": 0}
-            
+
         if json_only:
             return {
                 "success": True,
@@ -238,12 +240,12 @@ async def generate_monthly_report(
                     "topics_data": topics_data,
                     "categories_data": categories_data,
                     "ratings_data": ratings_data,
-                    "emotions_data": emotions_data
+                    "emotions_data": emotions_data,
                 },
                 "period": {
                     "month": month,
                     "year": year,
-                }
+                },
             }
 
         # Generate the PDF report
@@ -260,7 +262,12 @@ async def generate_monthly_report(
 
         # Save the report to storage and database
         report_info = await save_report_to_storage(
-            supabase, pdf_data, company_name, start_date, current_user.id, replace_existing
+            supabase,
+            pdf_data,
+            company_name,
+            start_date,
+            current_user.id,
+            replace_existing,
         )
 
         return {

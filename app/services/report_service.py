@@ -960,7 +960,7 @@ async def save_report_to_storage(
     company_name: str,
     start_date: datetime,
     user_id: str,
-    replace_existing: Optional[bool] = False
+    replace_existing: Optional[bool] = False,
 ) -> Dict[str, Any]:
     """
     Save the report to Supabase storage and create a record in the reports table.
@@ -988,42 +988,41 @@ async def save_report_to_storage(
     folder_name = create_folder_name(company_name, start_date)
     storage_path = f"{folder_name}/{report_id}.pdf"
     report_table_name = f"Reporte Mensual - {company_name} - {formatted_date}"
-    
+
     report_exists = await check_report_exists(supabase, report_table_name)
-    
+
     continue_operation = replace_existing or not report_exists
-    
+
     if not continue_operation:
         return
-    
+
     if report_exists:
         # Cleanup bucket files
         try:
-            existing_bucket = (
-                supabase.storage
-                .from_("reports")
-                .list(folder_name)
-            )
-            
-            file_array = [f"{folder_name}/{bucket_file['name']}" for bucket_file in existing_bucket]
+            existing_bucket = supabase.storage.from_("reports").list(folder_name)
+
+            file_array = [
+                f"{folder_name}/{bucket_file['name']}"
+                for bucket_file in existing_bucket
+            ]
             supabase.storage.from_("reports").remove(file_array)
-        except Exception as e:
-            raise Exception(
-                f"Failed to delete existing report file in {storage_path}"
-            )
+        except Exception:
+            raise Exception(f"Failed to delete existing report file in {storage_path}")
         # Cleanup database entries
         try:
-            response = (
+            _ = (
                 supabase.table("reports")
                 .delete()
                 .eq("name", report_table_name)
                 .execute()
             )
-        except Exception as e:
+        except Exception:
             raise Exception(
                 f"Failed to delete existing report entry: {report_table_name}"
             )
-        print(f"Successfully deleted all reports and references in {folder_name}. Proceeding with upload...")
+        print(
+            f"Successfully deleted all reports and references in {folder_name}. Proceeding with upload..."
+        )
 
     # Upload to Supabase storage
     try:
@@ -1098,8 +1097,9 @@ def create_folder_name(company_name: str, start_date: datetime) -> str:
 
     return f"{safe_company_name}_{formatted_date}"
 
+
 async def check_report_exists(supabase, report_name):
     response = supabase.table("reports").select("*").eq("name", report_name).execute()
     existing = response.data
-    
+
     return len(existing) > 0
