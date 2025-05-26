@@ -23,7 +23,7 @@ class MonthlyReportRequest(BaseModel):
     year: Optional[int] = None
     company_id: Optional[str] = None
     replace_existing: Optional[bool] = False
-    json_only: Optional[bool] = True
+    json_only: Optional[bool] = False
 
 
 @router.post("/monthly")
