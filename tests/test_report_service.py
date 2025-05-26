@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 from app.services.report_service import create_monthly_report, save_report_to_storage
@@ -108,8 +108,9 @@ def test_create_monthly_report_minimal():
 
 
 # Test save_report_to_storage
+@patch("app.services.report_service.check_report_exists", return_value=False)
 @pytest.mark.asyncio
-async def test_save_report_to_storage():
+async def test_save_report_to_storage(mock_check):
     """Test saving report to storage and creating database entry"""
     # Mock Supabase client
     mock_supabase = MagicMock()
@@ -130,12 +131,11 @@ async def test_save_report_to_storage():
     pdf_data = b"%PDF-1.4 test pdf content"
     company_name = "Test Company"
     start_date = datetime(2025, 4, 1)
-    end_date = datetime(2025, 4, 30)
     user_id = "test-user-id"
 
     # Call the function
     result = await save_report_to_storage(
-        mock_supabase, pdf_data, company_name, start_date, end_date, user_id
+        mock_supabase, pdf_data, company_name, start_date, user_id
     )
 
     # Verify the result
@@ -154,8 +154,9 @@ async def test_save_report_to_storage():
 
 
 # Test report storage with error
+@patch("app.services.report_service.check_report_exists", return_value=False)
 @pytest.mark.asyncio
-async def test_save_report_storage_error():
+async def test_save_report_storage_error(mock_check):
     """Test handling of storage errors"""
     # Mock Supabase with an error on upload
     mock_supabase = MagicMock()
@@ -168,13 +169,12 @@ async def test_save_report_storage_error():
     pdf_data = b"%PDF-1.4 test pdf content"
     company_name = "Test Company"
     start_date = datetime(2025, 4, 1)
-    end_date = datetime(2025, 4, 30)
     user_id = "test-user-id"
 
     # Call the function and expect exception
     with pytest.raises(Exception) as excinfo:
         await save_report_to_storage(
-            mock_supabase, pdf_data, company_name, start_date, end_date, user_id
+            mock_supabase, pdf_data, company_name, start_date, user_id
         )
 
     # Verify the error message

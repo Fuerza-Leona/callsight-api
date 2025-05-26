@@ -107,6 +107,10 @@ class ChartGenerator:
 
     def create_sentiment_donut_chart(self, emotions_data: Dict[str, float]) -> bytes:
         """Create a modern donut chart for sentiment analysis"""
+        total = sum(emotions_data.values())
+        if total == 0:
+            return self._create_no_data_chart("No hay datos de sentimiento disponibles")
+
         fig, ax = plt.subplots(figsize=(6, 10))
 
         labels = [SpanishTexts.POSITIVE, SpanishTexts.NEUTRAL, SpanishTexts.NEGATIVE]
