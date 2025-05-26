@@ -107,7 +107,7 @@ class ChartGenerator:
 
     def create_sentiment_donut_chart(self, emotions_data: Dict[str, float]) -> bytes:
         """Create a modern donut chart for sentiment analysis"""
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=(6, 10))
 
         labels = [SpanishTexts.POSITIVE, SpanishTexts.NEUTRAL, SpanishTexts.NEGATIVE]
         values = [
@@ -194,7 +194,8 @@ class ChartGenerator:
         ax.set_title("Temas Más Discutidos", fontsize=16, fontweight="bold", pad=20)
 
         self._setup_chart_style(fig, ax)
-        ax.set_xlim(0, max(counts) * 1.15)
+        max_count = max(counts) if counts else 1
+        ax.set_xlim(0, max_count * 1.15)
 
         plt.tight_layout()
 
@@ -223,7 +224,7 @@ class ChartGenerator:
                 "No hay datos de calificaciones disponibles"
             )
 
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=(6, 8))
 
         ratings = [str(rating.get("rating", "")) for rating in ratings_data]
         counts = [rating.get("count", 0) for rating in ratings_data]
