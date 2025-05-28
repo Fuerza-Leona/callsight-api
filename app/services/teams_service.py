@@ -102,7 +102,7 @@ class TeamsService:
         await self.store_tokens(supabase, company_id, result)
         return result["access_token"]
     
-    async def get_meetings_with_recordings(self, access_token, start_date=None, end_date=None):
+    async def get_meetings(self, access_token, start_date=None, end_date=None):
         """Get list of meetings that have recordings"""
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -117,12 +117,12 @@ class TeamsService:
             end_date = datetime.now(timezone.utc).strftime("%Y-%m-%dT23:59:59Z")
             
         # Filtering
-        filter_param = f"startDateTime ge {start_date} and endDateTime le {end_date}"
+        filter_param = f"JoinWebUrl%20eq%20'https://teams.microsoft.com/l/meetup-join/19%3ameeting_Y2FkNjIzN2MtNjljMC00NjQwLTgwNzMtZTk2NGU2ZDEyYmUy%40thread.v2/0?context=%7b%22Tid%22%3a%2225edc74d-6ecf-4a26-ad86-fb3019a81dae%22%2c%22Oid%22%3a%2221054d65-46c5-4f72-a2f6-91962987f348%22%7d'"
         
         # Fetch meetings
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                "https://graph.microsoft.com/v1.0/me/onlineMeetings/",
+                f"https://graph.microsoft.com/v1.0/me/onlineMeetings?$filter={filter_param}",
                 headers=headers,
             )
             
@@ -131,21 +131,7 @@ class TeamsService:
                 
             meetings = response.json().get("value", [])
             
-            # Filter for meetings with recordings
-            result = []
-            for meeting in meetings:
-                meeting_id = meeting["id"]
-                # Check if this meeting has a recording
-                recording_response = await client.get(
-                    f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/recordings",
-                    headers=headers
-                )
-                
-                if recording_response.status_code == 200 and recording_response.json().get("value", []):
-                    meeting["recordings"] = recording_response.json().get("value", [])
-                    result.append(meeting)
-            
-            return result
+            return meetings
     
     async def get_recording_download_url(self, access_token, meeting_id, recording_id):
         """Get download URL for a specific recording"""
@@ -235,31 +221,364 @@ class TeamsService:
         
         return result
     
-    async def get_calendar_events(self, access_token):
-        """get all transcripts by iterating over user’s online meetings"""
+    async def get_calendar_events(self, access_token, start_date=None, end_date=None):
+        """Get calendar events with meeting identifiers extracted"""
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
         
+        # Default to last 90 days if no dates provided
+        if not start_date or not end_date:
+            from datetime import datetime, timedelta, timezone
+            end_dt = datetime.now(timezone.utc)
+            start_dt = end_dt - timedelta(days=90)
+            start_date = start_dt.strftime("%Y-%m-%dT00:00:00Z")
+            end_date = end_dt.strftime("%Y-%m-%dT23:59:59Z")
+        
         result = []
         async with httpx.AsyncClient() as client:
             try:
-                # Get events
-                meetings_url = "https://graph.microsoft.com/v1.0/me/events"
-                meetings_response = await client.get(meetings_url, headers=headers)
-                meetings_response.raise_for_status()
-                meetings = meetings_response.json().get("value", [])
+                # Use calendarView for date filtering
+                calendar_url = f"https://graph.microsoft.com/v1.0/me/calendarView?startDateTime={start_date}&endDateTime={end_date}"
+                response = await client.get(calendar_url, headers=headers)
+                response.raise_for_status()
+                events = response.json().get("value", [])
                 
-                result = meetings
+                print(f"Found {len(events)} calendar events")
+                
+                # Extract meeting info from each event
+                for event in events:
+                    meeting_info = {
+                        "event_id": event.get("id"),
+                        "subject": event.get("subject"),
+                        "start": event.get("start"),
+                        "end": event.get("end"),
+                        "organizer": event.get("organizer", {}).get("emailAddress", {}).get("address"),
+                        "attendees_count": len(event.get("attendees", [])),
+                        "has_online_meeting": bool(event.get("onlineMeeting")),
+                        "meeting_identifiers": []
+                    }
+                    
+                    # Extract Teams meeting identifiers
+                    online_meeting = event.get("onlineMeeting")
+                    if online_meeting:
+                        join_url = online_meeting.get("joinUrl")
+                        if join_url:
+                            meeting_info["meeting_identifiers"].append({
+                                "type": "joinUrl",
+                                "value": join_url,
+                                "extracted_id": self._extract_meeting_id_from_url(join_url)
+                            })
+                    
+                    # Also check body and location for Teams URLs
+                    body_content = event.get("body", {}).get("content", "")
+                    location = event.get("location", {}).get("displayName", "")
+                    
+                    # Look for Teams URLs in body/location
+                    teams_urls = self._find_teams_urls(body_content + " " + location)
+                    for url in teams_urls:
+                        meeting_info["meeting_identifiers"].append({
+                            "type": "body_url",
+                            "value": url,
+                            "extracted_id": self._extract_meeting_id_from_url(url)
+                        })
+                    
+                    # Only include events that have some kind of meeting identifier
+                    if meeting_info["meeting_identifiers"] or meeting_info["has_online_meeting"]:
+                        result.append(meeting_info)
+                
+                print(f"Found {len(result)} events with meeting identifiers")
+                return result
                 
             except httpx.HTTPStatusError as e:
                 return {"error": f"http error: {e.response.status_code}, {e.response.text}"}
             except Exception as e:
-                return {"error": f"failed to fetch transcripts: {str(e)}"}
+                return {"error": f"failed to fetch calendar events: {str(e)}"}
+            
+    async def get_online_meetings_from_events(self, access_token, join_url):
+        """Get list of meetings that have recordings"""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
         
-        return result
+        filter_param = f"JoinWebUrl%20eq%20'{join_url}'"
+        
+         # Fetch meetings
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://graph.microsoft.com/v1.0/me/onlineMeetings?$filter={filter_param}",
+                headers=headers,
+            )
+            
+            if response.status_code != 200:
+                raise ValueError(f"Failed to get meetings: {response.text}")
+                
+            meetings = response.json().get("value", [])
+            
+        return meetings
     
+    async def get_transcripts_from_meetings(self, access_token, meetings):
+         headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+         
+         content_headers = {
+             "Authorization": f"Bearer {access_token}",
+             "Accept": "text/vtt" 
+         }
+         
+         meeting_ids = [meeting["id"] for meeting in meetings]
+         
+         transcripts = []
+         transcript_contents = []
+         
+            # Fetch meetings
+         async with httpx.AsyncClient() as client:
+             try:
+                 for meeting_id in meeting_ids:
+                    # Get transcript metadata
+                    response = await client.get(
+                        f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts",
+                        headers=headers,
+                    )
+                    
+                    if response.status_code != 200:
+                        print(f"Failed to get transcripts for meeting {meeting_id}: {response.status_code}")
+                        continue
+                        
+                    transcripts = response.json().get("value", [])
+                    
+                    # For each transcript, get the content
+                    for transcript in transcripts:
+                        content_url = transcript.get("transcriptContentUrl")
+                        if content_url:
+                            content_response = await client.get(content_url, headers=content_headers)
+                        
+                        if content_response.status_code == 200:
+                            # Content is usually text, not json
+                            transcript["content"] = self._extract_text_with_speakers(content_response.text)
+                            transcript["content_type"] = content_response.headers.get("content-type", "")
+                        else:
+                            transcript["content"] = f"Failed to fetch: {content_response.status_code}, {content_response.text}"
+                            # print(f"Failed to get content for transcript {transcript_id}: {content_response.status_code}")
+                            # print(f"Error details: {content_response.text}")
+                    
+                        transcript_contents.append(transcript)
+                    
+             except Exception as e:
+                return {"error": f"failed to fetch transcripts: {str(e)}"}
+            
+         return transcript_contents
+     
+    def _get_transcript_text(self, transcripts):
+        all_text_segments = []
+   
+        for transcript in transcripts:
+            content = transcript.get("content", "")
+            if not content:
+                continue
+                
+            # Split by lines and extract just the spoken text
+            lines = content.strip().split('\n')
+            for line in lines:
+                if ':' in line:
+                    # Split on first colon to separate speaker from text
+                    _, text = line.split(':', 1)
+                    text = text.strip()
+                    if text:  # Only add non-empty text
+                        all_text_segments.append(text)
+        
+        # Join all text segments with spaces
+        combined_text = ' '.join(all_text_segments)
+        
+        return combined_text.strip()
+        
+    def _extract_meeting_id_from_url(self, url):
+        """Extract meeting ID from Teams URL - basic implementation"""
+        import re
+        from urllib.parse import unquote
+        
+        decoded_url = unquote(url)
+        
+        # Teams URLs often contain thread IDs or meeting IDs
+        patterns = [
+            # threadId parameter (from meetingOptions URLs)
+            r'threadId=([^&]+)',
+            # meeting thread from meetup-join URLs  
+            r'19%3ameeting_([^%]+)%40thread\.v2',
+            # decoded version
+            r'19_meeting_([^@]+)@thread\.v2',
+            # fallback patterns
+            r'meetingID=([^&]+)',
+            r'conversations/([^/]+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, decoded_url)
+            if match:
+                extracted = match.group(1)
+                # For meeting patterns, reconstruct full thread ID
+                if 'meeting_' in pattern:
+                    if not extracted.startswith('19_meeting_'):
+                        extracted = f"19_meeting_{extracted}@thread.v2"
+                return extracted
+        
+        return None
+
+    def _find_teams_urls(self, text):
+        """Find Teams meeting URLs in text"""
+        import re
+        # Look for Teams URLs
+        teams_pattern = r'https://teams\.microsoft\.com/[^\s<>"\[\]{}|\\^`]+'
+        return re.findall(teams_pattern, text, re.IGNORECASE)
+    
+    def _extract_text_with_speakers(self, vtt_content):
+        import re
+        content = re.sub(r'^WEBVTT\r?\n\r?\n', '', vtt_content)
+        
+        # Extract speaker and text
+        speaker_matches = re.findall(r'<v ([^>]+)>([^<]+)</v>', content)
+        
+        # Format as "Speaker: text"
+        formatted_text = []
+        for speaker, text in speaker_matches:
+            formatted_text.append(f"{speaker}: {text.strip()}")
+        
+        return '\n'.join(formatted_text)
+    
+    async def resolve_meeting_id_from_join_url(self, access_token, join_url):
+        """Get the actual meeting ID from a join URL using graph api filter"""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        # URL encode the join URL for the filter
+        from urllib.parse import quote
+        encoded_join_url = quote(join_url, safe='')
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                # Use the filter endpoint to find meeting by join URL
+                filter_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings?$filter=JoinWebUrl eq '{join_url}'"
+                response = await client.get(filter_url, headers=headers)
+                
+                if response.status_code == 200:
+                    meetings = response.json().get("value", [])
+                    if meetings:
+                        meeting = meetings[0]  # Should only be one match
+                        return {
+                            "success": True,
+                            "meeting_id": meeting.get("id"),
+                            "thread_id": meeting.get("chatInfo", {}).get("threadId"),
+                            "subject": meeting.get("subject"),
+                            "meeting_object": meeting
+                        }
+                    else:
+                        return {"success": False, "error": "No meeting found for this join URL"}
+                else:
+                    return {"success": False, "error": f"HTTP {response.status_code}: {response.text}"}
+                    
+            except Exception as e:
+                return {"success": False, "error": f"Request failed: {str(e)}"}
+
+    async def get_transcripts_for_meeting_id(self, access_token, meeting_id):
+        """Get transcripts for a specific meeting ID"""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                # Try the transcript endpoint
+                transcript_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts"
+                response = await client.get(transcript_url, headers=headers)
+                
+                if response.status_code == 200:
+                    transcripts = response.json().get("value", [])
+                    
+                    # Get content for each transcript
+                    for transcript in transcripts:
+                        transcript_id = transcript.get("id")
+                        content_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts/{transcript_id}/content"
+                        
+                        content_response = await client.get(content_url, headers=headers)
+                        if content_response.status_code == 200:
+                            # Content might be in different formats
+                            content_type = content_response.headers.get('content-type', '')
+                            if 'json' in content_type:
+                                transcript["content"] = content_response.json()
+                            else:
+                                transcript["content"] = content_response.text
+                        else:
+                            transcript["content"] = f"Failed to get content: {content_response.status_code}"
+                    
+                    return {"success": True, "transcripts": transcripts}
+                else:
+                    return {"success": False, "error": f"HTTP {response.status_code}: {response.text}"}
+                    
+            except Exception as e:
+                return {"success": False, "error": f"Request failed: {str(e)}"}
+    
+    async def get_all_transcripts_from_calendar(self, access_token, start_date=None, end_date=None):
+        """The complete solution: calendar events -> meeting IDs -> transcripts"""
+        # Step 1: Get calendar events
+        events = await self.get_calendar_events(access_token, start_date, end_date)
+        if not isinstance(events, list):
+            return events
+        
+        all_transcripts = []
+        
+        # Step 2: For each event, resolve meeting ID and get transcripts
+        for event in events:
+            event_result = {
+                "event_id": event.get("event_id"),
+                "subject": event.get("subject"),
+                "start": event.get("start"),
+                "organizer": event.get("organizer"),
+                "transcripts": [],
+                "resolution_errors": []
+            }
+            
+            # Try each join URL in the event
+            for identifier in event.get("meeting_identifiers", []):
+                if identifier.get("type") in ["joinUrl", "body_url"]:
+                    join_url = identifier.get("value")
+                    
+                    # Resolve to actual meeting ID
+                    resolution = await self.resolve_meeting_id_from_join_url(access_token, join_url)
+                    
+                    if resolution.get("success"):
+                        meeting_id = resolution.get("meeting_id")
+                        
+                        # Get transcripts for this meeting
+                        transcript_result = await self.get_transcripts_for_meeting_id(access_token, meeting_id)
+                        
+                        if transcript_result.get("success"):
+                            event_result["transcripts"].extend(transcript_result.get("transcripts", []))
+                        else:
+                            event_result["resolution_errors"].append({
+                                "step": "transcript_fetch",
+                                "meeting_id": meeting_id,
+                                "error": transcript_result.get("error")
+                            })
+                    else:
+                        event_result["resolution_errors"].append({
+                            "step": "meeting_resolution",
+                            "join_url": join_url,
+                            "error": resolution.get("error")
+                        })
+            
+            # Only include events that have some data
+            if event_result["transcripts"] or event_result["resolution_errors"]:
+                all_transcripts.append(event_result)
+        
+        return all_transcripts
+        
     async def setup_notification_subscription(self, access_token, notification_url, expiration_minutes=43200):
         """Set up webhook for notifications when new recordings are available"""
         # Maximum expiration time is 43200 minutes (30 days)
