@@ -4,6 +4,7 @@ from app.services.teams_service import TeamsService
 from app.core.config import settings
 from app.api.deps import get_current_user
 from app.db.session import get_supabase
+from urllib.parse import unquote
 import json
 import httpx
 
@@ -113,7 +114,7 @@ async def teams_callback(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Integration error: {str(e)}")
 
-@router.get("/recordings")
+@router.get("/online_meetings")
 async def list_recordings(
     start_date: str = None,     # Format: YYYY-MM-DD
     end_date: str = None,       # Format: YYYY-MM-DD
@@ -141,7 +142,7 @@ async def list_recordings(
         access_token = await teams_service.refresh_token(supabase, company_id)
         
         # Fetch recordings
-        recordings = await teams_service.get_meetings_with_recordings(access_token, start_date, end_date)
+        recordings = await teams_service.get_meetings(access_token, start_date, end_date)
         
         return {"recordings": recordings}
     except Exception as e:
@@ -293,6 +294,147 @@ async def handle_notifications(
         print(f"Error processing notification: {str(e)}")
         return Response(status_code=500)
     
+@router.get("/test-calendar")
+async def test_calendar(
+    start_date: str = None,  # Format: YYYY-MM-DDTHH:MM:SSZ
+    end_date: str = None,    # Format: YYYY-MM-DDTHH:MM:SSZ
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase)
+):
+    """Test the enhanced calendar events method"""
+    # Get tokens (same as other endpoints)
+    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
+    company_id = user_response.data[0]["company_id"]
+    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+    if not tokens_response.data:
+        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up")
+    
+    teams_service = TeamsService()
+    access_token = await teams_service.refresh_token(supabase, company_id)
+    
+    # Test the enhanced calendar method
+    events = await teams_service.get_calendar_events(access_token, start_date, end_date)
+    
+    return {
+        "events": events,
+        "summary": {
+            "total_events": len(events) if isinstance(events, list) else 0,
+            "events_with_identifiers": len([e for e in events if isinstance(events, list) and e.get("meeting_identifiers")]) if isinstance(events, list) else 0
+        }
+    }
+    
+@router.get("/test-meetings")
+async def test_meetings(
+    start_date: str = None,  # Format: YYYY-MM-DDTHH:MM:SSZ
+    end_date: str = None,    # Format: YYYY-MM-DDTHH:MM:SSZ
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase)
+):
+   # Get tokens
+    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
+    company_id = user_response.data[0]["company_id"]
+    teams_service = TeamsService()
+    access_token = await teams_service.refresh_token(supabase, company_id)
+    
+    # Call the service method directly
+    calendar_events = await teams_service.get_calendar_events(access_token, start_date, end_date)
+    
+    join_urls = [
+        identifier["value"]
+        for event in calendar_events 
+        for identifier in event.get("meeting_identifiers", []) 
+        if identifier.get("type") == "joinUrl"
+    ]
+    
+    meetings = []
+    for url in join_urls:
+        meeting = await teams_service.get_online_meetings_from_events(access_token, url)
+        meetings.extend(meeting)
+        pass
+    
+    return {
+        "meetings": meetings
+    }
+    
+@router.get("/test-transcripts")
+async def test_transcripts(
+    start_date: str = None,
+    end_date: str = None,
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase)
+):
+   # Get tokens
+    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
+    company_id = user_response.data[0]["company_id"]
+    teams_service = TeamsService()
+    access_token = await teams_service.refresh_token(supabase, company_id)
+    
+    # Call the service method directly
+    calendar_events = await teams_service.get_calendar_events(access_token, start_date, end_date)
+    
+    join_urls = [
+        identifier["value"]
+        for event in calendar_events 
+        for identifier in event.get("meeting_identifiers", []) 
+        if identifier.get("type") == "joinUrl"
+    ]
+    
+    meetings = []
+    for url in join_urls:
+        meeting = await teams_service.get_online_meetings_from_events(access_token, url)
+        meetings.extend(meeting)
+        pass
+    
+    transcripts = await teams_service.get_transcripts_from_meetings(access_token, meetings)
+    
+    return {
+        "transcripts": transcripts
+    }
+    
+@router.get("/test-complete-transcripts")
+async def test_complete_transcript_flow(
+    start_date: str = None,
+    end_date: str = None,
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase)
+):
+    """Test the complete flow: calendar -> meeting resolution -> transcripts"""
+    # Get tokens
+    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
+    company_id = user_response.data[0]["company_id"]
+    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+    if not tokens_response.data:
+        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up")
+    
+    teams_service = TeamsService()
+    access_token = await teams_service.refresh_token(supabase, company_id)
+    
+    # Test the complete solution
+    transcript_results = await teams_service.get_all_transcripts_from_calendar(
+        access_token, start_date, end_date
+    )
+    
+    # Generate summary
+    if isinstance(transcript_results, list):
+        total_events = len(transcript_results)
+        events_with_transcripts = len([e for e in transcript_results if e.get("transcripts")])
+        total_transcripts = sum(len(e.get("transcripts", [])) for e in transcript_results)
+        events_with_errors = len([e for e in transcript_results if e.get("resolution_errors")])
+        
+        summary = {
+            "total_events_processed": total_events,
+            "events_with_transcripts": events_with_transcripts,
+            "total_transcripts_found": total_transcripts,
+            "events_with_resolution_errors": events_with_errors
+        }
+    else:
+        summary = {"error": "Failed to process"}
+    
+    return {
+        "results": transcript_results,
+        "summary": summary
+    }
+    
 @router.get("/test-config")
 async def test_config():
     teams_service = TeamsService()
@@ -307,3 +449,7 @@ async def test_config():
         "url_params": safe_params,
         "microsoft_config_valid": bool(settings.MICROSOFT_CLIENT_ID and settings.MICROSOFT_CLIENT_SECRET)
     }
+    
+# First get the calendar events, then get the joinUrls. With the joinUrls use that 
+# for GET /me/onlineMeetings?$filter=JoinWebUrl%20eq%20'{joinWebUrl}'
+# Which gives you the meetingId you need. 
