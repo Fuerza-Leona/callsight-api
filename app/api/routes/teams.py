@@ -73,7 +73,7 @@ async def teams_callback(
                 detail="Missing company context. Restart authorization."
             )
         
-        teams_service = TeamsService(tenant_id=tenant_id)
+        teams_service = TeamsService(tenant_id=tenant_id, supabase=supabase)
         
             # Exchange code for tokens
         base_url = str(request.base_url)
@@ -90,7 +90,7 @@ async def teams_callback(
             )
             
         # Store tokens in database
-        await teams_service.store_tokens(supabase, company_id, token_result)
+        await teams_service.store_tokens(company_id, token_result)
         
         # Set up webhook for notifications
         if base_url.startswith("http://"):
@@ -164,8 +164,8 @@ async def test_calendar(
     if not tokens_response.data:
         raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up")
     
-    teams_service = TeamsService()
-    access_token = await teams_service.refresh_token(supabase, company_id)
+    teams_service = TeamsService(supabase=supabase)
+    access_token = await teams_service.refresh_token(company_id)
     
     # Test the enhanced calendar method
     events = await teams_service.get_calendar_events(access_token, start_date, end_date)
@@ -188,8 +188,8 @@ async def test_meetings(
    # Get tokens
     user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
     company_id = user_response.data[0]["company_id"]
-    teams_service = TeamsService()
-    access_token = await teams_service.refresh_token(supabase, company_id)
+    teams_service = TeamsService(supabase=supabase)
+    access_token = await teams_service.refresh_token( company_id)
     
     # Call the service method directly
     calendar_events = await teams_service.get_calendar_events(access_token, start_date, end_date)
@@ -221,8 +221,8 @@ async def test_transcripts(
    # Get tokens
     user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
     company_id = user_response.data[0]["company_id"]
-    teams_service = TeamsService()
-    access_token = await teams_service.refresh_token(supabase, company_id)
+    teams_service = TeamsService(supabase=supabase)
+    access_token = await teams_service.refresh_token(company_id)
     
     # Call the service method directly
     calendar_events = await teams_service.get_calendar_events(access_token, start_date, end_date)

@@ -8,7 +8,7 @@ import time
 
 logger = logging.getLogger("uvicorn.app")
 class TeamsService:
-    def __init__(self, tenant_id: Optional[str] = None) -> None:
+    def __init__(self, tenant_id: Optional[str] = None, supabase=None) -> None:
         self.tenant_id = tenant_id or "common"
         self.client_id = settings.MICROSOFT_CLIENT_ID
         self.client_secret = settings.MICROSOFT_CLIENT_SECRET
@@ -17,6 +17,7 @@ class TeamsService:
             client_credential=self.client_secret,
             authority=f"https://login.microsoftonline.com/{self.tenant_id}"
         )
+        self.supabase = supabase
         
     async def _fetch_with_retry(self, client, url, headers, max_retries=3):
         import asyncio
@@ -75,7 +76,7 @@ class TeamsService:
         logger.info("Token response (safe): %s", safe_result)
         return result
     
-    async def store_tokens(self, supabase, company_id: str, tokens: Dict[str, Any]) -> bool:
+    async def store_tokens(self, company_id: str, tokens: Dict[str, Any]) -> bool:
         """Store Microsoft tokens in Supabase database"""
         expires_in = tokens.get('expires_in', 3600)  # Default to 1 hr
         current_time = int(time.time())
@@ -96,24 +97,24 @@ class TeamsService:
         logger.info("Token expires in %s seconds (at %s)", expires_in, expires_on)
         
         try:
-            existing = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+            existing = self.supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
             
             if existing.data and len(existing.data) > 0:
                 # Update existing record
-                result = supabase.table("microsoft_tokens").update(token_data).eq("company_id", company_id).execute()
+                result = self.supabase.table("microsoft_tokens").update(token_data).eq("company_id", company_id).execute()
             else:
                 # Insert new record
-                result = supabase.table("microsoft_tokens").insert(token_data).execute()
+                result = self.supabase.table("microsoft_tokens").insert(token_data).execute()
             
             return True
         except Exception as e:
             logger.info("Database error storing tokens: %s", str(e), exc_info=True)
             raise ValueError(f"Failed to store tokens: {str(e)}")
             
-    async def refresh_token(self, supabase, company_id: str) -> str:
+    async def refresh_token(self, company_id: str) -> str:
         """Refresh Microsoft access token if expired"""
         # Get current tokens
-        tokens_result = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+        tokens_result = self.supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
         if not tokens_result.data:
             raise ValueError("No Microsoft tokens found for this company")
             
@@ -141,7 +142,7 @@ class TeamsService:
             raise ValueError(f"Token refresh failed: {result.get('error_description')}")
             
         # Update tokens in database
-        await self.store_tokens(supabase, company_id, result)
+        await self.store_tokens(company_id, result)
         return result["access_token"]
     
     async def setup_notification_subscription(self, access_token, notification_url, expiration_minutes=43200):
