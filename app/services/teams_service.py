@@ -17,6 +17,34 @@ class TeamsService:
             client_credential=self.client_secret,
             authority=f"https://login.microsoftonline.com/{self.tenant_id}"
         )
+        
+    async def _fetch_with_retry(self, client, url, headers, max_retries=3):
+        import asyncio
+        import random
+        
+        for attempt in range(max_retries):
+            try:
+                response = await client.get(url, headers=headers)
+                if response.status_code == 429:  # rate limited
+                    retry_after = int(response.headers.get("retry-after", 60))
+                    await asyncio.sleep(retry_after)
+                    continue
+                elif response.status_code >= 500:  # server errors
+                    if attempt < max_retries - 1:
+                        delay = (2 ** attempt) + random.uniform(0, 1)  # exponential backoff with jitter
+                        await asyncio.sleep(delay)
+                        continue
+                return response
+            except httpx.TimeoutException:
+                if attempt < max_retries - 1:
+                    delay = (2 ** attempt) + random.uniform(0, 1)
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+            except Exception:
+                raise  # don't retry on other exceptions
+        
+        return response  # return last response if all retries exhausted
     
     def get_auth_url(self, redirect_uri: str, scopes: Optional[List[str]] = None, state: Optional[str] = None) -> str:
         """Generate authorization URL for Microsoft OAuth"""
@@ -258,46 +286,78 @@ class TeamsService:
          }
          
          meeting_ids = [meeting["id"] for meeting in meetings]
-         
-         transcripts = []
+         logger.info("Processing %s meetings for transcripts", len(meeting_ids))
+
          transcript_contents = []
          
-            # Fetch meetings
-         async with httpx.AsyncClient() as client:
+        # Fetch meetings
+         async with httpx.AsyncClient(timeout=30.0) as client:
              try:
-                 for meeting_id in meeting_ids:
-                    # Get transcript metadata
-                    response = await client.get(
-                        f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts",
-                        headers=headers,
-                    )
+                 for i, meeting_id in enumerate(meeting_ids):
+                    logger.info("Processing meeting %s/%s: %s", i+1, len(meeting_ids), meeting_id)
                     
-                    if response.status_code != 200:
-                        logger.info("Failed to get transcripts for meeting %s: %s", meeting_id, response.status_code)
+                    try:
+                        # Get transcript metadata
+                        response = await self._fetch_with_retry(
+                            client,
+                            f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts",
+                            headers,
+                        )
+                        
+                        if response.status_code != 200:
+                            logger.info("Failed to get transcripts for meeting %s: HTTP %s - %s", 
+                                meeting_id, response.status_code, response.text[:200])
+                            continue
+                            
+                        transcripts = response.json().get("value", [])
+                        logger.info("Found %s transcripts for meeting %s", len(transcripts), meeting_id)
+                        
+                        # For each transcript, get the content
+                        for j, transcript in enumerate(transcripts):
+                            content_url = transcript.get("transcriptContentUrl")
+                            transcript_id = transcript.get("id")
+                            
+                            if not content_url:
+                                logger.info("No content URL for transcript %s", transcript_id)
+                                transcript["content"] = "No content URL available"
+                                transcript_contents.append(transcript)
+                                continue
+                            
+                            try:
+                                logger.info("Fetching content for transcript %s (meeting %s)", transcript_id, meeting_id)
+                                content_response = await self._fetch_with_retry(client, content_url, content_headers)
+                            
+                                if content_response.status_code == 200:
+                                    transcript["content"] = self._extract_text_with_speakers(content_response.text)
+                                    transcript["content_type"] = content_response.headers.get("content-type", "")
+                                    logger.info("Successfully extracted content for transcript %s", transcript_id)
+                                else:
+                                    error_msg = f"Failed to fetch content: HTTP {content_response.status_code} - {content_response.text[:200]}"
+                                    transcript["content"] = error_msg
+                                    logger.info("Failed to get content for transcript %s: %s", transcript_id, error_msg)
+                                      
+                            except httpx.TimeoutException as e:
+                                error_msg = f"Timeout fetching content: {str(e)}"
+                                transcript["content"] = error_msg
+                                logger.info("Timeout getting content for transcript %s: %s", transcript_id, str(e))
+                            except Exception as e:
+                                error_msg = f"Exception fetching content: {str(e)}"
+                                transcript["content"] = error_msg
+                                logger.info("Exception getting content for transcript %s: %s", transcript_id, str(e), exc_info=True)
+                        
+                            transcript_contents.append(transcript)
+                            
+                    except httpx.TimeoutException as e:
+                        logger.info("Timeout getting transcripts for meeting %s: %s", meeting_id, str(e))
                         continue
-                        
-                    transcripts = response.json().get("value", [])
-                    
-                    # For each transcript, get the content
-                    for transcript in transcripts:
-                        content_url = transcript.get("transcriptContentUrl")
-                        transcript_id = transcript.get("id")
-                        if content_url:
-                            content_response = await client.get(content_url, headers=content_headers)
-                        
-                        if content_response.status_code == 200:
-                            # Content is usually text, not json
-                            transcript["content"] = self._extract_text_with_speakers(content_response.text)
-                            transcript["content_type"] = content_response.headers.get("content-type", "")
-                        else:
-                            transcript["content"] = f"Failed to fetch: {content_response.status_code}, {content_response.text}"
-                            logger.info("Failed to get content for transcript %s: %s", transcript_id, content_response.status_code, exc_info=True)
-                            logger.info("Error details: %s", content_response.text, exc_info=True)
-                    
-                        transcript_contents.append(transcript)
+                    except Exception as e:
+                        logger.info("Exception processing meeting %s: %s", meeting_id, str(e), exc_info=True)
+                        continue
                     
              except Exception as e:
-                return {"error": f"failed to fetch transcripts: {str(e)}"}
+                error_msg = f"Major error in get_transcripts_from_meetings: {str(e)}"
+                logger.info(error_msg, exc_info=True)
+                return {"error": error_msg}
             
          return transcript_contents
      
