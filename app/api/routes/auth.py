@@ -107,7 +107,7 @@ async def sign_up(user_data: UserSignUp, supabase: Client = Depends(get_supabase
             "email": user_data.email,
             "role": user_data.role,
             "department": user_data.department,
-            "company_id": company_id
+            "company_id": company_id,
         }
 
         supabase.table("users").insert(user_record).execute()
