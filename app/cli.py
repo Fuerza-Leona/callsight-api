@@ -12,6 +12,7 @@ def serve(
     dev: bool = typer.Option(
         False, "--dev", is_flag=True, help="Enable development mode (auto-reload)"
     ),
+    log_level: str = "info"
 ):
     """
     Start the CallSight API server using uvicorn.
@@ -19,7 +20,7 @@ def serve(
     if dev:
         reload = True
 
-    cmd = ["uvicorn", "app.main:app", f"--host={host}", f"--port={port}"]
+    cmd = ["uvicorn", "app.main:app", f"--host={host}", f"--port={port}", f"--log-level={log_level}"]
 
     if reload:
         cmd.append("--reload")

@@ -114,147 +114,6 @@ async def teams_callback(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Integration error: {str(e)}")
 
-@router.get("/online_meetings")
-async def list_recordings(
-    start_date: str = None,     # Format: YYYY-MM-DD
-    end_date: str = None,       # Format: YYYY-MM-DD
-    current_user=Depends(get_current_user),
-    supabase=Depends(get_supabase)
-):
-    """List available recordings from Teams"""
-    # Get user's company ID
-    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
-    if not user_response.data:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    company_id = user_response.data[0]["company_id"]
-    
-    # Get Microsoft tokens from database
-    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
-    if not tokens_response.data:
-        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up for this company")
-    
-    # Initialize Teams service
-    teams_service = TeamsService()
-    
-    try:
-        # Refresh token if needed
-        access_token = await teams_service.refresh_token(supabase, company_id)
-        
-        # Fetch recordings
-        recordings = await teams_service.get_meetings(access_token, start_date, end_date)
-        
-        return {"recordings": recordings}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch recordings: {str(e)}")
-    
-router.get("/all-recordings")
-async def get_all_recordings(
-    chunks: int = 10,
-    chunk_size: int = 90,
-    current_user=Depends(get_current_user),
-    supabase=Depends(get_supabase)
-):
-    """Fetch all available recordings by chunking requests over time"""
-    from datetime import datetime, timedelta, timezone
-    
-    # Get tokens
-    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
-    company_id = user_response.data[0]["company_id"]
-    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
-    if not tokens_response.data:
-        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up for this company")
-    
-    teams_service = TeamsService()
-    access_token = await teams_service.refresh_token(supabase, company_id)
-    
-    # Calculate date chunks working backward from today
-    end_date = datetime.now(timezone.utc)
-    all_recordings = []
-    
-    for i in range(chunks):
-        chunk_end = end_date - timedelta(days=i * chunk_size)
-        chunk_start = chunk_end - timedelta(days=chunk_size)
-        
-        start_str = chunk_start.strftime("%Y-%m-%d")
-        end_str = chunk_end.strftime("%Y-%m-%d")
-        
-        try:
-            print(f"Fetching chunk {i+1}/{chunks}: {start_str} to {end_str}")
-            recordings = await teams_service.get_meetings_with_recordings(
-                access_token, start_str, end_str
-            )
-            all_recordings.extend(recordings)
-        except Exception as e:
-            print(f"Error fetching chunk {i+1}: {str(e)}")
-            # Continue with next
-    
-    return {"recordings": all_recordings, "total": len(all_recordings)}
-    
-@router.get("/transcripts")
-async def list_transcripts(
-    current_user=Depends(get_current_user),
-    supabase=Depends(get_supabase)
-):
-    """List available transcripts from Teams"""
-    # Get user's company ID
-    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
-    if not user_response.data:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    company_id = user_response.data[0]["company_id"]
-    
-    # Get Microsoft tokens from database
-    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
-    if not tokens_response.data:
-        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up for this company")
-    
-    # Initialize Teams service
-    teams_service = TeamsService()
-    
-    try:
-        # Refresh token if needed
-        access_token = await teams_service.refresh_token(supabase, company_id)
-        
-        # Fetch recordings
-        transcripts = await teams_service.get_transcripts(access_token)
-        
-        return {"transcripts": transcripts}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch recordings: {str(e)}")
-    
-@router.get("/events")
-async def list_events(
-    current_user=Depends(get_current_user),
-    supabase=Depends(get_supabase)
-):
-    """List available transcripts from Teams"""
-    # Get user's company ID
-    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
-    if not user_response.data:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    company_id = user_response.data[0]["company_id"]
-    
-    # Get Microsoft tokens from database
-    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
-    if not tokens_response.data:
-        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up for this company")
-    
-    # Initialize Teams service
-    teams_service = TeamsService()
-    
-    try:
-        # Refresh token if needed
-        access_token = await teams_service.refresh_token(supabase, company_id)
-        
-        # Fetch recordings
-        events = await teams_service.get_calendar_events(access_token)
-        
-        return {"events": events}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch recordings: {str(e)}")
-
 @router.post("/notifications")
 async def handle_notifications(
     request: Request,
@@ -280,10 +139,6 @@ async def handle_notifications(
         value = notification.get("value", [])
         for change_notification in value:
             resource_data = change_notification.get("resourceData", {})
-            
-            # Example: When a new recording is available
-            # Process each notification and kick off your existing
-            # audio processing pipeline
             
             # For demonstration purposes, just log it
             print(f"Received notification: {json.dumps(change_notification)}")
@@ -391,50 +246,6 @@ async def test_transcripts(
         "transcripts": transcripts
     }
     
-@router.get("/test-complete-transcripts")
-async def test_complete_transcript_flow(
-    start_date: str = None,
-    end_date: str = None,
-    current_user=Depends(get_current_user),
-    supabase=Depends(get_supabase)
-):
-    """Test the complete flow: calendar -> meeting resolution -> transcripts"""
-    # Get tokens
-    user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
-    company_id = user_response.data[0]["company_id"]
-    tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
-    if not tokens_response.data:
-        raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up")
-    
-    teams_service = TeamsService()
-    access_token = await teams_service.refresh_token(supabase, company_id)
-    
-    # Test the complete solution
-    transcript_results = await teams_service.get_all_transcripts_from_calendar(
-        access_token, start_date, end_date
-    )
-    
-    # Generate summary
-    if isinstance(transcript_results, list):
-        total_events = len(transcript_results)
-        events_with_transcripts = len([e for e in transcript_results if e.get("transcripts")])
-        total_transcripts = sum(len(e.get("transcripts", [])) for e in transcript_results)
-        events_with_errors = len([e for e in transcript_results if e.get("resolution_errors")])
-        
-        summary = {
-            "total_events_processed": total_events,
-            "events_with_transcripts": events_with_transcripts,
-            "total_transcripts_found": total_transcripts,
-            "events_with_resolution_errors": events_with_errors
-        }
-    else:
-        summary = {"error": "Failed to process"}
-    
-    return {
-        "results": transcript_results,
-        "summary": summary
-    }
-    
 @router.get("/test-config")
 async def test_config():
     teams_service = TeamsService()
@@ -449,7 +260,3 @@ async def test_config():
         "url_params": safe_params,
         "microsoft_config_valid": bool(settings.MICROSOFT_CLIENT_ID and settings.MICROSOFT_CLIENT_SECRET)
     }
-    
-# First get the calendar events, then get the joinUrls. With the joinUrls use that 
-# for GET /me/onlineMeetings?$filter=JoinWebUrl%20eq%20'{joinWebUrl}'
-# Which gives you the meetingId you need. 

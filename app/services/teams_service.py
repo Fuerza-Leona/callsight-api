@@ -1,11 +1,14 @@
 from app.core.config import settings
 from msal import ConfidentialClientApplication
+from typing import Optional, Dict, Any, List, Union
+import logging
 import httpx
 import json
 import time
 
+logger = logging.getLogger("uvicorn.app")
 class TeamsService:
-    def __init__(self, tenant_id=None):
+    def __init__(self, tenant_id: Optional[str] = None) -> None:
         self.tenant_id = tenant_id or "common"
         self.client_id = settings.MICROSOFT_CLIENT_ID
         self.client_secret = settings.MICROSOFT_CLIENT_SECRET
@@ -15,9 +18,9 @@ class TeamsService:
             authority=f"https://login.microsoftonline.com/{self.tenant_id}"
         )
     
-    def get_auth_url(self, redirect_uri, scopes=None, state=None):
+    def get_auth_url(self, redirect_uri: str, scopes: Optional[List[str]] = None, state: Optional[str] = None) -> str:
         """Generate authorization URL for Microsoft OAuth"""
-        print(f"Generated callback URI: {redirect_uri}")
+        logger.info("Generated callback URI: %s", redirect_uri)
         if scopes is None:
             scopes = [
                 "User.Read",
@@ -32,7 +35,7 @@ class TeamsService:
             extra_scope_to_consent=["offline_access"]
         )
     
-    async def get_token_from_code(self, code, redirect_uri):
+    async def get_token_from_code(self, code: str, redirect_uri: str) -> Dict[str, Any]:
         """Exchange auth code for access tokens"""
         result = self.app.acquire_token_by_authorization_code(
             code=code,
@@ -41,10 +44,10 @@ class TeamsService:
         )
         safe_result = {k: (v[:10] + "..." if k in ["access_token", "refresh_token"] else v) 
                    for k, v in result.items()}
-        print(f"Token response (safe): {safe_result}")
+        logger.info("Token response (safe): %s", safe_result)
         return result
     
-    async def store_tokens(self, supabase, company_id, tokens):
+    async def store_tokens(self, supabase, company_id: str, tokens: Dict[str, Any]) -> bool:
         """Store Microsoft tokens in Supabase database"""
         expires_in = tokens.get('expires_in', 3600)  # Default to 1 hr
         current_time = int(time.time())
@@ -61,8 +64,8 @@ class TeamsService:
         if not token_data["access_token"] or not token_data["refresh_token"]:
             raise ValueError("Missing required token fields")
     
-        print(f"Storing token data for company_id: {company_id}")
-        print(f"Token expires in {expires_in} seconds (at {expires_on})")
+        logger.info("Storing token data for company_id: %s", company_id)
+        logger.info("Token expires in %s seconds (at %s)", expires_in, expires_on)
         
         try:
             existing = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
@@ -76,10 +79,10 @@ class TeamsService:
             
             return True
         except Exception as e:
-            print(f"Database error storing tokens: {str(e)}")
+            logger.info("Database error storing tokens: %s", str(e), exc_info=True)
             raise ValueError(f"Failed to store tokens: {str(e)}")
             
-    async def refresh_token(self, supabase, company_id):
+    async def refresh_token(self, supabase, company_id: str) -> str:
         """Refresh Microsoft access token if expired"""
         # Get current tokens
         tokens_result = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
@@ -87,7 +90,18 @@ class TeamsService:
             raise ValueError("No Microsoft tokens found for this company")
             
         token_data = tokens_result.data[0]
+        current_time = int(time.time())
+        expires_on = token_data.get("expires_on", 0)
+        
+        if expires_on > current_time + 300:
+            logger.debug("Token still valid for company_id: %s", company_id)
+            return token_data["access_token"]
+
+        logger.info("Token expired for company_id: %s, refreshing", company_id)
         refresh_token = token_data["refresh_token"]
+        
+        if not refresh_token:
+            raise ValueError("No refresh token available for this company")
         
         # Refresh the token
         result = self.app.acquire_token_by_refresh_token(
@@ -102,126 +116,39 @@ class TeamsService:
         await self.store_tokens(supabase, company_id, result)
         return result["access_token"]
     
-    async def get_meetings(self, access_token, start_date=None, end_date=None):
-        """Get list of meetings that have recordings"""
+    async def setup_notification_subscription(self, access_token, notification_url, expiration_minutes=43200):
+        """Set up webhook for notifications when new recordings are available"""
+        # Maximum expiration time is 43200 minutes (30 days)
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
         
-        if not start_date:
-            from datetime import datetime, timedelta, timezone
-            start_date = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%dT00:00:00Z")
-        if not end_date:
-            from datetime import datetime, timedelta
-            end_date = datetime.now(timezone.utc).strftime("%Y-%m-%dT23:59:59Z")
-            
-        # Filtering
-        filter_param = f"JoinWebUrl%20eq%20'https://teams.microsoft.com/l/meetup-join/19%3ameeting_Y2FkNjIzN2MtNjljMC00NjQwLTgwNzMtZTk2NGU2ZDEyYmUy%40thread.v2/0?context=%7b%22Tid%22%3a%2225edc74d-6ecf-4a26-ad86-fb3019a81dae%22%2c%22Oid%22%3a%2221054d65-46c5-4f72-a2f6-91962987f348%22%7d'"
+        from datetime import datetime, timedelta
+        expiration_date = datetime.utcnow() + timedelta(minutes=expiration_minutes)
+        expiration_iso = expiration_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         
-        # Fetch meetings
+        subscription_data = {
+            "changeType": "created,updated",
+            "notificationUrl": notification_url,
+            "resource": "/communications/onlineMeetings/recordings",
+            "expirationDateTime": expiration_iso,
+            "clientState": "callsightSecretState"  # Verify in webhook
+        }
+        
         async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://graph.microsoft.com/v1.0/me/onlineMeetings?$filter={filter_param}",
+            response = await client.post(
+                "https://graph.microsoft.com/v1.0/subscriptions",
                 headers=headers,
+                json=subscription_data
             )
             
-            if response.status_code != 200:
-                raise ValueError(f"Failed to get meetings: {response.text}")
+            if response.status_code not in (200, 201):
+                raise ValueError(f"Failed to set up subscription: {response.text}")
                 
-            meetings = response.json().get("value", [])
-            
-            return meetings
+            return response.json()
     
-    async def get_recording_download_url(self, access_token, meeting_id, recording_id):
-        """Get download URL for a specific recording"""
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/recordings/{recording_id}",
-                headers=headers
-            )
-            
-            if response.status_code != 200:
-                raise ValueError(f"Failed to get recording: {response.text}")
-                
-            return response.json().get("downloadUrl")
-        
-    async def get_meeting_transcripts(self, access_token, meeting_id):
-        """Get transcripts for a specific meeting"""
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts",
-                headers=headers
-            )
-            
-            if response.status_code != 200:
-                raise ValueError(f"Failed to get transcripts: {response.text}")
-                
-            transcripts = response.json().get("value", [])
-            
-            # For each transcript, get the actual content
-            for transcript in transcripts:
-                transcript_id = transcript["id"]
-                content_response = await client.get(
-                    f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts/{transcript_id}/content",
-                    headers=headers
-                )
-                
-                if content_response.status_code == 200:
-                    transcript["content"] = content_response.json()
-            
-            return transcripts
-        
-    async def get_transcripts(self, access_token):
-        """get all transcripts by iterating over user’s online meetings"""
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        
-        result = []
-        async with httpx.AsyncClient() as client:
-            try:
-                # Get all online meetings
-                meetings_url = "https://graph.microsoft.com/v1.0/me/onlineMeetings"
-                meetings_response = await client.get(meetings_url, headers=headers)
-                meetings_response.raise_for_status()
-                meetings = meetings_response.json().get("value", [])
-                
-                print("meetings length: ", len(meetings))
-                
-                # Iterate through meetings to get transcripts
-                for meeting in meetings:
-                    meeting_id = meeting.get("id")
-                    transcripts_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts"
-                    transcripts_response = await client.get(transcripts_url, headers=headers)
-                    
-                    if transcripts_response.status_code == 200:
-                        transcripts = transcripts_response.json().get("value", [])
-                        for transcript in transcripts:
-                            content_url = transcript.get("transcriptContentUrl")
-                            if content_url:
-                                content_response = await client.get(content_url + "?$format=text/vtt", headers=headers)
-                                transcript["content"] = content_response.text if content_response.status_code == 200 else None
-                            result.append(transcript)
-            except httpx.HTTPStatusError as e:
-                return {"error": f"http error: {e.response.status_code}, {e.response.text}"}
-            except Exception as e:
-                return {"error": f"failed to fetch transcripts: {str(e)}"}
-        
-        return result
-    
-    async def get_calendar_events(self, access_token, start_date=None, end_date=None):
+    async def get_calendar_events(self, access_token: str, start_date: Optional[str] = None, end_date: Optional[str] = None):
         """Get calendar events with meeting identifiers extracted"""
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -245,8 +172,8 @@ class TeamsService:
                 response.raise_for_status()
                 events = response.json().get("value", [])
                 
-                print(f"Found {len(events)} calendar events")
-                
+                logger.info("Found %s calendar events", len(events))
+
                 # Extract meeting info from each event
                 for event in events:
                     meeting_info = {
@@ -288,7 +215,7 @@ class TeamsService:
                     if meeting_info["meeting_identifiers"] or meeting_info["has_online_meeting"]:
                         result.append(meeting_info)
                 
-                print(f"Found {len(result)} events with meeting identifiers")
+                logger.info("Found %s events with meeting identifiers", len(result))
                 return result
                 
             except httpx.HTTPStatusError as e:
@@ -346,7 +273,7 @@ class TeamsService:
                     )
                     
                     if response.status_code != 200:
-                        print(f"Failed to get transcripts for meeting {meeting_id}: {response.status_code}")
+                        logger.info("Failed to get transcripts for meeting %s: %s", meeting_id, response.status_code)
                         continue
                         
                     transcripts = response.json().get("value", [])
@@ -354,6 +281,7 @@ class TeamsService:
                     # For each transcript, get the content
                     for transcript in transcripts:
                         content_url = transcript.get("transcriptContentUrl")
+                        transcript_id = transcript.get("id")
                         if content_url:
                             content_response = await client.get(content_url, headers=content_headers)
                         
@@ -363,8 +291,8 @@ class TeamsService:
                             transcript["content_type"] = content_response.headers.get("content-type", "")
                         else:
                             transcript["content"] = f"Failed to fetch: {content_response.status_code}, {content_response.text}"
-                            # print(f"Failed to get content for transcript {transcript_id}: {content_response.status_code}")
-                            # print(f"Error details: {content_response.text}")
+                            logger.info("Failed to get content for transcript %s: %s", transcript_id, content_response.status_code, exc_info=True)
+                            logger.info("Error details: %s", content_response.text, exc_info=True)
                     
                         transcript_contents.append(transcript)
                     
@@ -448,165 +376,3 @@ class TeamsService:
             formatted_text.append(f"{speaker}: {text.strip()}")
         
         return '\n'.join(formatted_text)
-    
-    async def resolve_meeting_id_from_join_url(self, access_token, join_url):
-        """Get the actual meeting ID from a join URL using graph api filter"""
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        
-        # URL encode the join URL for the filter
-        from urllib.parse import quote
-        encoded_join_url = quote(join_url, safe='')
-        
-        async with httpx.AsyncClient() as client:
-            try:
-                # Use the filter endpoint to find meeting by join URL
-                filter_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings?$filter=JoinWebUrl eq '{join_url}'"
-                response = await client.get(filter_url, headers=headers)
-                
-                if response.status_code == 200:
-                    meetings = response.json().get("value", [])
-                    if meetings:
-                        meeting = meetings[0]  # Should only be one match
-                        return {
-                            "success": True,
-                            "meeting_id": meeting.get("id"),
-                            "thread_id": meeting.get("chatInfo", {}).get("threadId"),
-                            "subject": meeting.get("subject"),
-                            "meeting_object": meeting
-                        }
-                    else:
-                        return {"success": False, "error": "No meeting found for this join URL"}
-                else:
-                    return {"success": False, "error": f"HTTP {response.status_code}: {response.text}"}
-                    
-            except Exception as e:
-                return {"success": False, "error": f"Request failed: {str(e)}"}
-
-    async def get_transcripts_for_meeting_id(self, access_token, meeting_id):
-        """Get transcripts for a specific meeting ID"""
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        
-        async with httpx.AsyncClient() as client:
-            try:
-                # Try the transcript endpoint
-                transcript_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts"
-                response = await client.get(transcript_url, headers=headers)
-                
-                if response.status_code == 200:
-                    transcripts = response.json().get("value", [])
-                    
-                    # Get content for each transcript
-                    for transcript in transcripts:
-                        transcript_id = transcript.get("id")
-                        content_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/transcripts/{transcript_id}/content"
-                        
-                        content_response = await client.get(content_url, headers=headers)
-                        if content_response.status_code == 200:
-                            # Content might be in different formats
-                            content_type = content_response.headers.get('content-type', '')
-                            if 'json' in content_type:
-                                transcript["content"] = content_response.json()
-                            else:
-                                transcript["content"] = content_response.text
-                        else:
-                            transcript["content"] = f"Failed to get content: {content_response.status_code}"
-                    
-                    return {"success": True, "transcripts": transcripts}
-                else:
-                    return {"success": False, "error": f"HTTP {response.status_code}: {response.text}"}
-                    
-            except Exception as e:
-                return {"success": False, "error": f"Request failed: {str(e)}"}
-    
-    async def get_all_transcripts_from_calendar(self, access_token, start_date=None, end_date=None):
-        """The complete solution: calendar events -> meeting IDs -> transcripts"""
-        # Step 1: Get calendar events
-        events = await self.get_calendar_events(access_token, start_date, end_date)
-        if not isinstance(events, list):
-            return events
-        
-        all_transcripts = []
-        
-        # Step 2: For each event, resolve meeting ID and get transcripts
-        for event in events:
-            event_result = {
-                "event_id": event.get("event_id"),
-                "subject": event.get("subject"),
-                "start": event.get("start"),
-                "organizer": event.get("organizer"),
-                "transcripts": [],
-                "resolution_errors": []
-            }
-            
-            # Try each join URL in the event
-            for identifier in event.get("meeting_identifiers", []):
-                if identifier.get("type") in ["joinUrl", "body_url"]:
-                    join_url = identifier.get("value")
-                    
-                    # Resolve to actual meeting ID
-                    resolution = await self.resolve_meeting_id_from_join_url(access_token, join_url)
-                    
-                    if resolution.get("success"):
-                        meeting_id = resolution.get("meeting_id")
-                        
-                        # Get transcripts for this meeting
-                        transcript_result = await self.get_transcripts_for_meeting_id(access_token, meeting_id)
-                        
-                        if transcript_result.get("success"):
-                            event_result["transcripts"].extend(transcript_result.get("transcripts", []))
-                        else:
-                            event_result["resolution_errors"].append({
-                                "step": "transcript_fetch",
-                                "meeting_id": meeting_id,
-                                "error": transcript_result.get("error")
-                            })
-                    else:
-                        event_result["resolution_errors"].append({
-                            "step": "meeting_resolution",
-                            "join_url": join_url,
-                            "error": resolution.get("error")
-                        })
-            
-            # Only include events that have some data
-            if event_result["transcripts"] or event_result["resolution_errors"]:
-                all_transcripts.append(event_result)
-        
-        return all_transcripts
-        
-    async def setup_notification_subscription(self, access_token, notification_url, expiration_minutes=43200):
-        """Set up webhook for notifications when new recordings are available"""
-        # Maximum expiration time is 43200 minutes (30 days)
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        
-        from datetime import datetime, timedelta
-        expiration_date = datetime.utcnow() + timedelta(minutes=expiration_minutes)
-        expiration_iso = expiration_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-        
-        subscription_data = {
-            "changeType": "created,updated",
-            "notificationUrl": notification_url,
-            "resource": "/communications/onlineMeetings/recordings",
-            "expirationDateTime": expiration_iso,
-            "clientState": "callsightSecretState"  # Verify in webhook
-        }
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://graph.microsoft.com/v1.0/subscriptions",
-                headers=headers,
-                json=subscription_data
-            )
-            
-            if response.status_code not in (200, 201):
-                raise ValueError(f"Failed to set up subscription: {response.text}")
-                
-            return response.json()
