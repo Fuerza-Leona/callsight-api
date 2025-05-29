@@ -4,9 +4,11 @@ from app.services.teams_service import TeamsService
 from app.core.config import settings
 from app.api.deps import get_current_user
 from app.db.session import get_supabase
-from urllib.parse import unquote
 import json
+import logging
 import httpx
+
+logger = logging.getLogger("uvicorn.app")
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
@@ -148,6 +150,86 @@ async def handle_notifications(
     except Exception as e:
         print(f"Error processing notification: {str(e)}")
         return Response(status_code=500)
+    
+@router.get("/transcripts")
+async def get_user_transcripts(
+    start_date: str = None,
+    end_date: str = None,
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase)
+):
+    """Get all transcripts for the authenticated user from their Teams meetings"""
+    try:
+        # Get user's company and tokens
+        user_response = supabase.table("users").select("company_id").eq("user_id", current_user.id).execute()
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        company_id = user_response.data[0]["company_id"]
+        
+        # Check if Teams integration is set up
+        tokens_response = supabase.table("microsoft_tokens").select("*").eq("company_id", company_id).execute()
+        if not tokens_response.data:
+            raise HTTPException(status_code=404, detail="Microsoft Teams integration not set up for your company")
+        
+        # Initialize service and refresh token
+        teams_service = TeamsService(supabase=supabase)
+        access_token = await teams_service.refresh_token(company_id)
+        
+        # Get calendar events
+        calendar_events = await teams_service.get_calendar_events(access_token, start_date, end_date)
+        
+        if isinstance(calendar_events, dict) and "error" in calendar_events:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch calendar events: {calendar_events['error']}")
+        
+        # Extract join URLs from events
+        join_urls = [
+            identifier["value"]
+            for event in calendar_events 
+            for identifier in event.get("meeting_identifiers", []) 
+            if identifier.get("type") == "joinUrl"
+        ]
+        
+        if not join_urls:
+            return {"transcripts": [], "summary": {"total_meetings": 0, "total_transcripts": 0}}
+        
+        # Get meetings from join URLs
+        all_meetings = []
+        for url in join_urls:
+            try:
+                meetings = await teams_service.get_online_meetings_from_events(access_token, url)
+                all_meetings.extend(meetings)
+            except Exception as e:
+                logger.info("Failed to get meetings for URL %s: %s", url, str(e))
+                continue
+        
+        if not all_meetings:
+            return {"transcripts": [], "summary": {"total_meetings": 0, "total_transcripts": 0}}
+        
+        # Get transcripts from meetings
+        transcripts = await teams_service.get_transcripts_from_meetings(access_token, all_meetings)
+        
+        if isinstance(transcripts, dict) and "error" in transcripts:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch transcripts: {transcripts['error']}")
+        
+        # Filter out failed transcripts for summary
+        successful_transcripts = [t for t in transcripts if not t.get("content", "").startswith("Failed to fetch")]
+        
+        return {
+            "transcripts": transcripts,
+            "summary": {
+                "total_meetings": len(all_meetings),
+                "total_transcripts": len(transcripts),
+                "successful_transcripts": len(successful_transcripts),
+                "date_range": {"start": start_date, "end": end_date}
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.info("Error in get_user_transcripts: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
     
 @router.get("/test-calendar")
 async def test_calendar(
