@@ -7,12 +7,37 @@ from app.db.session import get_supabase
 import json
 import logging
 import httpx
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger("uvicorn.app")
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
-@router.get("/connect")
+class TranscriptSummary(BaseModel):
+    total_meetings: int
+    total_transcripts: int
+    successful_transcripts: int
+    date_range: Dict[str, Optional[str]]
+
+class TranscriptContent(BaseModel):
+    id: str
+    content: str
+    content_type: Optional[str] = None
+
+class TranscriptsResponse(BaseModel):
+    transcripts: List[Dict[str, Any]]
+    summary: TranscriptSummary
+
+class AuthUrlResponse(BaseModel):
+    auth_url: str
+
+@router.get(
+    "/connect",
+    response_model=AuthUrlResponse,
+    summary="Start Microsoft Teams OAuth flow",
+    description="Initiates the OAuth flow for Microsoft Teams integration. Returns an authorization URL that users should visit to grant permissions.",
+)
 async def connect_teams(
     request: Request, 
     current_user=Depends(get_current_user),
@@ -48,11 +73,20 @@ async def connect_teams(
     # Save company_id in session or cookie
     response = Response()
     response.set_cookie(key="connecting_company_id", value=company_id, httponly=True)
-    print(f"Set company id to: {company_id}")
+    logger.info("Set company id to: %s", company_id)
     
     return {"auth_url": auth_url}
 
-@router.get("/callback")
+@router.get(
+    "/callback",
+    summary="Handle Microsoft OAuth callback",
+    description="Processes the OAuth callback from Microsoft, exchanges code for tokens, and stores them securely.",
+    responses={
+        302: {"description": "Redirect to profile page on success"},
+        400: {"description": "Invalid authorization code or missing company context"},
+        500: {"description": "Token exchange or storage failed"}
+    }
+)
 async def teams_callback(
     request: Request,
     code: str,
@@ -62,7 +96,7 @@ async def teams_callback(
     supabase = Depends(get_supabase)
 ):
     """Handle Microsoft OAuth callback"""
-    print(f"Callback received! code: {code[:10]}... error: {error} state: {state}")
+    logger.info("Callback received! code: %s... error: %s state: %s", code[:10], error, state)
     
     try:
         state_data = json.loads(state) if state else {}
@@ -96,7 +130,7 @@ async def teams_callback(
         
         # Set up webhook for notifications
         if base_url.startswith("http://"):
-            print("Skipping webhook setup in non-secure environment...")
+            logger.info("Skipping webhook setup in non-secure environment...")
         else:
             notification_url = f"{base_url}{settings.API_V1_STR}/teams/notifications"
             try:
@@ -105,7 +139,7 @@ async def teams_callback(
                     notification_url
                 )
             except Exception as e:
-                print(f"Warning: Failed to set up notification subscription: {str(e)}")
+                logger.info("Warning: Failed to set up notification subscription: %s", str(e), exc_info=True)
         
         # Success and redirect
         devenv = settings.NODE_ENV
@@ -143,15 +177,31 @@ async def handle_notifications(
             resource_data = change_notification.get("resourceData", {})
             
             # For demonstration purposes, just log it
-            print(f"Received notification: {json.dumps(change_notification)}")
+            logger.info("Received notification: %s", json.dumps(change_notification))
         
         # Acknowledge receipt of the notification
         return Response(status_code=202)
     except Exception as e:
-        print(f"Error processing notification: {str(e)}")
+        logger.info("Error processing notification: ", str(e), exc_info=True)
         return Response(status_code=500)
     
-@router.get("/transcripts")
+@router.get(
+    "/transcripts",
+    response_model=TranscriptsResponse,
+    summary="Get user's Teams meeting transcripts",
+    description="""
+    Retrieves all transcripts from the authenticated user's Teams meetings.
+    
+    - Requires Microsoft Teams integration to be set up for the user's company
+    - Fetches calendar events, extracts meeting URLs, and retrieves transcripts
+    - Returns both successful and failed transcript attempts with summary statistics
+    - Date range is optional; defaults to last 90 days if not specified
+    """,
+    responses={
+        404: {"description": "User not found or Teams integration not set up"},
+        500: {"description": "Failed to fetch calendar events or transcripts"}
+    }
+)
 async def get_user_transcripts(
     start_date: str = None,
     end_date: str = None,
