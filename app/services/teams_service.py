@@ -1,6 +1,6 @@
 from app.core.config import settings
 from msal import ConfidentialClientApplication
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List
 import logging
 import httpx
 import json
@@ -18,6 +18,7 @@ class TeamsService:
             authority=f"https://login.microsoftonline.com/{self.tenant_id}"
         )
         self.supabase = supabase
+        self._transcript_cache = {}
         
     async def _fetch_with_retry(self, client, url, headers, max_retries=3):
         import asyncio
@@ -326,12 +327,24 @@ class TeamsService:
                             
                             try:
                                 logger.info("Fetching content for transcript %s (meeting %s)", transcript_id, meeting_id)
+                                cache_key = f"{meeting_id}_{transcript_id}"
+                                if cache_key in self._transcript_cache:
+                                    logger.info("Using cached content for transcript %s", transcript_id)
+                                    transcript["content"] = self._transcript_cache[cache_key]["content"]
+                                    transcript["content_type"] = self._transcript_cache[cache_key]["content_type"]
+                                    transcript_contents.append(transcript)
+                                    continue
+                                
                                 content_response = await self._fetch_with_retry(client, content_url, content_headers)
                             
                                 if content_response.status_code == 200:
                                     transcript["content"] = self._extract_text_with_speakers(content_response.text)
                                     transcript["content_type"] = content_response.headers.get("content-type", "")
                                     logger.info("Successfully extracted content for transcript %s", transcript_id)
+                                    self._transcript_cache[cache_key] = {
+                                        "content": transcript["content"],
+                                        "content_type": transcript["content_type"]
+                                    }
                                 else:
                                     error_msg = f"Failed to fetch content: HTTP {content_response.status_code} - {content_response.text[:200]}"
                                     transcript["content"] = error_msg
