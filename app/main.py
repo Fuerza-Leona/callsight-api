@@ -16,7 +16,7 @@ from app.api.routes import (
     chatbot,
     insights,
     reports,
-    teams
+    teams,
 )
 
 
