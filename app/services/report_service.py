@@ -998,7 +998,19 @@ async def save_report_to_storage(
     continue_operation = replace_existing or not report_exists
 
     if not continue_operation:
-        return
+        # Return existing report info
+        existing_report = supabase.table("reports").select("*").eq("name", report_table_name).single().execute()
+        if existing_report.data:
+            return {
+                "report_id": existing_report.data["report_id"],
+                "report_name": existing_report.data["name"],
+                "file_url": existing_report.data["file_path"],
+                "created_at": existing_report.data["created_at"],
+                "details": {
+                    "already_existed": True
+                }
+            }
+        return None
 
     if report_exists:
         # Cleanup bucket files
@@ -1037,7 +1049,7 @@ async def save_report_to_storage(
                     storage_path,
                     pdf_data,
                     file_options={
-                        "content_type": "application/pdf",
+                        "content-type": "application/pdf",
                         "cache_control": "3600",
                         "upsert": False,
                     },
@@ -1083,6 +1095,9 @@ async def save_report_to_storage(
             "report_name": report_data["name"],
             "file_url": file_url,
             "created_at": datetime.now().isoformat(),
+            "details": {
+                "already_existed": False
+            }
         }
 
     except Exception as e:

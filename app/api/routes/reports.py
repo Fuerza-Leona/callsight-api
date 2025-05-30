@@ -14,9 +14,7 @@ from app.services.report_service import (
     save_report_to_storage,
 )
 
-
 router = APIRouter(prefix="/reports", tags=["reports"])
-
 
 class MonthlyReportRequest(BaseModel):
     month: Optional[int] = None
@@ -24,7 +22,6 @@ class MonthlyReportRequest(BaseModel):
     company_id: Optional[str] = None
     replace_existing: Optional[bool] = False
     json_only: Optional[bool] = False
-
 
 @router.post("/monthly")
 async def generate_monthly_report(
