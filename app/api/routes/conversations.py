@@ -686,7 +686,7 @@ async def get_call_rating(
         )
 
         if not participant_response.data:
-            raise HTTPException(status_code=400, detail="User is not a participant")
+            raise HTTPException(status_code=401, detail="User is not a participant")
 
         role = await check_user_role(current_user, supabase)
 
@@ -740,7 +740,7 @@ async def post_call_rating(
         )
 
         if not participant_response.data:
-            raise HTTPException(status_code=400, detail="User is not a participant")
+            raise HTTPException(status_code=401, detail="User is not a participant")
 
         role = await check_user_role(current_user, supabase)
 
