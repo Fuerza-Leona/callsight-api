@@ -6,8 +6,12 @@ from app.api.deps import get_current_user
 from app.db.session import get_supabase
 import json
 import httpx
+import logging
+from pydantic import BaseModel
+from typing import Dict, Optional, Any, List
 
 router = APIRouter(prefix="/teams", tags=["teams"])
+logger = logging.getLogger("uvicorn.app")
 
 
 class TranscriptSummary(BaseModel):
