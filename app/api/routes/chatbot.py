@@ -359,6 +359,7 @@ async def get_chat_history(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/continue/specific/{previous_response_id}")
 async def chat_with_specific_call(
     request: ChatRequest,
@@ -409,7 +410,8 @@ async def chat_with_specific_call(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.post("/chat/specific")
 async def post_chat_specific_call(
     specific_conversation_id: str,
@@ -420,7 +422,6 @@ async def post_chat_specific_call(
 ):
     """Create a new chat"""
     try:
-        conversation_id = str(uuid4())
         gpt_model = GPT_MODEL
         # if the question needs previous context, start a new chat with added embeddings
         if needs_context(request.prompt):

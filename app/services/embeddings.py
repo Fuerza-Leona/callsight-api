@@ -129,6 +129,7 @@ async def chat_with_context(
 
     return message
 
+
 async def chat_with_specific_transcript(
     conversation_id: str,
     current_user=Depends(get_current_user),
@@ -140,13 +141,17 @@ async def chat_with_specific_transcript(
 
     response = supabase.rpc(
         "get_nearest_neighbor_l2distance_for_conversation",
-        params={"query_embedding": response.data[0].embedding, "target_conversation_id": conversation_id},
+        params={
+            "query_embedding": response.data[0].embedding,
+            "target_conversation_id": conversation_id,
+        },
     ).execute()
     if response.data is None or len(response.data) == 0:
         print("conversation_id: " + conversation_id)
         print("query: " + query)
         raise HTTPException(
-            status_code=404, detail="No data could be matched using this conversation id"
+            status_code=404,
+            detail="No data could be matched using this conversation id",
         )
     introduction = (
         "The following are pieces of a transcript or from multiple transcripts from calls between a call center and a client company. "
