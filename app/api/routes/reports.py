@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional
 from datetime import datetime
 import calendar
 from dateutil.relativedelta import relativedelta
@@ -16,12 +16,14 @@ from app.services.report_service import (
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+
 class MonthlyReportRequest(BaseModel):
     month: Optional[int] = None
     year: Optional[int] = None
     company_id: Optional[str] = None
     replace_existing: Optional[bool] = False
     json_only: Optional[bool] = False
+
 
 @router.post("/monthly")
 async def generate_monthly_report(
@@ -120,13 +122,6 @@ async def generate_monthly_report(
                 "startDate": start_date_str,
                 "endDate": end_date_str,
             }
-
-        existing_filename = create_file_name(company_name, start_date)
-        existing_report = await find_existing_report(supabase, existing_filename)
-
-        if existing_report:
-            print("Existing report found! Cleaning up old report...")
-            await cleanup_old_report(supabase, existing_report)
 
         # Gather all required data
         # 1. Get summary data

@@ -999,16 +999,20 @@ async def save_report_to_storage(
 
     if not continue_operation:
         # Return existing report info
-        existing_report = supabase.table("reports").select("*").eq("name", report_table_name).single().execute()
+        existing_report = (
+            supabase.table("reports")
+            .select("*")
+            .eq("name", report_table_name)
+            .single()
+            .execute()
+        )
         if existing_report.data:
             return {
                 "report_id": existing_report.data["report_id"],
                 "report_name": existing_report.data["name"],
                 "file_url": existing_report.data["file_path"],
                 "created_at": existing_report.data["created_at"],
-                "details": {
-                    "already_existed": True
-                }
+                "details": {"already_existed": True},
             }
         return None
 
@@ -1095,9 +1099,7 @@ async def save_report_to_storage(
             "report_name": report_data["name"],
             "file_url": file_url,
             "created_at": datetime.now().isoformat(),
-            "details": {
-                "already_existed": False
-            }
+            "details": {"already_existed": False},
         }
 
     except Exception as e:
