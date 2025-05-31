@@ -130,6 +130,51 @@ async def chat_with_context(
     return message
 
 
+async def chat_with_specific_transcript(
+    conversation_id: str,
+    current_user=Depends(get_current_user),
+    supabase: Client = Depends(get_supabase),
+    query: str = EmbeddingQuery,
+    token_budget: int = 4096 - 500,
+):
+    response = client.embeddings.create(input=query, model=EMBEDDING_MODEL)
+
+    response = supabase.rpc(
+        "get_nearest_neighbor_l2distance_for_conversation",
+        params={
+            "query_embedding": response.data[0].embedding,
+            "target_conversation_id": conversation_id,
+        },
+    ).execute()
+    if response.data is None or len(response.data) == 0:
+        print("conversation_id: " + conversation_id)
+        print("query: " + query)
+        raise HTTPException(
+            status_code=404,
+            detail="No data could be matched using this conversation id",
+        )
+    introduction = (
+        "The following are pieces of a transcript or from multiple transcripts from calls between a call center and a client company. "
+        "Use this information to answer the subsequent question as accurately as possible *only if it clearly contains the answer or allows a strong inference*. "
+        "If the answer is directly stated in the transcript, give it, but don't use the word 'transcript' to refer to your source, say 'como se mencionó en esta llamada.'. "
+        "If it can be reasonably inferred, explain your reasoning. "
+        "If the context seems off-topic, vague, or unhelpful, IGNORE it completely and answer the question from general knowledge. "
+        "You work as a chatbot so that users can ask things about a specific call they had and uploaded previously"
+        "If the answer cannot be found or reasonably inferred, ignore all context and answer as you would if you only got the question and no additional data, but make it clear to the user that you do not have access to all of his information, only information for this specific call, and let them know that in order to get access to the full context they should go to the chatbot section. The chatbot section has answer to all his calls, while you only have access to one specific call"
+        "YOU NEVER USE BLOCKS OF CODE OR BLOCK CODES. You may or may not use markdown, but you never use blocks of code regardless."
+    )
+    question = f"\n\nQuestion: {query}"
+    message = introduction + question
+    for transcript_chunk in (chunk["content"] for chunk in response.data):
+        next_chunk = f'\n\nTranscript chunk:\n"""\n{transcript_chunk}\n"""'
+        if num_tokens(message + next_chunk, model=GPT_MODEL) > token_budget:
+            break
+        else:
+            message += next_chunk
+
+    return message
+
+
 # @router.get("/last")
 async def get_last_embeddings(
     current_user=Depends(get_current_user), supabase: Client = Depends(get_supabase)
