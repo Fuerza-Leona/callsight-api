@@ -110,7 +110,7 @@ async def test_report_generation_integration():
     mock_supabase.storage.from_.assert_called_with("reports")
     args, kwargs = storage_mock.upload.call_args
     assert "file_options" in kwargs
-    assert kwargs["file_options"]["content_type"] == "application/pdf"
+    assert kwargs["file_options"]["content-type"] == "application/pdf"
 
     # Step 3: Simulate response handling
     assert "report_id" in result
