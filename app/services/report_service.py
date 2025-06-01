@@ -604,7 +604,7 @@ class ReportGenerator:
             elements.extend(self._create_executive_summary(summary_data, styles))
             elements.append(PageBreak())
 
-        # Detailed metrics section
+        # Detailed metrics section)
         elements.extend(
             self._create_detailed_metrics(
                 summary_data, topics_data, emotions_data, ratings_data, styles
@@ -805,11 +805,13 @@ class ReportGenerator:
         elements.append(Spacer(1, 30))
 
         # Sentiment analysis section
-        elements.append(
-            Paragraph(SpanishTexts.SENTIMENT_ANALYSIS, styles["Heading1Enhanced"])
-        )
-
         if self.config.include_charts:
+            elements.append(
+                PageBreak()
+            )
+            elements.append(
+                Paragraph(SpanishTexts.SENTIMENT_ANALYSIS, styles["Heading1Enhanced"])
+            )
             sentiment_chart = self.chart_generator.create_sentiment_donut_chart(
                 emotions_data
             )
@@ -821,6 +823,9 @@ class ReportGenerator:
 
         # Ratings section
         if ratings_data:
+            elements.append(
+                PageBreak()
+            )
             elements.append(
                 Paragraph(SpanishTexts.RATING_DISTRIBUTION, styles["Heading1Enhanced"])
             )
