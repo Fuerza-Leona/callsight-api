@@ -588,7 +588,7 @@ class ReportGenerator:
             topMargin=2.5 * cm,
             bottomMargin=2 * cm,
         )
-        
+
         formatted_date = start_date.strftime("%Y-%m")
         doc.title = f"Reporte Mensual - {company_name} - {formatted_date}"
 
@@ -809,9 +809,7 @@ class ReportGenerator:
 
         # Sentiment analysis section
         if self.config.include_charts:
-            elements.append(
-                PageBreak()
-            )
+            elements.append(PageBreak())
             elements.append(
                 Paragraph(SpanishTexts.SENTIMENT_ANALYSIS, styles["Heading1Enhanced"])
             )
@@ -826,9 +824,7 @@ class ReportGenerator:
 
         # Ratings section
         if ratings_data:
-            elements.append(
-                PageBreak()
-            )
+            elements.append(PageBreak())
             elements.append(
                 Paragraph(SpanishTexts.RATING_DISTRIBUTION, styles["Heading1Enhanced"])
             )
