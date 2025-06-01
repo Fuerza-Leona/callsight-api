@@ -9,8 +9,10 @@ from dateutil.relativedelta import relativedelta
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
 from app.api.routes.auth import check_user_role
-from app.services.report_service import create_monthly_report, save_report_to_storage
-
+from app.services.report_service import (
+    create_monthly_report,
+    save_report_to_storage,
+)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -19,6 +21,8 @@ class MonthlyReportRequest(BaseModel):
     month: Optional[int] = None
     year: Optional[int] = None
     company_id: Optional[str] = None
+    replace_existing: Optional[bool] = False
+    json_only: Optional[bool] = False
 
 
 @router.post("/monthly")
@@ -70,6 +74,9 @@ async def generate_monthly_report(
         # Format dates for API calls
         start_date_str = start_date.strftime("%Y-%m-%d")
         end_date_str = end_date.strftime("%Y-%m-%d")
+
+        replace_existing = request.replace_existing
+        json_only = request.json_only
 
         # Get company information if company_id is provided
         if request.company_id:
@@ -222,6 +229,24 @@ async def generate_monthly_report(
         else:
             emotions_data = {"positive": 0, "negative": 0, "neutral": 0}
 
+        if json_only:
+            return {
+                "success": True,
+                "data": {
+                    "company_name": company_name,
+                    "start_date": start_date.isoformat(),
+                    "summary_data": summary_data,
+                    "topics_data": topics_data,
+                    "categories_data": categories_data,
+                    "ratings_data": ratings_data,
+                    "emotions_data": emotions_data,
+                },
+                "period": {
+                    "month": month,
+                    "year": year,
+                },
+            }
+
         # Generate the PDF report
         pdf_data = create_monthly_report(
             company_name,
@@ -236,7 +261,12 @@ async def generate_monthly_report(
 
         # Save the report to storage and database
         report_info = await save_report_to_storage(
-            supabase, pdf_data, company_name, start_date, end_date, current_user.id
+            supabase,
+            pdf_data,
+            company_name,
+            start_date,
+            current_user.id,
+            replace_existing,
         )
 
         return {
