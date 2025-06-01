@@ -588,6 +588,9 @@ class ReportGenerator:
             topMargin=2.5 * cm,
             bottomMargin=2 * cm,
         )
+        
+        formatted_date = start_date.strftime("%Y-%m")
+        doc.title = f"Reporte Mensual - {company_name} - {formatted_date}"
 
         # Enhanced styles
         styles = self._create_enhanced_styles()
