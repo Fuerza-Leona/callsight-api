@@ -749,7 +749,7 @@ class ReportGenerator:
         # KPI Dashboard chart
         if self.config.include_charts:
             kpi_chart = self.chart_generator.create_kpi_dashboard(summary_data)
-            kpi_image = Image(io.BytesIO(kpi_chart), width=6 * inch, height=4 * inch)
+            kpi_image = Image(io.BytesIO(kpi_chart), width=6 * inch, height=5.5 * inch)
             elements.append(kpi_image)
             elements.append(Spacer(1, 20))
 
@@ -814,7 +814,7 @@ class ReportGenerator:
                 emotions_data
             )
             sentiment_image = Image(
-                io.BytesIO(sentiment_chart), width=5 * inch, height=3.5 * inch
+                io.BytesIO(sentiment_chart), width=5 * inch, height=5 * inch
             )
             elements.append(sentiment_image)
             elements.append(Spacer(1, 20))
@@ -830,7 +830,7 @@ class ReportGenerator:
                     ratings_data
                 )
                 ratings_image = Image(
-                    io.BytesIO(ratings_chart), width=5 * inch, height=3.5 * inch
+                    io.BytesIO(ratings_chart), width=5 * inch, height=6 * inch
                 )
                 elements.append(ratings_image)
                 elements.append(Spacer(1, 20))
@@ -1099,7 +1099,7 @@ async def save_report_to_storage(
             "report_name": report_data["name"],
             "file_url": file_url,
             "created_at": datetime.now().isoformat(),
-            "details": {"already_existed": False},
+            "details": {"already_existed": report_exists},
         }
 
     except Exception as e:
