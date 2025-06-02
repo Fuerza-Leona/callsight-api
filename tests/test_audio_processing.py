@@ -60,7 +60,9 @@ def mock_audio_file():
     return io.BytesIO(file_content)
 
 
-# Test audio upload and processing
+# ...existing code...
+
+
 @pytest.mark.asyncio
 async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     # Create a mock FastAPI UploadFile
@@ -69,6 +71,7 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     mock_file.content_type = "audio/mpeg"
     mock_file.read = AsyncMock(return_value=mock_audio_file.getvalue())
     mock_file.seek = AsyncMock()
+    mock_file.file = MagicMock()
 
     mock_supabase.reset_mock()
 
@@ -77,11 +80,20 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
     storage_mock.get_public_url.return_value = "https://example.com/test-audio.mp3"
     mock_supabase.storage.from_.return_value = storage_mock
 
-    # Mock librosa duration calculation
+    # Patch boto3.client instead of AwsS3StorageClient
     with (
+        patch("boto3.client") as mock_boto_client,
         patch("librosa.load") as mock_load,
         patch("librosa.get_duration") as mock_duration,
     ):
+        # Set up the S3 client mock
+        mock_s3_client_instance = MagicMock()
+        mock_boto_client.return_value = mock_s3_client_instance
+
+        # Mock the put_object method
+        mock_s3_client_instance.put_object.return_value = None
+
+        # Configure library mocks
         mock_load.return_value = (None, None)  # y, sr values
         mock_duration.return_value = 60  # 60 seconds
 
@@ -91,13 +103,24 @@ async def test_process_audio(mock_supabase, mock_current_user, mock_audio_file):
         )
 
     # Assertions
-    assert file_url == "https://example.com/test-audio.mp3"
+    assert file_url.startswith("https://")
+    assert file_url.endswith(".mp3")  # Check that URL format is correct
     assert duration == 60
     assert audio_id is not None
 
-    # Verify mock calls - only check the critical parts
-    assert mock_supabase.storage.from_.called
+    # Verify mock calls
+    assert mock_boto_client.called
     assert mock_supabase.table.called
+    assert mock_s3_client_instance.put_object.called
+
+    # Verify put_object was called with correct ContentType
+    assert (
+        mock_s3_client_instance.put_object.call_args[1]["ContentType"]
+        == mock_file.content_type
+    )
+
+
+# ...existing code...
 
 
 # Test transcription service

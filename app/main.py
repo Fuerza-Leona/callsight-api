@@ -15,6 +15,8 @@ from app.api.routes import (
     tickets,
     chatbot,
     insights,
+    reports,
+    teams,
 )
 
 
@@ -24,11 +26,11 @@ app = FastAPI(
     debug=True,
 )
 
-
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://localhost:8000/docs",
         "http://localhost:3000",
         "https://staging.callsight.tech",
         "https://callsight.tech",
@@ -65,6 +67,8 @@ app.include_router(topics.router, prefix=settings.API_V1_STR)
 app.include_router(tickets.router, prefix=settings.API_V1_STR)
 app.include_router(chatbot.router, prefix=settings.API_V1_STR)
 app.include_router(insights.router, prefix=settings.API_V1_STR)
+app.include_router(reports.router, prefix=settings.API_V1_STR)
+app.include_router(teams.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")

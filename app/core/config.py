@@ -57,8 +57,32 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     NODE_ENV: str = ""
 
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION: str = ""
+    AWS_S3_BUCKET_NAME: str = ""
+
     # CORS Settings
     BACKEND_CORS_ORIGINS: list[str] = []
+
+    # Microsoft Entra Credentials
+    ENTRA_AUTHORITY: str = ""
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    MICROSOFT_TENANT_ID: str = ""
+    MICROSOFT_REDIRECT_URI: str = ""
+
+    # Microsoft Teams
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_TENANT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    MICROSOFT_REDIRECT_URI: str = ""
+
+    # Microsoft Teams
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_TENANT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    MICROSOFT_REDIRECT_URI: str = ""
 
     class Config:
         env_file = ".env"

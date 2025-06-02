@@ -1,10 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from supabase import Client
 
 from app.api.deps import get_current_user
+from app.api.routes.auth import check_admin_role
 from app.db.session import get_supabase
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+class User(BaseModel):
+    username: str
+    email: str
+    password: str
+    department: str
+    role: str
+    company: str
 
 
 @router.get("/")
@@ -65,4 +76,66 @@ async def get_companies(company_id: str, supabase: Client = Depends(get_supabase
         )
         return {"companies": response.data}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{user_id}")
+async def get_user_specific(user_id: str, supabase: Client = Depends(get_supabase)):
+    try:
+        response = supabase.table("users").select("*").eq("user_id", user_id).execute()
+        return {"user": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{user_id}/{role}", dependencies=[Depends(check_admin_role)])
+async def update_user_role(
+    user_id: str, role: str, supabase: Client = Depends(get_supabase)
+):
+    try:
+        response = (
+            supabase.table("users")
+            .update({"role": role})
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return {"message": "User role updated successfully", "user": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/create")
+async def create_company(user: User, supabase: Client = Depends(get_supabase)):
+    try:
+        responseCategory = (
+            supabase.table("company_client")
+            .select("company_id, name")
+            .eq("name", user.company)
+            .execute()
+        )
+        print(responseCategory.data[0])
+        print(responseCategory.data[0]["company_id"])
+
+        if len(responseCategory.data) == 0:
+            raise HTTPException(status_code=404, detail="Category not found")
+
+        response = supabase.auth.sign_up(
+            {
+                "email": user.email,
+                "password": user.password,
+            }
+        )
+
+        user_data = {
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "department": user.department,
+            "company_id": responseCategory.data[0]["company_id"],
+        }
+
+        response = supabase.table("users").insert(user_data).execute()
+        return {"message": "User created successfully", "user": response.data}
+    except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))

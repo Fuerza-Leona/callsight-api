@@ -1,9 +1,11 @@
 from typing import List, Optional
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 from pydantic import BaseModel
 from datetime import datetime
-import uuid
+from uuid import UUID
+from dateutil import parser
 
 from app.db.session import get_supabase
 from app.api.deps import get_current_user
@@ -64,9 +66,9 @@ async def get_conversations(supabase: Client = Depends(get_supabase)):
 
 
 class ConversationsFilteringParameters(BaseModel):
-    clients: List[str] = []
-    agents: List[str] = []
-    companies: List[str] = []
+    clients: Optional[List[str]] = None
+    agents: Optional[List[str]] = None
+    companies: Optional[List[str]] = None
     startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
     endDate: Optional[str] = (
         datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
@@ -83,7 +85,6 @@ async def get_mine(
     current_user=Depends(get_current_user),
     supabase: Client = Depends(get_supabase),
 ):
-    """Get conversations for the currently authorized user"""
     clients = request.clients
     agents = request.agents
     companies = request.companies
@@ -92,31 +93,67 @@ async def get_mine(
     conversation_id = request.conversation_id
     user_id = current_user.id
 
-    try:
-        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
-        if start_date > end_date:
-            raise ValueError("Start date cannot be after end date")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
-
     role = await check_user_role(current_user, supabase)
 
+    if role == "client" and (agents or companies or clients):
+        raise HTTPException(
+            status_code=400,
+            detail="Clients cannot filter by agents, companies or clients",
+        )
+
+    if role == "agent" and agents:
+        raise HTTPException(status_code=400, detail="Agents cannot filter other agents")
+
+    if conversation_id:
+        clients = None
+        agents = None
+        companies = None
+        startDate = None
+        endDate = None
+        try:
+            UUID(conversation_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Invalid conversation_id format"
+            )
+    else:
+        try:
+            start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
+            end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+            if start_date > end_date:
+                raise ValueError("Start date cannot be after end date")
+
+            def validate_uuids(items, name):
+                if items:
+                    for item in items:
+                        try:
+                            UUID(item)
+                        except ValueError:
+                            raise ValueError(f"Invalid UUID in {name}: {item}")
+
+            validate_uuids(clients, "clients")
+            validate_uuids(agents, "agents")
+            validate_uuids(companies, "companies")
+
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid filter: {str(e)}")
+
     try:
+        params = {
+            "start_date": startDate,
+            "end_date": endDate,
+            "user_role": role,
+            "id": user_id,
+            "conv_id": conversation_id,
+            "clients": clients,
+            "agents": agents,
+            "companies": companies,
+        }
         response = supabase.rpc(
-            "new_build_get_my_conversations_query",
-            {
-                "start_date": startDate,
-                "end_date": endDate,
-                "user_role": role,
-                "id": user_id,
-                "conv_id": conversation_id if conversation_id else None,
-                "clients": clients if role != "client" and clients else None,
-                "agents": agents if role == "admin" and agents else None,
-                "companies": companies if role != "client" and companies else None,
-            },
+            "new_build_get_my_conversations_query", params
         ).execute()
         return {"conversations": response.data}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
@@ -150,13 +187,19 @@ async def get_mine_ratings(
             .eq("user_id", current_user.id)
             .execute()
         )
-        ratings = [
-            i["conversations"]["ratings"]["rating"]
-            if i["conversations"]["ratings"]
-            else 0
-            for i in response.data
-        ]
-        return {"rating": sum(ratings) / len(ratings) if ratings else 0}
+        ratings = []
+        for participant in response.data:
+            conversations = participant.get("conversations", [])
+            if not isinstance(conversations, list):
+                conversations = [conversations]
+            for conv in conversations:
+                conv_ratings = conv.get("ratings", [])
+                if not isinstance(conv_ratings, list):
+                    conv_ratings = [conv_ratings]
+                for rating in conv_ratings:
+                    if rating and "rating" in rating:
+                        ratings.append(rating["rating"])
+        return {"rating": round(sum(ratings) / len(ratings), 2) if ratings else 0}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
@@ -175,8 +218,8 @@ async def get_mine_duration(
         )
         durations = []
         for i in response.data:
-            start_time = datetime.fromisoformat(i["conversations"]["start_time"])
-            end_time = datetime.fromisoformat(i["conversations"]["end_time"])
+            start_time = parser.parse(i["conversations"]["start_time"])
+            end_time = parser.parse(i["conversations"]["end_time"])
             duration = (end_time - start_time).total_seconds() / 60
             durations.append(duration)
         return {"duration": round(sum(durations) / len(durations)) if durations else 0}
@@ -623,3 +666,104 @@ async def get_conversations_ratings(
         return {"ratings": result.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+
+
+@router.get("/call/{call_id}/rating")
+async def get_call_rating(
+    call_id: str = None,
+    supabase: Client = Depends(get_supabase),
+    current_user=Depends(get_current_user),
+):
+    try:
+        id = current_user.id
+
+        participant_response = (
+            supabase.table("participants")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        if not participant_response.data:
+            raise HTTPException(status_code=401, detail="User is not a participant")
+
+        role = await check_user_role(current_user, supabase)
+
+        if role != "client":
+            raise HTTPException(
+                status_code=400, detail="Only clients can give a review"
+            )
+
+        rating = (
+            supabase.table("ratings")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        rating = rating.data[0].get("rating", 0) if rating.data else 0
+
+        return {"rating": rating}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RatingRequest(BaseModel):
+    rating: int
+    conversation_id: str
+
+
+@router.post("/call/rating")
+async def post_call_rating(
+    request: RatingRequest,
+    supabase: Client = Depends(get_supabase),
+    current_user=Depends(get_current_user),
+):
+    try:
+        id = current_user.id
+        call_id = request.conversation_id
+        user_rating = request.rating
+
+        if user_rating < 1 or user_rating > 5:
+            raise HTTPException(
+                status_code=400, detail="Rating must be between 1 and 5"
+            )
+
+        participant_response = (
+            supabase.table("participants")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        if not participant_response.data:
+            raise HTTPException(status_code=401, detail="User is not a participant")
+
+        role = await check_user_role(current_user, supabase)
+
+        if role != "client":
+            raise HTTPException(
+                status_code=400, detail="Only clients can give a review"
+            )
+
+        existing_rating = (
+            supabase.table("ratings")
+            .select("*")
+            .eq("conversation_id", call_id)
+            .eq("user_id", id)
+            .execute()
+        )
+
+        if existing_rating.data:
+            raise HTTPException(status_code=400, detail="Cannot give a review twice")
+
+        supabase.table("ratings").insert(
+            {"rating": user_rating, "conversation_id": call_id, "user_id": id}
+        ).execute()
+
+        return {"message": "Rating added successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

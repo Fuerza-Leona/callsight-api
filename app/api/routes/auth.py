@@ -58,7 +58,7 @@ class RefreshTokenRequest(BaseModel):
 @router.post("/signup")
 async def sign_up(user_data: UserSignUp, supabase: Client = Depends(get_supabase)):
     try:
-        # Check if email already exists in your users table
+        # Check if email already exists in users table
         check_response = (
             supabase.table("users")
             .select("email")
@@ -108,7 +108,6 @@ async def sign_up(user_data: UserSignUp, supabase: Client = Depends(get_supabase
             "role": user_data.role,
             "department": user_data.department,
             "company_id": company_id,
-            # created_at will be handled by Supabase's default value
         }
 
         supabase.table("users").insert(user_record).execute()
@@ -147,6 +146,7 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
                 "email": user_data.get("email"),
                 "role": user_data.get("role"),
                 "department": user_data.get("department"),
+                "company_id": user_data.get("company_id"),
             },
         }
 
@@ -283,6 +283,7 @@ async def get_current_user_profile(
             "role": user_data["role"],
             "department": user_data["department"],
             "created_at": user_data["created_at"],
+            "company_id": user_data["company_id"],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -353,7 +354,7 @@ async def update_user(
 ):
     """Update user data - admin only endpoint"""
     # Create dict with only the fields that were provided
-    update_data = {k: v for k, v in user_data.dict().items() if v is not None}
+    update_data = {k: v for k, v in user_data.model_dump().items() if v is not None}
 
     if not update_data:
         return {"message": "No fields to update"}
