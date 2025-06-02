@@ -18,6 +18,8 @@ from datetime import datetime, timedelta
 from openai import OpenAI
 from pydantic import BaseModel
 
+import httpx
+
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -467,3 +469,71 @@ async def post_chat_specific_call(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class SessionRequest(BaseModel):
+    model: str = "gpt-4o-realtime-preview"
+    modalities: list[str] = ["audio", "text"]
+    instructions: str = "You are an angry customer calling a software consulting tech firm call center. Speak angryly. Habla en masculino"
+    voice: str | None = "verse"
+    mood: str = "Feliz"
+    description: str = "Menciona que tu tractor se rompió despues de que una vaca le saltó"
+    #coral o ash 
+    
+    #molesto:_
+        #verse no
+        #echo no
+        #sage? - a veces se confunde, pero bueno
+        #ballad - buenisimo
+        #coral - buenisima
+        #ash - buenisimo
+
+#alloy, ash, ballad, coral, echo, sage, shimmer, and verse
+VOICE_GENDER_MAP = {
+    "alloy": "femenino",
+    "ash": "masculino",
+    "ballad": "masculino",
+    "coral": "femenino",
+    "echo": "masculino",  #no sé que sea este
+    "sage": "femenino",
+    "verse": "masculino",
+    "shimmer": "femenino"
+}
+
+@router.post("/realtime/create-session")
+async def create_session(payload: SessionRequest):
+    headers = {
+        "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    gender = VOICE_GENDER_MAP.get(payload.voice, "masculino")
+    payload.instructions = (
+        f"Eres un cliente {payload.mood.lower()} llamando a un call center de una empresa de consultoría de software. "
+        f"Inventa un problema realista que explique por qué estás llamando. "
+        f"No digas que no tienes un problema. "
+        f"Sigue las siguientes indicaciones para mantener tu carácter: {payload.description}. "
+        f"Refierete a ti con pronombres {gender}. "
+        f"Recuerda: no eres el agente, eres el cliente."
+    )
+
+    #payload_dict = payload.dict( exclude_none=True)  # avoids sending `"voice": None` and conforms to what the openAI api expects
+    payload_dict = payload.dict(exclude={"mood", "description"}, exclude_none=True)
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.openai.com/v1/realtime/sessions",
+            headers=headers,
+            json=payload_dict,
+        )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+    data = response.json()
+    return {
+        "session_id": data["id"],
+        "client_secret": data["client_secret"]["value"],
+        "expires_at": data["client_secret"]["expires_at"],
+        "voice": data["voice"],
+        "model": data["model"],
+        "modalities": data["modalities"],
+    }
