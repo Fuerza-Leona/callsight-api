@@ -470,34 +470,39 @@ async def post_chat_specific_call(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 class SessionRequest(BaseModel):
     model: str = "gpt-4o-realtime-preview"
     modalities: list[str] = ["audio", "text"]
     instructions: str = "You are an angry customer calling a software consulting tech firm call center. Speak angryly. Habla en masculino"
     voice: str | None = "verse"
     mood: str = "Feliz"
-    description: str = "Menciona que tu tractor se rompió despues de que una vaca le saltó"
-    #coral o ash 
-    
-    #molesto:_
-        #verse no
-        #echo no
-        #sage? - a veces se confunde, pero bueno
-        #ballad - buenisimo
-        #coral - buenisima
-        #ash - buenisimo
+    description: str = (
+        "Menciona que tu tractor se rompió despues de que una vaca le saltó"
+    )
+    # coral o ash
 
-#alloy, ash, ballad, coral, echo, sage, shimmer, and verse
+    # molesto:_
+    # verse no
+    # echo no
+    # sage? - a veces se confunde, pero bueno
+    # ballad - buenisimo
+    # coral - buenisima
+    # ash - buenisimo
+
+
+# alloy, ash, ballad, coral, echo, sage, shimmer, and verse
 VOICE_GENDER_MAP = {
     "alloy": "femenino",
     "ash": "masculino",
     "ballad": "masculino",
     "coral": "femenino",
-    "echo": "masculino",  #no sé que sea este
+    "echo": "masculino",  # no sé que sea este
     "sage": "femenino",
     "verse": "masculino",
-    "shimmer": "femenino"
+    "shimmer": "femenino",
 }
+
 
 @router.post("/realtime/create-session")
 async def create_session(payload: SessionRequest):
@@ -515,7 +520,7 @@ async def create_session(payload: SessionRequest):
         f"Recuerda: no eres el agente, eres el cliente."
     )
 
-    #payload_dict = payload.dict( exclude_none=True)  # avoids sending `"voice": None` and conforms to what the openAI api expects
+    # payload_dict = payload.dict( exclude_none=True)  # avoids sending `"voice": None` and conforms to what the openAI api expects
     payload_dict = payload.dict(exclude={"mood", "description"}, exclude_none=True)
 
     async with httpx.AsyncClient() as client:
