@@ -63,10 +63,11 @@ class TeamsService:
         logger.info("Generated callback URI: %s", redirect_uri)
         if scopes is None:
             scopes = [
-                "User.Read",
-                "OnlineMeetings.Read",
+                "User.Read.All",
+                "OnlineMeetings.Read.All",
                 "OnlineMeetingTranscript.Read.All",
                 "Calendars.Read",
+                "OnlineMeetingArtifact.Read.All",
             ]
         return self.app.get_authorization_request_url(
             scopes=scopes,
@@ -171,6 +172,99 @@ class TeamsService:
         # Update tokens in database
         await self.store_tokens(company_id, result)
         return result["access_token"]
+
+    async def get_attendance_reports_from_meetings(
+        self, access_token: str, meetings: List[Dict]
+    ) -> List[Dict]:
+        """Get attendance reports for a list of meetings"""
+        attendance_reports = []
+
+        for meeting in meetings:
+            meeting_id = meeting.get("id")
+            if not meeting_id:
+                continue
+
+            try:
+                # First get the attendance reports for this meeting
+                reports_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/attendanceReports"
+
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        reports_url, headers={"Authorization": f"Bearer {access_token}"}
+                    )
+                    if response.status_code == 200:
+                        reports_data = response.json()
+                        reports = reports_data.get("value", [])
+
+                        for report in reports:
+                            report_id = report.get("id")
+                            if report_id:
+                                records_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/attendanceReports/{report_id}/attendanceRecords"
+
+                                records_response = await client.get(
+                                    records_url,
+                                    headers={"Authorization": f"Bearer {access_token}"},
+                                )
+
+                                participants = []
+
+                                if records_response.status_code == 200:
+                                    records_data = records_response.json()
+                                    for record in records_data.get("value", []):
+                                        participants.append(str(record["emailAddress"]))
+
+                                report["participants"] = participants
+                                report["meetingId"] = meeting_id
+
+                            attendance_reports.append(report)
+                    else:
+                        logger.info(
+                            f"Failed to get attendance reports for meeting {meeting_id}: HTTP {response.status_code} - {response.text}"
+                        )
+
+            except Exception as e:
+                logger.info(
+                    f"Failed to get attendance for meeting {meeting_id}: {str(e)}"
+                )
+                continue
+
+        return attendance_reports
+
+    async def get_user_from_meetings(
+        self, access_token: str, transcripts: List
+    ) -> List[Dict]:
+        """Get attendance reports for a list of meetings"""
+        response = []
+        print(f"Transcripts: {len(transcripts)}")
+        for transcript in transcripts:
+            meeting_id = transcript.get("meetingId")
+            meeting_organizer_id = (
+                transcript.get("meetingOrganizer", {}).get("user", {}).get("id")
+            )
+            print(f"Meeting ID: {meeting_id}, Organizer ID: {meeting_organizer_id}")
+            try:
+                # First get the attendance reports for this meeting
+                reports_url = f"https://graph.microsoft.com/v1.0/users/{meeting_organizer_id}/onlineMeetings/{meeting_id}"
+
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        reports_url, headers={"Authorization": f"Bearer {access_token}"}
+                    )
+                    if response.status_code == 200:
+                        reports_data = response.json()
+                        response.append(reports_data)
+                    else:
+                        logger.info(
+                            f"Failed to get attendance reports for meeting {meeting_id}: HTTP {response.status_code} - {response.text}"
+                        )
+
+            except Exception as e:
+                logger.info(
+                    f"Failed to get attendance for meeting {meeting_id}: {str(e)}"
+                )
+                continue
+
+        return response
 
     async def setup_notification_subscription(
         self, access_token, notification_url, expiration_minutes=43200

@@ -27,11 +27,6 @@ class TranscriptContent(BaseModel):
     content_type: Optional[str] = None
 
 
-class TranscriptsResponse(BaseModel):
-    transcripts: List[Dict[str, Any]]
-    summary: TranscriptSummary
-
-
 class AuthUrlResponse(BaseModel):
     auth_url: str
 
@@ -109,11 +104,14 @@ async def teams_callback(
     error: str = None,
     error_description: str = None,
     supabase=Depends(get_supabase),
+    current_user=Depends(get_current_user),
 ):
     """Handle Microsoft OAuth callback"""
     logger.info(
         "Callback received! code: %s... error: %s state: %s", code[:10], error, state
     )
+
+    id = current_user.id
 
     try:
         state_data = json.loads(state) if state else {}
@@ -144,6 +142,10 @@ async def teams_callback(
 
         # Store tokens in database
         await teams_service.store_tokens(company_id, token_result)
+
+        supabase.table("users").update({"isConnected": True}).eq(
+            "user_id", id
+        ).execute()
 
         # Set up webhook for notifications
         if base_url.startswith("http://"):
@@ -210,7 +212,6 @@ async def handle_notifications(request: Request, supabase=Depends(get_supabase))
 
 @router.get(
     "/transcripts",
-    response_model=TranscriptsResponse,
     summary="Get user's Teams meeting transcripts",
     description="""
     Retrieves all transcripts from the authenticated user's Teams meetings.
@@ -310,28 +311,182 @@ async def get_user_transcripts(
             access_token, all_meetings
         )
 
+        participants = await teams_service.get_attendance_reports_from_meetings(
+            access_token,
+            transcripts,
+        )
+
         if isinstance(transcripts, dict) and "error" in transcripts:
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to fetch transcripts: {transcripts['error']}",
             )
 
-        # Filter out failed transcripts for summary
+        if isinstance(participants, dict) and "error" in participants:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch participants: {transcripts['error']}",
+            )
+
         successful_transcripts = [
             t
             for t in transcripts
             if not t.get("content", "").startswith("Failed to fetch")
         ]
 
+        succesful_participants = [p for p in participants if len(p["participants"]) > 0]
+
+        successful_transcripts_and_participants = []
+        for transcript in successful_transcripts:
+            transcript_meeting_id = transcript.get("meetingId")
+            matching_participants = [
+                p
+                for p in succesful_participants
+                if p["meetingId"] == transcript_meeting_id
+            ]
+            if matching_participants:
+                successful_transcripts_and_participants.append(
+                    {
+                        "transcript": transcript["content"],
+                        "participants": matching_participants[0]["participants"],
+                    }
+                )
+
         return {
-            "transcripts": transcripts,
+            "transcripts": successful_transcripts_and_participants,
             "summary": {
                 "total_meetings": len(all_meetings),
                 "total_transcripts": len(transcripts),
-                "successful_transcripts": len(successful_transcripts),
-                "date_range": {"start": start_date, "end": end_date},
+                "successful_transcripts": len(successful_transcripts_and_participants),
+                "date_range": [start_date, end_date],
             },
         }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.info("Error in get_user_transcripts: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@router.get(
+    "/meetings_transcripts",
+    summary="Get user's Teams meeting transcripts",
+    description="""
+    Retrieves all transcripts from the authenticated user's Teams meetings.
+    
+    - Requires Microsoft Teams integration to be set up for the user's company
+    - Fetches calendar events, extracts meeting URLs, and retrieves transcripts
+    - Returns both successful and failed transcript attempts with summary statistics
+    - Date range is optional; defaults to last 90 days if not specified
+    """,
+    responses={
+        404: {"description": "User not found or Teams integration not set up"},
+        500: {"description": "Failed to fetch calendar events or transcripts"},
+    },
+)
+async def get_meetings_transcripts(
+    start_date: str = None,
+    end_date: str = None,
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase),
+):
+    """Get all transcripts for the authenticated user from their Teams meetings"""
+    try:
+        # Get user's company and tokens
+        user_response = (
+            supabase.table("users")
+            .select("company_id")
+            .eq("user_id", current_user.id)
+            .execute()
+        )
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        company_id = user_response.data[0]["company_id"]
+
+        # Check if Teams integration is set up
+        tokens_response = (
+            supabase.table("microsoft_tokens")
+            .select("*")
+            .eq("company_id", company_id)
+            .execute()
+        )
+        if not tokens_response.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Microsoft Teams integration not set up for your company",
+            )
+
+        # Initialize service and refresh token
+        teams_service = TeamsService(supabase=supabase)
+        access_token = await teams_service.refresh_token(company_id)
+
+        # Get calendar events
+        calendar_events = await teams_service.get_calendar_events(
+            access_token, start_date, end_date
+        )
+
+        if isinstance(calendar_events, dict) and "error" in calendar_events:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch calendar events: {calendar_events['error']}",
+            )
+
+        # Extract join URLs from events
+        join_urls = [
+            identifier["value"]
+            for event in calendar_events
+            for identifier in event.get("meeting_identifiers", [])
+            if identifier.get("type") == "joinUrl"
+        ]
+
+        if not join_urls:
+            return {
+                "transcripts": [],
+                "summary": {"total_meetings": 0, "total_transcripts": 0},
+            }
+
+        # Get meetings from join URLs
+        all_meetings = []
+        for url in join_urls:
+            try:
+                meetings = await teams_service.get_online_meetings_from_events(
+                    access_token, url
+                )
+                all_meetings.extend(meetings)
+            except Exception as e:
+                logger.info("Failed to get meetings for URL %s: %s", url, str(e))
+                continue
+
+        if not all_meetings:
+            return {
+                "transcripts": [],
+                "summary": {"total_meetings": 0, "total_transcripts": 0},
+            }
+
+        # Get transcripts from meetings
+        transcripts = await teams_service.get_transcripts_from_meetings(
+            access_token, all_meetings
+        )
+
+        if isinstance(transcripts, dict) and "error" in transcripts:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch transcripts: {transcripts['error']}",
+            )
+
+        successful_transcripts = [
+            t
+            for t in transcripts
+            if not t.get("content", "").startswith("Failed to fetch")
+        ]
+
+        meetings = await teams_service.get_user_from_meetings(
+            access_token, successful_transcripts
+        )
+
+        return {"meetings": meetings}
 
     except HTTPException:
         raise
@@ -470,6 +625,249 @@ async def test_transcripts(
     )
 
     return {"transcripts": transcripts}
+
+
+class ParticipantRecord(BaseModel):
+    identity: Dict[str, Any]
+    totalAttendanceInSeconds: int
+    role: Optional[str] = None
+    attendanceIntervals: List[Dict[str, Any]]
+
+
+class AttendanceReport(BaseModel):
+    id: str
+    totalParticipantCount: int
+    meetingStartDateTime: str
+    meetingEndDateTime: str
+    participants: List[ParticipantRecord]
+
+
+@router.get(
+    "/participants",
+    summary="Get meeting participants and attendance",
+    description="""
+    Retrieves attendance reports and participant information from Teams meetings.
+    
+    - Requires Microsoft Teams integration to be set up for the user's company
+    - Fetches calendar events, extracts meeting URLs, and retrieves attendance reports
+    - Returns participant details including attendance duration and intervals
+    - Date range is optional; defaults to last 90 days if not specified
+    """,
+    responses={
+        404: {"description": "User not found or Teams integration not set up"},
+        500: {"description": "Failed to fetch calendar events or attendance reports"},
+    },
+)
+async def get_meeting_participants(
+    start_date: str = None,
+    end_date: str = None,
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase),
+):
+    """Get meeting participants and attendance reports for the authenticated user"""
+    try:
+        # Get user's company and tokens (same pattern as transcripts endpoint)
+        user_response = (
+            supabase.table("users")
+            .select("company_id")
+            .eq("user_id", current_user.id)
+            .execute()
+        )
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        company_id = user_response.data[0]["company_id"]
+
+        # Check if Teams integration is set up
+        tokens_response = (
+            supabase.table("microsoft_tokens")
+            .select("*")
+            .eq("company_id", company_id)
+            .execute()
+        )
+        if not tokens_response.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Microsoft Teams integration not set up for your company",
+            )
+
+        # Initialize service and refresh token
+        teams_service = TeamsService(supabase=supabase)
+        access_token = await teams_service.refresh_token(company_id)
+
+        # Get calendar events
+        calendar_events = await teams_service.get_calendar_events(
+            access_token, start_date, end_date
+        )
+
+        if isinstance(calendar_events, dict) and "error" in calendar_events:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch calendar events: {calendar_events['error']}",
+            )
+
+        join_urls = [
+            identifier["value"]
+            for event in calendar_events
+            for identifier in event.get("meeting_identifiers", [])
+            if identifier.get("type") == "joinUrl"
+        ]
+
+        if not join_urls:
+            return {
+                "attendance_reports": [],
+                "summary": {"total_meetings": 0, "total_reports": 0},
+            }
+
+        all_meetings = []
+        for url in join_urls:
+            try:
+                meetings = await teams_service.get_online_meetings_from_events(
+                    access_token, url
+                )
+                all_meetings.extend(meetings)
+            except Exception as e:
+                logger.info("Failed to get meetings for URL %s: %s", url, str(e))
+                continue
+
+        if not all_meetings:
+            return {
+                "attendance_reports": [],
+                "summary": {"total_meetings": 0, "total_reports": 0},
+            }
+
+        # Get attendance reports from meetings
+        attendance_reports = await teams_service.get_attendance_reports_from_meetings(
+            access_token, all_meetings
+        )
+
+        if isinstance(attendance_reports, dict) and "error" in attendance_reports:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch attendance reports: {attendance_reports['error']}",
+            )
+
+        return {
+            "attendance_reports": attendance_reports,
+            "summary": {
+                "total_meetings": len(all_meetings),
+                "total_reports": len(attendance_reports),
+                "date_range": {"start": start_date, "end": end_date},
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.info("Error in get_meeting_participants: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@router.get(
+    "/users",
+    summary="Get meeting participants and attendance",
+    description="""
+    Retrieves attendance reports and participant information from Teams meetings.
+    
+    - Requires Microsoft Teams integration to be set up for the user's company
+    - Fetches calendar events, extracts meeting URLs, and retrieves attendance reports
+    - Returns participant details including attendance duration and intervals
+    - Date range is optional; defaults to last 90 days if not specified
+    """,
+    responses={
+        404: {"description": "User not found or Teams integration not set up"},
+        500: {"description": "Failed to fetch calendar events or attendance reports"},
+    },
+)
+async def get_participants(
+    start_date: str = None,
+    end_date: str = None,
+    current_user=Depends(get_current_user),
+    supabase=Depends(get_supabase),
+):
+    """Get meeting participants and attendance reports for the authenticated user"""
+    try:
+        # Get user's company and tokens (same pattern as transcripts endpoint)
+        user_response = (
+            supabase.table("users")
+            .select("company_id")
+            .eq("user_id", current_user.id)
+            .execute()
+        )
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        company_id = user_response.data[0]["company_id"]
+
+        # Check if Teams integration is set up
+        tokens_response = (
+            supabase.table("microsoft_tokens")
+            .select("*")
+            .eq("company_id", company_id)
+            .execute()
+        )
+        if not tokens_response.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Microsoft Teams integration not set up for your company",
+            )
+
+        # Initialize service and refresh token
+        teams_service = TeamsService(supabase=supabase)
+        access_token = await teams_service.refresh_token(company_id)
+
+        # Get calendar events
+        calendar_events = await teams_service.get_calendar_events(
+            access_token, start_date, end_date
+        )
+
+        if isinstance(calendar_events, dict) and "error" in calendar_events:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch calendar events: {calendar_events['error']}",
+            )
+
+        join_urls = [
+            identifier["value"]
+            for event in calendar_events
+            for identifier in event.get("meeting_identifiers", [])
+            if identifier.get("type") == "joinUrl"
+        ]
+
+        if not join_urls:
+            return {
+                "attendance_reports": [],
+                "summary": {"total_meetings": 0, "total_reports": 0},
+            }
+
+        all_meetings = []
+        for url in join_urls:
+            try:
+                meetings = await teams_service.get_online_meetings_from_events(
+                    access_token, url
+                )
+                all_meetings.extend(meetings)
+            except Exception as e:
+                logger.info("Failed to get meetings for URL %s: %s", url, str(e))
+                continue
+
+        if not all_meetings:
+            return {
+                "attendance_reports": [],
+                "summary": {"total_meetings": 0, "total_reports": 0},
+            }
+
+        participants = await teams_service.get_participants_from_meetings(
+            access_token, all_meetings
+        )
+
+        return {"participants": participants}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.info("Error in get_meeting_participants: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 
 @router.get("/test-config")
