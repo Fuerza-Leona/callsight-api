@@ -1,5 +1,13 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
+from openai import OpenAI
+from app.services.analysis_service import (
+    analyze_messages_sentiment_openai,
+    extract_important_topics,
+    summarize_conversation,
+)
+from app.services.storage_service import process_topics
 from app.services.teams_service import TeamsService
 from app.core.config import settings
 from app.api.deps import get_current_user
@@ -9,6 +17,13 @@ import httpx
 import logging
 from pydantic import BaseModel
 from typing import Dict, Optional, Any, List
+
+from app.services.transcription_service import (
+    BATCH_SIZE,
+    EMBEDDING_MODEL,
+    classify_speakers_with_gpt_transcript_version,
+    convert_messages_to_chunks,
+)
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 logger = logging.getLogger("uvicorn.app")
@@ -111,8 +126,6 @@ async def teams_callback(
         "Callback received! code: %s... error: %s state: %s", code[:10], error, state
     )
 
-    id = current_user.id
-
     try:
         state_data = json.loads(state) if state else {}
         company_id = state_data.get("company_id")
@@ -144,7 +157,7 @@ async def teams_callback(
         await teams_service.store_tokens(company_id, token_result)
 
         supabase.table("users").update({"isConnected": True}).eq(
-            "user_id", id
+            "user_id", current_user.id
         ).execute()
 
         # Set up webhook for notifications
@@ -167,7 +180,7 @@ async def teams_callback(
         devenv = settings.NODE_ENV
 
         redirect_url = (
-            f"{base_url}/perfil"
+            f"{base_url}/calls/dashboard"
             if devenv != "development"
             else "http://localhost:3000/perfil"
         )
@@ -311,21 +324,10 @@ async def get_user_transcripts(
             access_token, all_meetings
         )
 
-        participants = await teams_service.get_attendance_reports_from_meetings(
-            access_token,
-            transcripts,
-        )
-
         if isinstance(transcripts, dict) and "error" in transcripts:
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to fetch transcripts: {transcripts['error']}",
-            )
-
-        if isinstance(participants, dict) and "error" in participants:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to fetch participants: {transcripts['error']}",
             )
 
         successful_transcripts = [
@@ -334,30 +336,12 @@ async def get_user_transcripts(
             if not t.get("content", "").startswith("Failed to fetch")
         ]
 
-        succesful_participants = [p for p in participants if len(p["participants"]) > 0]
-
-        successful_transcripts_and_participants = []
-        for transcript in successful_transcripts:
-            transcript_meeting_id = transcript.get("meetingId")
-            matching_participants = [
-                p
-                for p in succesful_participants
-                if p["meetingId"] == transcript_meeting_id
-            ]
-            if matching_participants:
-                successful_transcripts_and_participants.append(
-                    {
-                        "transcript": transcript["content"],
-                        "participants": matching_participants[0]["participants"],
-                    }
-                )
-
         return {
-            "transcripts": successful_transcripts_and_participants,
+            "transcripts": successful_transcripts,
             "summary": {
                 "total_meetings": len(all_meetings),
                 "total_transcripts": len(transcripts),
-                "successful_transcripts": len(successful_transcripts_and_participants),
+                "successful_transcripts": len(successful_transcripts),
                 "date_range": [start_date, end_date],
             },
         }
@@ -465,28 +449,178 @@ async def get_meetings_transcripts(
                 "summary": {"total_meetings": 0, "total_transcripts": 0},
             }
 
-        # Get transcripts from meetings
-        transcripts = await teams_service.get_transcripts_from_meetings(
-            access_token, all_meetings
+        all_meetings_ids = [meeting["id"] for meeting in all_meetings]
+        print(f"All meetings IDs: {all_meetings_ids}")
+        user_converations = (
+            supabase.table("participants")
+            .select("conversation_id")
+            .eq("user_id", current_user.id)
+            .execute()
         )
 
-        if isinstance(transcripts, dict) and "error" in transcripts:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to fetch transcripts: {transcripts['error']}",
+        saved_meetings = []
+        for conversation in user_converations.data:
+            conversation_id = conversation["conversation_id"]
+            meeting = (
+                supabase.table("conversations")
+                .select("meeting_id")
+                .eq("conversation_id", conversation_id)
+                .execute()
             )
+            if meeting.data:
+                saved_meetings.append(meeting.data[0]["meeting_id"])
+
+        missing_meetings = []
+        for meeting_id in all_meetings_ids:
+            if meeting_id not in saved_meetings:
+                missing_meetings.append(meeting_id)
+
+        # Get transcripts from meetings
+        transcripts = await teams_service.get_transcripts_from_meetings(
+            access_token, missing_meetings
+        )
 
         successful_transcripts = [
             t
             for t in transcripts
-            if not t.get("content", "").startswith("Failed to fetch")
+            if len(t["content"]) > 0 and "Failed to fetch" not in t["content"][0]
         ]
 
         meetings = await teams_service.get_user_from_meetings(
             access_token, successful_transcripts
         )
 
-        return {"meetings": meetings}
+        data = []
+
+        for meeting in meetings:
+            attendance_report = meeting["attendanceReports"][0]
+            start = attendance_report[
+                "meetingStartDateTime"
+            ]  # 2025-06-03T16:00:07.962Z
+            end = attendance_report["meetingEndDateTime"]  # 2025-06-03T16:08:29.254Z"
+
+            start_time = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            end_time = datetime.fromisoformat(end.replace("Z", "+00:00"))
+
+            duration = int((end_time - start_time).total_seconds())
+
+            audio = (
+                supabase.table("audio_files")
+                .insert(
+                    {
+                        "duration_seconds": duration,
+                        "source": "onedrive",
+                        "uploaded_by": current_user.id,
+                    }
+                )
+                .execute()
+            )
+
+            audio_id = audio.data[0]["audio_id"]
+
+            result = (
+                supabase.table("conversations")
+                .insert(
+                    {
+                        "start_time": start_time.isoformat(),
+                        "end_time": end_time.isoformat(),
+                        "company_id": company_id,
+                        "meeting_id": meeting["meetingId"],
+                        "audio_id": audio_id,
+                    }
+                )
+                .execute()
+            )
+
+            conversation_id = result.data[0]["conversation_id"]
+
+            for participant in attendance_report["participants"]:
+                email = participant["emailAddress"]
+                user_response = (
+                    supabase.table("users")
+                    .select("user_id")
+                    .eq("email", email)
+                    .execute()
+                )
+                if user_response.data:
+                    user_id = user_response.data[0]["user_id"]
+                    supabase.table("participants").insert(
+                        {"conversation_id": conversation_id, "user_id": user_id}
+                    ).execute()
+            messages = meeting["transcript"]["content"]
+            roles = classify_speakers_with_gpt_transcript_version(messages)
+            sentiment_analysis = await analyze_messages_sentiment_openai(messages)
+
+            for i, message in enumerate(sentiment_analysis["messages"]):
+                speaker = message["text"].split(":")[0].strip()
+                if speaker in roles:
+                    message["role"] = roles[speaker]
+                else:
+                    message["role"] = None
+
+                message["offsetmilliseconds"] = i
+
+                supabase.table("messages").insert(
+                    {
+                        "conversation_id": conversation_id,
+                        "text": message["text"],
+                        "role": message["role"],
+                        "offsetmilliseconds": message["offsetmilliseconds"],
+                        "positive": message["positive"],
+                        "negative": message["negative"],
+                        "neutral": message["neutral"],
+                        "confidence": message["confidence"],
+                    }
+                ).execute()
+
+            summary = summarize_conversation(sentiment_analysis["messages"])
+
+            supabase.table("summaries").insert(
+                {
+                    "conversation_id": conversation_id,
+                    "problem": summary["Issue task"]["issue"],
+                    "solution": summary["Resolution task"]["resolution"],
+                }
+            ).execute()
+
+            topics = extract_important_topics(sentiment_analysis["messages"])
+            await process_topics(supabase, topics, conversation_id)
+
+            chunks = convert_messages_to_chunks(meeting["transcript"]["content"])
+
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+            embeddings = []
+            for batch_start in range(0, len(chunks), BATCH_SIZE):
+                batch_end = batch_start + BATCH_SIZE
+                batch = chunks[batch_start:batch_end]
+                response = client.embeddings.create(model=EMBEDDING_MODEL, input=batch)
+                for i, e in enumerate(response.data):
+                    assert i == e.index
+                    global_index = batch_start + i
+                    embeddings.append(
+                        {
+                            "chunk_index": global_index,
+                            "content": batch[i],
+                            "vector": e.embedding,
+                        }
+                    )
+
+            for embedding in embeddings:
+                embedding["conversation_id"] = conversation_id
+
+            supabase.table("conversation_chunks").insert(embeddings).execute()
+
+            data.append(
+                {
+                    "meeting": meeting,
+                    "roles": roles,
+                    "sentiment_analysis": sentiment_analysis,
+                    "summary": summary,
+                    "topics": topics,
+                }
+            )
+        return {"meetings": len(meetings), "data": data}
 
     except HTTPException:
         raise

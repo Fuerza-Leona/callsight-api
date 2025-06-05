@@ -63,11 +63,10 @@ class TeamsService:
         logger.info("Generated callback URI: %s", redirect_uri)
         if scopes is None:
             scopes = [
-                "User.Read.All",
-                "OnlineMeetings.Read.All",
                 "OnlineMeetingTranscript.Read.All",
                 "Calendars.Read",
                 "OnlineMeetingArtifact.Read.All",
+                "User.Read.All",
             ]
         return self.app.get_authorization_request_url(
             scopes=scopes,
@@ -182,20 +181,135 @@ class TeamsService:
         for meeting in meetings:
             meeting_id = meeting.get("id")
             if not meeting_id:
+                logger.warning(f"Meeting missing ID: {meeting}")
                 continue
 
             try:
                 # First get the attendance reports for this meeting
                 reports_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/attendanceReports"
 
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(
-                        reports_url, headers={"Authorization": f"Bearer {access_token}"}
+                logger.info(f"Fetching attendance reports from: {reports_url}")
+
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await self._fetch_with_retry(
+                        client, reports_url, {"Authorization": f"Bearer {access_token}"}
                     )
+
                     if response.status_code == 200:
                         reports_data = response.json()
                         reports = reports_data.get("value", [])
 
+                        logger.info(
+                            f"Found {len(reports)} attendance reports for meeting {meeting_id}"
+                        )
+
+                        for report in reports:
+                            report_id = report.get("id")
+                            if not report_id:
+                                logger.warning(f"Report missing ID: {report}")
+                                continue
+
+                            records_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/attendanceReports/{report_id}/attendanceRecords"
+
+                            logger.info(
+                                f"Fetching attendance records from: {records_url}"
+                            )
+
+                            records_response = await self._fetch_with_retry(
+                                client,
+                                records_url,
+                                {"Authorization": f"Bearer {access_token}"},
+                            )
+
+                            participants = []
+
+                            if records_response.status_code == 200:
+                                records_data = records_response.json()
+                                for record in records_data.get("value", []):
+                                    email_address = record.get("emailAddress")
+                                    if email_address:
+                                        participants.append(str(email_address))
+                                    else:
+                                        logger.warning(
+                                            f"Record missing emailAddress: {record}"
+                                        )
+
+                                report["participants"] = participants
+                                report["meetingId"] = meeting_id
+                                attendance_reports.append(report)
+
+                                logger.info(
+                                    f"Added report with {len(participants)} participants"
+                                )
+                            else:
+                                logger.error(
+                                    f"Failed to get attendance records for report {report_id}: "
+                                    f"HTTP {records_response.status_code} - {records_response.text}"
+                                )
+
+                    elif response.status_code == 404:
+                        logger.warning(
+                            f"Meeting {meeting_id} not found or no attendance data available"
+                        )
+                    elif response.status_code == 403:
+                        logger.error(
+                            f"Access denied for meeting {meeting_id} - check permissions"
+                        )
+                    else:
+                        logger.error(
+                            f"Failed to get attendance reports for meeting {meeting_id}: "
+                            f"HTTP {response.status_code} - {response.text}"
+                        )
+
+            except httpx.TimeoutException as e:
+                logger.error(
+                    f"Timeout getting attendance for meeting {meeting_id}: {str(e)}"
+                )
+                continue
+            except Exception as e:
+                logger.error(
+                    f"Failed to get attendance for meeting {meeting_id}: {str(e)}",
+                    exc_info=True,
+                )
+                continue
+
+        logger.info(f"Returning {len(attendance_reports)} total attendance reports")
+        return attendance_reports
+
+    async def get_user_from_meetings(
+        self, access_token: str, transcripts: List
+    ) -> List[Dict]:
+        """Get attendance reports for a list of meetings"""
+        response = []
+
+        for transcript in transcripts:
+            meeting_id = transcript.get("meetingId")
+            meeting_organizer_id = (
+                transcript.get("meetingOrganizer", {}).get("user", {}).get("id")
+            )
+            call_id = transcript.get("callId")
+            try:
+                # Use the correct endpoint for completed meetings - attendance reports
+                reports_url = f"https://graph.microsoft.com/v1.0/me/onlineMeetings/{meeting_id}/attendanceReports"
+
+                async with httpx.AsyncClient() as client:
+                    # First get the attendance reports
+                    reports_response = await client.get(
+                        reports_url, headers={"Authorization": f"Bearer {access_token}"}
+                    )
+
+                    if reports_response.status_code == 200:
+                        reports_data = reports_response.json()
+                        reports = reports_data.get("value", [])
+
+                        meeting_data = {
+                            "meetingId": meeting_id,
+                            "organizerId": meeting_organizer_id,
+                            "callId": call_id,
+                            "attendanceReports": [],
+                        }
+
+                        # For each attendance report, get the detailed records
                         for report in reports:
                             report_id = report.get("id")
                             if report_id:
@@ -206,56 +320,36 @@ class TeamsService:
                                     headers={"Authorization": f"Bearer {access_token}"},
                                 )
 
-                                participants = []
-
                                 if records_response.status_code == 200:
                                     records_data = records_response.json()
+                                    participants = []
+
                                     for record in records_data.get("value", []):
-                                        participants.append(str(record["emailAddress"]))
+                                        participant_info = {
+                                            "emailAddress": record.get("emailAddress"),
+                                            "identity": record.get("identity", {}),
+                                            "totalAttendanceInSeconds": record.get(
+                                                "totalAttendanceInSeconds", 0
+                                            ),
+                                            "role": record.get("role"),
+                                            "attendanceIntervals": record.get(
+                                                "attendanceIntervals", []
+                                            ),
+                                        }
+                                        participants.append(participant_info)
 
-                                report["participants"] = participants
-                                report["meetingId"] = meeting_id
+                                    report["participants"] = participants
+                                    meeting_data["attendanceReports"].append(report)
+                                    meeting_data["transcript"] = transcript
+                                else:
+                                    logger.info(
+                                        f"Failed to get attendance records for report {report_id}: HTTP {records_response.status_code} - {records_response.text}"
+                                    )
 
-                            attendance_reports.append(report)
+                        response.append(meeting_data)
                     else:
                         logger.info(
-                            f"Failed to get attendance reports for meeting {meeting_id}: HTTP {response.status_code} - {response.text}"
-                        )
-
-            except Exception as e:
-                logger.info(
-                    f"Failed to get attendance for meeting {meeting_id}: {str(e)}"
-                )
-                continue
-
-        return attendance_reports
-
-    async def get_user_from_meetings(
-        self, access_token: str, transcripts: List
-    ) -> List[Dict]:
-        """Get attendance reports for a list of meetings"""
-        response = []
-        print(f"Transcripts: {len(transcripts)}")
-        for transcript in transcripts:
-            meeting_id = transcript.get("meetingId")
-            meeting_organizer_id = (
-                transcript.get("meetingOrganizer", {}).get("user", {}).get("id")
-            )
-            print(f"Meeting ID: {meeting_id}, Organizer ID: {meeting_organizer_id}")
-            try:
-                # First get the attendance reports for this meeting
-                reports_url = f"https://graph.microsoft.com/v1.0/users/{meeting_organizer_id}/onlineMeetings/{meeting_id}"
-
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(
-                        reports_url, headers={"Authorization": f"Bearer {access_token}"}
-                    )
-                    if response.status_code == 200:
-                        reports_data = response.json()
-                        response.append(reports_data)
-                    else:
-                        logger.info(
-                            f"Failed to get attendance reports for meeting {meeting_id}: HTTP {response.status_code} - {response.text}"
+                            f"Failed to get attendance reports for meeting {meeting_id}: HTTP {reports_response.status_code} - {reports_response.text}"
                         )
 
             except Exception as e:
@@ -431,18 +525,17 @@ class TeamsService:
             "Accept": "text/vtt",
         }
 
-        meeting_ids = [meeting["id"] for meeting in meetings]
-        logger.info("Processing %s meetings for transcripts", len(meeting_ids))
+        logger.info("Processing %s meetings for transcripts", len(meetings))
 
         transcript_contents = []
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
-                for i, meeting_id in enumerate(meeting_ids):
+                for i, meeting_id in enumerate(meetings):
                     logger.info(
                         "Processing meeting %s/%s: %s",
                         i + 1,
-                        len(meeting_ids),
+                        len(meetings),
                         meeting_id,
                     )
                     try:
@@ -650,9 +743,9 @@ class TeamsService:
         # Extract speaker and text
         speaker_matches = re.findall(r"<v ([^>]+)>([^<]+)</v>", content)
 
-        # Format as "Speaker: text"
+        # Format as "Speaker: text" array
         formatted_text = []
         for speaker, text in speaker_matches:
             formatted_text.append(f"{speaker}: {text.strip()}")
 
-        return "\n".join(formatted_text)
+        return formatted_text

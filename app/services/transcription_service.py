@@ -18,6 +18,11 @@ def convert_to_chunks(transcript) -> list[str]:
     return split_strings_from_transcript(joined, MAX_TOKENS, GPT_MODEL)
 
 
+def convert_messages_to_chunks(transcript) -> list[str]:
+    joined = "\n".join(transcript)
+    return split_strings_from_transcript(joined, MAX_TOKENS, GPT_MODEL)
+
+
 def tokenize(text: str, model: str = GPT_MODEL) -> int:
     """Return the number of tokens in a string."""
     encoding = tiktoken.encoding_for_model(model)
@@ -179,6 +184,35 @@ def classify_speakers_with_gpt(utterances):
     for i, utterance in enumerate(utterances):
         sample_conversation.append(f"Speaker {utterance.speaker}: {utterance.text}")
 
+    conversation_text = "\n".join(sample_conversation)
+
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an expert in analyzing call center conversations. Identify which speaker is the agent and which is the client.",
+            },
+            {
+                "role": "user",
+                "content": f"Below is the beginning of a call center conversation in Spanish. Identify which speaker is the agent and which is the client. Return your answer as a simple JSON with speaker letters as keys and 'agent' or 'client' as values.\n\n{conversation_text}",
+            },
+        ],
+        response_format={"type": "json_object"},
+    )
+
+    try:
+        roles = eval(response.choices[0].message.content)
+        return roles
+    except Exception as e:
+        print(f"Error parsing speaker roles: {e}")
+        return {}
+
+
+def classify_speakers_with_gpt_transcript_version(utterances):
+    sample_conversation = utterances.copy()
     conversation_text = "\n".join(sample_conversation)
 
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
