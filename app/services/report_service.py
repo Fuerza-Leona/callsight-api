@@ -298,7 +298,11 @@ class ChartGenerator:
         # Total calls gauge
         conversation_count = summary_data.get("conversation_count", 0)
         self._create_kpi_box(
-            ax1, conversation_count, "Llamadas\nTotales", self.config.color_palette[0], max_value=1000
+            ax1,
+            conversation_count,
+            "Llamadas\nTotales",
+            self.config.color_palette[0],
+            max_value=1000,
         )
 
         # Average duration gauge
@@ -308,7 +312,7 @@ class ChartGenerator:
             f"{average_minutes:.1f}",
             "Duración\nPromedio (min)",
             self.config.color_palette[1],
-            max_value = 60
+            max_value=60,
         )
 
         # Satisfaction gauge
@@ -319,7 +323,7 @@ class ChartGenerator:
             satisfaction_display,
             "Satisfacción\nPromedio",
             self.config.color_palette[2],
-            max_value = 1.0
+            max_value=1.0,
         )
 
         # Response time (mock data for example)
@@ -329,7 +333,7 @@ class ChartGenerator:
             f"{response_time:.0f}s",
             "Tiempo de\nRespuesta",
             self.config.color_palette[3],
-            120
+            120,
         )
 
         plt.tight_layout()
@@ -352,44 +356,53 @@ class ChartGenerator:
 
     def _create_kpi_box(self, ax, value, label, color, max_value=None):
         """Create a KPI box visualization"""
-        
+
         # Extract numeric value
         if isinstance(value, str):
             import re
-            numeric_match = re.search(r'[\d.]+', value)
+
+            numeric_match = re.search(r"[\d.]+", value)
             if numeric_match:
                 numeric_value = float(numeric_match.group())
                 # If it's a percentage, convert back to decimal
-                if '%' in value:
+                if "%" in value:
                     numeric_value = numeric_value / 100
             else:
                 numeric_value = 0
         else:
             numeric_value = float(value) if value else 0
-        
+
         # Create half-donut gauge
         if max_value and numeric_value > 0:
             # Calculate fill percentage
             fill_percentage = min(numeric_value / max_value, 1.0)
-            
+
             # Create background arc (gray)
             theta1, theta2 = 0, 180  # Half circle
             background_wedge = patches.Wedge(
-                (0.5, 0.3), 0.35, theta1, theta2,
-                width=0.15, facecolor='#E5E5E5', 
-                transform=ax.transAxes
+                (0.5, 0.3),
+                0.35,
+                theta1,
+                theta2,
+                width=0.15,
+                facecolor="#E5E5E5",
+                transform=ax.transAxes,
             )
             ax.add_patch(background_wedge)
-            
+
             # Create filled arc based on percentage
             fill_wedge = patches.Wedge(
-                (0.5, 0.3), 0.35, 
-                theta2 * (1 - fill_percentage), theta2,
-                width=0.15, facecolor=color, alpha=0.8,
-                transform=ax.transAxes
+                (0.5, 0.3),
+                0.35,
+                theta2 * (1 - fill_percentage),
+                theta2,
+                width=0.15,
+                facecolor=color,
+                alpha=0.8,
+                transform=ax.transAxes,
             )
             ax.add_patch(fill_wedge)
-        
+
         # Value text
         ax.text(
             0.5,
@@ -402,7 +415,7 @@ class ChartGenerator:
             color=color,
             transform=ax.transAxes,
         )
-        
+
         # Label text
         ax.text(
             0.5,
@@ -480,7 +493,8 @@ class InsightsGenerator:
             top_topic = topics_data[0]
             insights.append(
                 SpanishTexts.TOP_TOPIC_INSIGHT.format(
-                    topic=top_topic.get("topic", "N/A"), count=top_topic.get("amount", 0)
+                    topic=top_topic.get("topic", "N/A"),
+                    count=top_topic.get("amount", 0),
                 )
             )
 
