@@ -4,7 +4,7 @@ from fastapi.responses import RedirectResponse
 from openai import OpenAI
 from app.services.analysis_service import (
     analyze_messages_sentiment_openai,
-    extract_important_topics,
+    extract_important_topics2,
     summarize_conversation,
 )
 from app.services.storage_service import process_topics
@@ -583,7 +583,7 @@ async def get_meetings_transcripts(
                 }
             ).execute()
 
-            topics = extract_important_topics(sentiment_analysis["messages"])
+            topics = extract_important_topics2(sentiment_analysis["messages"])
             await process_topics(supabase, topics, conversation_id)
 
             chunks = convert_messages_to_chunks(meeting["transcript"]["content"])

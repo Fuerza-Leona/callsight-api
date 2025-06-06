@@ -169,6 +169,87 @@ async def analyze_messages_sentiment_openai(messages: List[str]) -> Dict:
 def extract_important_topics(transcript):
     """Extracts the 3 most important topics from a conversation transcript using OpenAI."""
     # Prepare the conversation text
+    try:
+        conversation_text = "\n".join(
+            [f"Speaker {phrase['speaker']}: {phrase['text']}" for phrase in transcript]
+        )
+    except Exception as e:
+        print(f"Error preparing conversation text: {str(e)}")
+        return []
+
+    try:
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    except Exception as e:
+        print(f"Error creating OpenAI client: {str(e)}")
+        return []
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Eres un experto en análisis de conversaciones de call center. Identifica los 3 temas más importantes discutidos en la conversación.",
+                },
+                {
+                    "role": "user",
+                    "content": f"A continuación hay una transcripción de una conversación de call center en español. Identifica los 3 temas más importantes que se discutieron. Devuelve tu respuesta como un JSON con una lista de 3 temas importantes, cada tema debe de tener una longitud no mayor a 3 palabras.\n\n{conversation_text}",
+                },
+            ],
+            response_format={"type": "json_object"},
+        )
+    except Exception as e:
+        print(f"Error making OpenAI API call: {str(e)}")
+        return []
+
+    try:
+        response_content = response.choices[0].message.content
+    except Exception as e:
+        print(f"Error extracting response content: {str(e)}")
+        return []
+
+    try:
+        topics_data = json.loads(response_content)
+        topics = topics_data.get("temas_importantes", [])
+
+        # Try alternative keys if the expected one doesn't exist
+        if not topics:
+            alternative_keys = ["topics", "important_topics", "temas", "topicos"]
+            for key in alternative_keys:
+                if key in topics_data:
+                    topics = topics_data[key]
+                    print(f"Found topics using key '{key}': {topics}")
+                    break
+
+            if not topics:
+                print(
+                    f"No topics found with any key. Available keys: {list(topics_data.keys())}"
+                )
+
+        return topics
+    except json.JSONDecodeError:
+        try:
+            # Try to clean the response content
+            cleaned_content = response_content.strip()
+            if cleaned_content.startswith("```json"):
+                cleaned_content = (
+                    cleaned_content.replace("```json", "").replace("```", "").strip()
+                )
+            topics_data = json.loads(cleaned_content)
+            topics = topics_data.get("temas_importantes", [])
+            return topics
+        except Exception as clean_error:
+            print(f"Error even after cleaning: {str(clean_error)}")
+            return []
+    except Exception as e:
+        print(f"Error extracting topics: {str(e)}")
+        print(f"Exception type: {type(e)}")
+        return []
+
+
+def extract_important_topics2(transcript):
+    """Extracts the 3 most important topics from a conversation transcript using OpenAI."""
+    # Prepare the conversation text
     conversation_text = "\n".join([phrase["text"] for phrase in transcript])
 
     client = OpenAI(api_key=settings.OPENAI_API_KEY)

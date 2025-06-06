@@ -36,8 +36,8 @@ async def get_topics(
     limit = request.limit
 
     try:
-        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        start_date = datetime.strptime(startDate, "%Y-%m-%d::%H:%M:%S").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d::%H:%M:%S").date()
         if start_date > end_date:
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:

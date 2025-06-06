@@ -21,7 +21,7 @@ def parse_inputs(date_string: str, participants: str) -> Tuple[datetime, List[st
     date_time = datetime.now()
     if date_string:
         try:
-            date_time = datetime.strptime(date_string, "%Y-%m-%d %H:%M")
+            date_time = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             raise HTTPException(
                 status_code=400, detail="Invalid date format. Expected YYYY-MM-DD HH:MM"

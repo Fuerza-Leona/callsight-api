@@ -47,10 +47,9 @@ async def get_insights(
             ],
         )
         json_string = response.output_text
+        print(f"JSON String: {json_string}")
         parsed = json.loads(json_string)
         return parsed
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
