@@ -19,7 +19,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 
 import httpx
-from typing import Optional, Literal, Union
+from typing import Optional, Literal
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
@@ -471,13 +471,14 @@ async def post_chat_specific_call(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 class NoiseReductionConfig(BaseModel):
     type: Literal["near_field", "far_field"]
 
 
 class SessionRequest(BaseModel):
     model: str = "gpt-4o-realtime-preview"
-    #model: str = "gpt-4o-realtime-preview-2025-06-03"
+    # model: str = "gpt-4o-realtime-preview-2025-06-03"
     modalities: list[str] = ["audio", "text"]
     instructions: str = "You are an angry customer calling a software consulting tech firm call center. Speak angryly. Habla en masculino"
     voice: str | None = "verse"
@@ -485,7 +486,9 @@ class SessionRequest(BaseModel):
     description: str = (
         "Menciona que tu tractor se rompió despues de que una vaca le saltó"
     )
-    input_audio_noise_reduction: Optional[NoiseReductionConfig] = NoiseReductionConfig(type="far_field")
+    input_audio_noise_reduction: Optional[NoiseReductionConfig] = NoiseReductionConfig(
+        type="far_field"
+    )
     # coral o ash
 
     # molesto:_
