@@ -117,13 +117,6 @@ class TeamsService:
                 .execute()
             )
 
-            existing = (
-                self.supabase.table("microsoft_tokens")
-                .select("*")
-                .eq("company_id", company_id)
-                .execute()
-            )
-
             if existing.data and len(existing.data) > 0:
                 # Update existing record
                 _ = (
