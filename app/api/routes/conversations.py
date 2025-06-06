@@ -11,8 +11,6 @@ from app.db.session import get_supabase
 from app.api.deps import get_current_user
 from app.api.routes.auth import check_admin_role
 
-from dateutil.relativedelta import relativedelta
-
 
 from app.api.routes.auth import check_user_role
 
@@ -69,10 +67,16 @@ class ConversationsFilteringParameters(BaseModel):
     clients: Optional[List[str]] = None
     agents: Optional[List[str]] = None
     companies: Optional[List[str]] = None
-    startDate: Optional[str] = datetime.now().replace(day=1).strftime("%Y-%m-%d")
+    startDate: Optional[str] = (
+        datetime.now()
+        .replace(day=1, hour=0, minute=0, second=0)
+        .strftime("%Y-%m-%d::%H:%M:%S")
+    )
     endDate: Optional[str] = (
-        datetime.now().replace(day=1) + relativedelta(months=1, days=-1)
-    ).strftime("%Y-%m-%d")
+        datetime.now()
+        .replace(hour=23, minute=59, second=59)
+        .strftime("%Y-%m-%d::%H:%M:%S")
+    )
 
 
 class MyConversationsFilteringParameters(ConversationsFilteringParameters):
@@ -118,8 +122,8 @@ async def get_mine(
             )
     else:
         try:
-            start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-            end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+            start_date = datetime.strptime(startDate, "%Y-%m-%d::%H:%M:%S").date()
+            end_date = datetime.strptime(endDate, "%Y-%m-%d::%H:%M:%S").date()
             if start_date > end_date:
                 raise ValueError("Start date cannot be after end date")
 
@@ -241,8 +245,8 @@ async def get_emotions(
     user_id = current_user.id
 
     try:
-        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        start_date = datetime.strptime(startDate, "%Y-%m-%d::%H:%M:%S").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d::%H:%M:%S").date()
         if start_date > end_date:
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:
@@ -549,8 +553,8 @@ async def get_conversation_summary(
     user_id = current_user.id
 
     try:
-        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        start_date = datetime.strptime(startDate, "%Y-%m-%d::%H:%M:%S").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d::%H:%M:%S").date()
         if start_date > end_date:
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:
@@ -593,8 +597,8 @@ async def get_conversations_categories(
     user_id = current_user.id
 
     try:
-        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        start_date = datetime.strptime(startDate, "%Y-%m-%d::%H:%M:%S").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d::%H:%M:%S").date()
         if start_date > end_date:
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:
@@ -637,8 +641,8 @@ async def get_conversations_ratings(
     user_id = current_user.id
 
     try:
-        start_date = datetime.strptime(startDate, "%Y-%m-%d").date()
-        end_date = datetime.strptime(endDate, "%Y-%m-%d").date()
+        start_date = datetime.strptime(startDate, "%Y-%m-%d::%H:%M:%S").date()
+        end_date = datetime.strptime(endDate, "%Y-%m-%d::%H:%M:%S").date()
         if start_date > end_date:
             raise ValueError("Start date cannot be after end date")
     except ValueError as e:

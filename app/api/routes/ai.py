@@ -74,7 +74,7 @@ async def alternative_analysis(
         ..., description="Audio file of the call recording (MP3, MP4, or WAV format)"
     ),
     date_string: str = Form(
-        ..., description="Date and time of the call in format 'YYYY-MM-DD HH:MM'"
+        ..., description="Date and time of the call in format 'YYYY-MM-DD HH:MM:SS'"
     ),
     participants: str = Form(
         "", description="Comma-separated list of participant UUIDs"
