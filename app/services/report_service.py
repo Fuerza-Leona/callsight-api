@@ -177,7 +177,7 @@ class ChartGenerator:
         # Get top 8 topics
         top_topics = topics_data[:8]
         topics = [topic.get("topic", "N/A") for topic in reversed(top_topics)]
-        counts = [topic.get("count", 0) for topic in reversed(top_topics)]
+        counts = [topic.get("amount", 0) for topic in reversed(top_topics)]
 
         # Create horizontal bar chart
         bars = ax.barh(topics, counts, color=self.config.color_palette[0], alpha=0.8)
@@ -296,27 +296,34 @@ class ChartGenerator:
         )
 
         # Total calls gauge
-        total_calls = summary_data.get("total_calls", 0)
+        conversation_count = summary_data.get("conversation_count", 0)
         self._create_kpi_box(
-            ax1, total_calls, "Llamadas\nTotales", self.config.color_palette[0]
+            ax1,
+            conversation_count,
+            "Llamadas\nTotales",
+            self.config.color_palette[0],
+            max_value=1000,
         )
 
         # Average duration gauge
-        avg_duration = summary_data.get("avg_duration", 0)
+        average_minutes = summary_data.get("average_minutes", 0)
         self._create_kpi_box(
             ax2,
-            f"{avg_duration:.1f}",
+            f"{average_minutes:.1f}",
             "Duración\nPromedio (min)",
             self.config.color_palette[1],
+            max_value=60,
         )
 
         # Satisfaction gauge
-        satisfaction = summary_data.get("avg_satisfaction", 0) * 100
+        satisfaction_raw = summary_data.get("avg_satisfaction", 0)
+        satisfaction_display = f"{satisfaction_raw * 100:.1f}%"
         self._create_kpi_box(
             ax3,
-            f"{satisfaction:.1f}%",
+            satisfaction_display,
             "Satisfacción\nPromedio",
             self.config.color_palette[2],
+            max_value=1.0,
         )
 
         # Response time (mock data for example)
@@ -326,6 +333,7 @@ class ChartGenerator:
             f"{response_time:.0f}s",
             "Tiempo de\nRespuesta",
             self.config.color_palette[3],
+            120,
         )
 
         plt.tight_layout()
@@ -346,8 +354,56 @@ class ChartGenerator:
 
         return chart_bytes
 
-    def _create_kpi_box(self, ax, value, label, color):
+    def _create_kpi_box(self, ax, value, label, color, max_value=None):
         """Create a KPI box visualization"""
+
+        # Extract numeric value
+        if isinstance(value, str):
+            import re
+
+            numeric_match = re.search(r"[\d.]+", value)
+            if numeric_match:
+                numeric_value = float(numeric_match.group())
+                # If it's a percentage, convert back to decimal
+                if "%" in value:
+                    numeric_value = numeric_value / 100
+            else:
+                numeric_value = 0
+        else:
+            numeric_value = float(value) if value else 0
+
+        # Create half-donut gauge
+        if max_value and numeric_value > 0:
+            # Calculate fill percentage
+            fill_percentage = min(numeric_value / max_value, 1.0)
+
+            # Create background arc (gray)
+            theta1, theta2 = 0, 180  # Half circle
+            background_wedge = patches.Wedge(
+                (0.5, 0.3),
+                0.35,
+                theta1,
+                theta2,
+                width=0.15,
+                facecolor="#E5E5E5",
+                transform=ax.transAxes,
+            )
+            ax.add_patch(background_wedge)
+
+            # Create filled arc based on percentage
+            fill_wedge = patches.Wedge(
+                (0.5, 0.3),
+                0.35,
+                theta2 * (1 - fill_percentage),
+                theta2,
+                width=0.15,
+                facecolor=color,
+                alpha=0.8,
+                transform=ax.transAxes,
+            )
+            ax.add_patch(fill_wedge)
+
+        # Value text
         ax.text(
             0.5,
             0.7,
@@ -359,6 +415,8 @@ class ChartGenerator:
             color=color,
             transform=ax.transAxes,
         )
+
+        # Label text
         ax.text(
             0.5,
             0.3,
@@ -435,7 +493,8 @@ class InsightsGenerator:
             top_topic = topics_data[0]
             insights.append(
                 SpanishTexts.TOP_TOPIC_INSIGHT.format(
-                    topic=top_topic.get("topic", "N/A"), count=top_topic.get("count", 0)
+                    topic=top_topic.get("topic", "N/A"),
+                    count=top_topic.get("amount", 0),
                 )
             )
 
@@ -458,7 +517,7 @@ class InsightsGenerator:
         )
 
         # Duration insights
-        duration = summary_data.get("avg_duration", 0)
+        duration = summary_data.get("average_minutes", 0)
         insights.append(SpanishTexts.DURATION_INSIGHT.format(duration=duration))
 
         # Performance insights
@@ -470,8 +529,8 @@ class InsightsGenerator:
             insights.append("Se recomienda revisar los procesos de atención al cliente")
 
         # Call volume insights
-        total_calls = summary_data.get("total_calls", 0)
-        if total_calls > 1000:
+        conversation_count = summary_data.get("conversation_count", 0)
+        if conversation_count > 1000:
             insights.append(
                 "Alto volumen de llamadas indica una demanda robusta del servicio"
             )
@@ -502,12 +561,12 @@ class InsightsGenerator:
             )
 
         # Duration-based recommendations
-        avg_duration = summary_data.get("avg_duration", 0)
-        if avg_duration > 10:
+        average_minutes = summary_data.get("average_minutes", 0)
+        if average_minutes > 10:
             recommendations.append(
                 "Considerar herramientas de automatización para reducir tiempo de resolución"
             )
-        elif avg_duration < 3:
+        elif average_minutes < 3:
             recommendations.append(
                 "Verificar que se está brindando suficiente atención a cada consulta"
             )
@@ -607,7 +666,7 @@ class ReportGenerator:
             elements.extend(self._create_executive_summary(summary_data, styles))
             elements.append(PageBreak())
 
-        # Detailed metrics section)
+        # Detailed metrics section
         elements.extend(
             self._create_detailed_metrics(
                 summary_data, topics_data, emotions_data, ratings_data, styles
@@ -757,13 +816,13 @@ class ReportGenerator:
             elements.append(Spacer(1, 20))
 
         # Summary text
-        total_calls = summary_data.get("total_calls", 0)
-        avg_duration = summary_data.get("avg_duration", 0)
+        conversation_count = summary_data.get("conversation_count", 0)
+        average_minutes = summary_data.get("average_minutes", 0)
         satisfaction = summary_data.get("avg_satisfaction", 0) * 100
 
         summary_text = f"""
-        Durante el período analizado, se registraron <b>{total_calls:,}</b> llamadas con una 
-        duración promedio de <b>{avg_duration:.1f} minutos</b>. La satisfacción del cliente 
+        Durante el período analizado, se registraron <b>{conversation_count:,}</b> llamadas con una 
+        duración promedio de <b>{average_minutes:.1f} minutos</b>. La satisfacción del cliente 
         alcanzó un <b>{satisfaction:.1f}%</b>, lo que refleja la calidad del servicio brindado.
         """
 
@@ -798,7 +857,7 @@ class ReportGenerator:
             topics_table_data = [[SpanishTexts.TOPIC, SpanishTexts.FREQUENCY]]
             for topic in topics_data[:5]:
                 topics_table_data.append(
-                    [topic.get("topic", "N/A"), str(topic.get("count", 0))]
+                    [topic.get("topic", "N/A"), str(topic.get("amount", 0))]
                 )
 
             topics_table = Table(topics_table_data, colWidths=[4 * inch, 1.5 * inch])
