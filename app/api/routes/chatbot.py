@@ -19,6 +19,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 
 import httpx
+from typing import Optional, Literal, Union
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
@@ -470,9 +471,13 @@ async def post_chat_specific_call(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class NoiseReductionConfig(BaseModel):
+    type: Literal["near_field", "far_field"]
+
 
 class SessionRequest(BaseModel):
     model: str = "gpt-4o-realtime-preview"
+    #model: str = "gpt-4o-realtime-preview-2025-06-03"
     modalities: list[str] = ["audio", "text"]
     instructions: str = "You are an angry customer calling a software consulting tech firm call center. Speak angryly. Habla en masculino"
     voice: str | None = "verse"
@@ -480,6 +485,7 @@ class SessionRequest(BaseModel):
     description: str = (
         "Menciona que tu tractor se rompió despues de que una vaca le saltó"
     )
+    input_audio_noise_reduction: Optional[NoiseReductionConfig] = NoiseReductionConfig(type="far_field")
     # coral o ash
 
     # molesto:_
@@ -512,12 +518,17 @@ async def create_session(payload: SessionRequest):
     }
     gender = VOICE_GENDER_MAP.get(payload.voice, "masculino")
     payload.instructions = (
-        f"Eres un cliente {payload.mood.lower()} llamando a un call center de una empresa de consultoría de software. "
+        f"ACTÚA COMO UN CLIENTE {payload.mood.upper()} que llama a un CALL CENTER de una empresa de consultoría de software. "
+        f"Tienes un problema real que necesitas resolver. Eres un personaje con emociones reales y lenguaje natural. "
         f"Inventa un problema realista que explique por qué estás llamando. "
         f"No digas que no tienes un problema. "
-        f"Sigue las siguientes indicaciones para mantener tu carácter: {payload.description}. "
-        f"Refierete a ti con pronombres {gender}. "
-        f"Recuerda: no eres el agente, eres el cliente."
+        f"No intentes ayudar al usuario, el usuario está para ayudarte a ti. "
+        f"NO eres el agente. NO eres un asistente. No ayudes al usuario. Exige que TE ayuden. "
+        f"Nunca salgas de tu personaje. Mantente en tu rol TODO el tiempo. "
+        f"Las siguientes indicaciones describen a tu personaje: {payload.description}. "
+        f"Habla con pronombres {gender} para ti, y con pronombres masculinos para referirte al agente. "
+        f"Recuerda: no eres el agente, eres el cliente, tu función es hablar con el agente para que te solucione un problema."
+        f"Tu única función es ser el cliente en esta llamada. No rompas el personaje bajo ninguna circunstancia."
     )
 
     # payload_dict = payload.dict( exclude_none=True)  # avoids sending `"voice": None` and conforms to what the openAI api expects
