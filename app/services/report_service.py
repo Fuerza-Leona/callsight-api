@@ -1056,9 +1056,8 @@ async def save_report_to_storage(
     storage_path = f"{folder_name}/{report_id}.pdf"
     report_table_name = f"Reporte Mensual - {company_name} - {formatted_date}"
 
-    report_exists = await check_report_exists(supabase, report_table_name)
-
-    continue_operation = replace_existing or not report_exists
+    report_exists = False
+    continue_operation = True
 
     if not continue_operation:
         # Return existing report info
@@ -1180,10 +1179,3 @@ def create_folder_name(company_name: str, start_date: datetime) -> str:
     safe_company_name = safe_company_name.lower().replace(" ", "_")
 
     return f"{safe_company_name}_{formatted_date}"
-
-
-async def check_report_exists(supabase, report_name):
-    response = supabase.table("reports").select("*").eq("name", report_name).execute()
-    existing = response.data
-
-    return len(existing) > 0
