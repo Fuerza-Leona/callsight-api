@@ -113,7 +113,7 @@ async def generate_monthly_report(
                     ]
         else:
             # If no company specified, use a generic name
-            company_name = "All Companies"
+            company_name = "Todas las empresas"
 
             # Filter parameters for all data calls
             filter_params = {
@@ -124,6 +124,7 @@ async def generate_monthly_report(
             }
 
         # Gather all required data
+        # 1. Get summary data        # Gather all required data
         # 1. Get summary data
         summary_response = supabase.rpc(
             "build_conversations_summary",
@@ -141,6 +142,7 @@ async def generate_monthly_report(
             },
         ).execute()
 
+        print(f"Summary response: {summary_response.data}")
         summary_data = summary_response.data[0] if summary_response.data else {}
 
         # 2. Get topics data
@@ -161,6 +163,7 @@ async def generate_monthly_report(
             },
         ).execute()
 
+        print(f"Topics response: {topics_response.data}")
         topics_data = topics_response.data if topics_response.data else []
 
         # 3. Get categories data
@@ -180,6 +183,7 @@ async def generate_monthly_report(
             },
         ).execute()
 
+        print(f"Categories response: {categories_response.data}")
         categories_data = categories_response.data if categories_response.data else []
 
         # 4. Get ratings data
@@ -199,6 +203,7 @@ async def generate_monthly_report(
             },
         ).execute()
 
+        print(f"Ratings response: {ratings_response.data}")
         ratings_data = ratings_response.data if ratings_response.data else []
 
         # 5. Get emotions data
@@ -217,6 +222,8 @@ async def generate_monthly_report(
                 else None,
             },
         ).execute()
+
+        print(f"Emotions response: {emotions_response.data}")
 
         emotions_data = {}
         if emotions_response.data and len(emotions_response.data) > 0:
