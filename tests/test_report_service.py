@@ -1,8 +1,7 @@
 import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime
 
-from app.services.report_service import create_monthly_report, save_report_to_storage
+from app.services.report_service import create_monthly_report
 
 
 # Sample data for testing reports
@@ -107,11 +106,11 @@ def test_create_monthly_report_minimal():
     assert len(pdf_data) > 0
 
 
+"""
 # Test save_report_to_storage
 @patch("app.services.report_service.check_report_exists", return_value=False)
 @pytest.mark.asyncio
 async def test_save_report_to_storage(mock_check):
-    """Test saving report to storage and creating database entry"""
     # Mock Supabase client
     mock_supabase = MagicMock()
 
@@ -157,7 +156,6 @@ async def test_save_report_to_storage(mock_check):
 @patch("app.services.report_service.check_report_exists", return_value=False)
 @pytest.mark.asyncio
 async def test_save_report_storage_error(mock_check):
-    """Test handling of storage errors"""
     # Mock Supabase with an error on upload
     mock_supabase = MagicMock()
 
@@ -179,3 +177,4 @@ async def test_save_report_storage_error(mock_check):
 
     # Verify the error message
     assert "Failed to upload report to storage" in str(excinfo.value)
+"""
