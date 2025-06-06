@@ -147,6 +147,7 @@ async def login(credentials: UserLogin, supabase: Client = Depends(get_supabase)
                 "role": user_data.get("role"),
                 "department": user_data.get("department"),
                 "company_id": user_data.get("company_id"),
+                "isConnected": user_data.get("isConnected", False),
             },
         }
 

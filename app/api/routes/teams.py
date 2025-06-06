@@ -182,7 +182,7 @@ async def teams_callback(
         redirect_url = (
             f"{base_url}/calls/dashboard"
             if devenv != "development"
-            else "http://localhost:3000/perfil"
+            else "http://localhost:3000/calls/dashboard"
         )
         return RedirectResponse(url=redirect_url)
 
