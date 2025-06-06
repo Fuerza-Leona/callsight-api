@@ -180,7 +180,7 @@ async def teams_callback(
         devenv = settings.NODE_ENV
 
         redirect_url = (
-            f"{base_url}/calls/dashboard"
+            base_url.replace("api.", "") + "/calls/dashboard"
             if devenv != "development"
             else "http://localhost:3000/calls/dashboard"
         )
